@@ -1,5 +1,5 @@
 TEMPLATE = lib
 TARGET = gtbase
-CONFIG += qt debug
-HEADERS += common.h document.h
-SOURCES += document.cpp
+CONFIG += qt
+HEADERS += gtcommon.h gtdocument.h gtdocpage.h
+SOURCES += gtdocument.cpp gtdocpage.cpp

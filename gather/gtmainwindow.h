@@ -1,23 +1,23 @@
 /*
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
-#ifndef GATHER_MAINWINDOW_H
-#define GATHER_MAINWINDOW_H
+#ifndef __GT_MAINWINDOW_H__
+#define __GT_MAINWINDOW_H__
 
-#include "common.h"
+#include "gtcommon.h"
 #include <QtWidgets/QMainWindow>
 
 class QAction;
 class QLabel;
 
-GATHER_BEGIN_NAMESPACE
+GT_BEGIN_NAMESPACE
 
-class MainWindow : public QMainWindow
+class GtMainWindow : public QMainWindow
 {
     Q_OBJECT;
 
 public:
-    MainWindow();
+    GtMainWindow();
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -71,6 +71,6 @@ private:
     QAction *exitAction;
 };
 
-GATHER_END_NAMESPACE
+GT_END_NAMESPACE
 
-#endif  /* GATHER_MAINWINDOW_H */
+#endif  /* __GT_MAINWINDOW_H__ */

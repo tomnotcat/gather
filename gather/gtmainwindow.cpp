@@ -1,12 +1,12 @@
 /*
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
-#include "mainwindow.h"
+#include "gtmainwindow.h"
 #include <QtWidgets>
 
-GATHER_BEGIN_NAMESPACE
+GT_BEGIN_NAMESPACE
 
-MainWindow::MainWindow()
+GtMainWindow::GtMainWindow()
 {
     // setCentralWidget(view);
     createActions();
@@ -19,7 +19,7 @@ MainWindow::MainWindow()
     setCurrentFile("");
 }
 
-void MainWindow::createActions()
+void GtMainWindow::createActions()
 {
     openAction = new QAction(tr("&Open"), this);
     // openAction->setIcon(QIcon(":/images/open.png"));
@@ -64,7 +64,7 @@ void MainWindow::createActions()
     connect(exitAction, SIGNAL(triggered()), this, SLOT(close()));
 }
 
-void MainWindow::createMenus()
+void GtMainWindow::createMenus()
 {
     fileMenu = menuBar()->addMenu(tr("&File"));
     fileMenu->addAction(openAction);
@@ -88,11 +88,11 @@ void MainWindow::createMenus()
     helpMenu->addAction(aboutAction);
 }
 
-void MainWindow::createContextMenu()
+void GtMainWindow::createContextMenu()
 {
 }
 
-void MainWindow::createToolBars()
+void GtMainWindow::createToolBars()
 {
     fileToolBar = addToolBar(tr("&File"));
     fileToolBar->addAction(openAction);
@@ -105,7 +105,7 @@ void MainWindow::createToolBars()
     editToolBar->addAction(findAction);
 }
 
-void MainWindow::createStatusBar()
+void GtMainWindow::createStatusBar()
 {
     locationLabel = new QLabel(" W999 ");
     locationLabel->setAlignment(Qt::AlignHCenter);
@@ -119,11 +119,11 @@ void MainWindow::createStatusBar()
     updateStatusBar();
 }
 
-void MainWindow::updateStatusBar()
+void GtMainWindow::updateStatusBar()
 {
 }
 
-void MainWindow::open()
+void GtMainWindow::open()
 {
     if (okToContinue()) {
         QString fileName = QFileDialog::getOpenFileName(this,
@@ -134,14 +134,14 @@ void MainWindow::open()
     }
 }
 
-bool MainWindow::loadFile(const QString &fileName)
+bool GtMainWindow::loadFile(const QString &fileName)
 {
     setCurrentFile(fileName);
     statusBar()->showMessage(tr("File loaded"), 2000);
     return true;
 }
 
-bool MainWindow::okToContinue()
+bool GtMainWindow::okToContinue()
 {
     if (isWindowModified()) {
         int r = QMessageBox::warning(this, tr("Spreadsheet"),
@@ -158,7 +158,7 @@ bool MainWindow::okToContinue()
     return true;
 }
 
-void MainWindow::closeEvent(QCloseEvent *event)
+void GtMainWindow::closeEvent(QCloseEvent *event)
 {
     if (okToContinue()) {
         writeSettings();
@@ -168,7 +168,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     }
 }
 
-void MainWindow::setCurrentFile(const QString &fileName)
+void GtMainWindow::setCurrentFile(const QString &fileName)
 {
     curFile = fileName;
     setWindowModified(false);
@@ -185,12 +185,12 @@ void MainWindow::setCurrentFile(const QString &fileName)
                    .arg(tr("Spreadsheet")));
 }
 
-QString MainWindow::strippedName(const QString &fullFileName)
+QString GtMainWindow::strippedName(const QString &fullFileName)
 {
     return QFileInfo(fullFileName).fileName();
 }
 
-void MainWindow::updateRecentFileActions()
+void GtMainWindow::updateRecentFileActions()
 {
     QMutableStringListIterator i(recentFiles);
     while (i.hasNext()) {
@@ -212,7 +212,7 @@ void MainWindow::updateRecentFileActions()
     separatorAction->setVisible(!recentFiles.isEmpty());
 }
 
-void MainWindow::openRecentFile()
+void GtMainWindow::openRecentFile()
 {
     if (okToContinue()) {
         QAction *action = qobject_cast<QAction *>(sender());
@@ -221,11 +221,11 @@ void MainWindow::openRecentFile()
     }
 }
 
-void MainWindow::find()
+void GtMainWindow::find()
 {
 }
 
-void MainWindow::about()
+void GtMainWindow::about()
 {
     QMessageBox::about(this, tr("About Spreadsheet"),
                        tr("<h2>Spreadsheet 1.1</h2>"
@@ -236,14 +236,14 @@ void MainWindow::about()
                           "Qt classes."));
 }
 
-void MainWindow::writeSettings()
+void GtMainWindow::writeSettings()
 {
     QSettings settings("Software Inc.", "Spreadsheet");
     settings.setValue("geometry", saveGeometry());
     settings.setValue("recentFiles", recentFiles);
 }
 
-void MainWindow::readSettings()
+void GtMainWindow::readSettings()
 {
     QSettings settings("Software Inc.", "Spreadsheet");
     restoreGeometry(settings.value("geometry").toByteArray());
@@ -251,4 +251,4 @@ void MainWindow::readSettings()
     updateRecentFileActions();
 }
 
-GATHER_END_NAMESPACE
+GT_END_NAMESPACE

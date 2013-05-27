@@ -1,6 +1,7 @@
 TEMPLATE = app
 TARGET = gather
 QT += widgets
-HEADERS += mainwindow.h
-SOURCES += mainwindow.cpp main.cpp
+HEADERS += gtmainwindow.h
+SOURCES += gtmainwindow.cpp gtmain.cpp
 RESOURCES = gather.qrc
+INCLUDEPATH += ../gtbase ../gtview
