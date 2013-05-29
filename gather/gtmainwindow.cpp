@@ -2,11 +2,13 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtmainwindow.h"
+#include "gtdocloader.h"
 #include <QtWidgets>
 
 GT_BEGIN_NAMESPACE
 
 GtMainWindow::GtMainWindow()
+    : docLoader (new GtDocLoader())
 {
     // setCentralWidget(view);
     createActions();
@@ -17,6 +19,10 @@ GtMainWindow::GtMainWindow()
     readSettings();
     setWindowIcon(QIcon(":/images/logo.bmp"));
     setCurrentFile("");
+}
+
+GtMainWindow::~GtMainWindow()
+{
 }
 
 void GtMainWindow::createActions()

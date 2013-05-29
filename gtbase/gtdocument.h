@@ -12,7 +12,7 @@ GT_BEGIN_NAMESPACE
 class GtDocPage;
 class GtDocumentPrivate;
 
-class GtDocument : public QObject
+class GT_BASE_EXPORT GtDocument : public QObject
 {
     Q_OBJECT
 
@@ -24,9 +24,6 @@ public:
     virtual bool load(QDataStream &stream) = 0;
     virtual int countPages() = 0;
     virtual GtDocPage* loadPage(int page) = 0;
-
-public:
-    bool loadFromFile(const QString &fileName);
 
 protected:
     GtDocument(GtDocumentPrivate &dd, QObject *parent);

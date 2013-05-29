@@ -3,4 +3,4 @@ moc_*
 qrc_*
 *.o
 *.so*
-gather/gather
+build

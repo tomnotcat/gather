@@ -12,12 +12,15 @@ class QLabel;
 
 GT_BEGIN_NAMESPACE
 
+class GtDocLoader;
+
 class GtMainWindow : public QMainWindow
 {
     Q_OBJECT;
 
 public:
     GtMainWindow();
+    ~GtMainWindow();
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -44,6 +47,7 @@ private:
     QString strippedName(const QString &fullFileName);
 
 private:
+    QScopedPointer<GtDocLoader> docLoader;
     QLabel *locationLabel;
     QLabel *formulaLabel;
     QStringList recentFiles;

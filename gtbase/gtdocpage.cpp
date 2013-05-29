@@ -1,22 +1,15 @@
 /*
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
-#include "gtdocpage.h"
+#include "gtdocpage_p.h"
 
 GT_BEGIN_NAMESPACE
 
-class GtDocPagePrivate
-{
-    Q_DECLARE_PUBLIC(GtDocPage)
-
-public:
-    GtDocPagePrivate();
-
-protected:
-    GtDocPage *q_ptr;
-};
-
 GtDocPagePrivate::GtDocPagePrivate()
+{
+}
+
+GtDocPagePrivate::~GtDocPagePrivate()
 {
 }
 

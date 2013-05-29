@@ -1,22 +1,15 @@
 /*
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
-#include "gtdocument.h"
+#include "gtdocument_p.h"
 
 GT_BEGIN_NAMESPACE
 
-class GtDocumentPrivate
-{
-    Q_DECLARE_PUBLIC(GtDocument)
-
-public:
-    GtDocumentPrivate();
-
-protected:
-    GtDocument *q_ptr;
-};
-
 GtDocumentPrivate::GtDocumentPrivate()
+{
+}
+
+GtDocumentPrivate::~GtDocumentPrivate()
 {
 }
 
@@ -36,12 +29,6 @@ GtDocument::GtDocument(GtDocumentPrivate &dd, QObject *parent)
 
 GtDocument::~GtDocument()
 {
-}
-
-bool GtDocument::loadFromFile(const QString &fileName)
-{
-    Q_UNUSED(fileName);
-    return false;
 }
 
 GT_END_NAMESPACE

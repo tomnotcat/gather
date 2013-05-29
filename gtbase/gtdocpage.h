@@ -13,7 +13,7 @@ GT_BEGIN_NAMESPACE
 
 class GtDocPagePrivate;
 
-class GtDocPage : public QObject
+class GT_BASE_EXPORT GtDocPage : public QObject
 {
     Q_OBJECT
 
