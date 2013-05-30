@@ -3,12 +3,21 @@
  */
 #include "gtmainwindow.h"
 #include "gtdocloader.h"
-#include <QtWidgets>
+#include <QtWidgets/QAction>
+#include <QtWidgets/QApplication>
+#include <QtGui/QCloseEvent>
+#include <QtWidgets/QFileDialog>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QMenuBar>
+#include <QtWidgets/QMessageBox>
+#include <QtWidgets/QSettings>
+#include <QtWidgets/QStatusBar>
+#include <QtWidgets/QToolBar>
 
 GT_BEGIN_NAMESPACE
 
 GtMainWindow::GtMainWindow()
-    : docLoader (new GtDocLoader())
+    : docLoader(new GtDocLoader())
 {
     // setCentralWidget(view);
     createActions();
