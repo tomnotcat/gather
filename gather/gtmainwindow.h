@@ -52,6 +52,7 @@ private:
     QLabel *formulaLabel;
     QStringList recentFiles;
     QString curFile;
+    QString lastOpenPath;
 
     QMenu *fileMenu;
     QMenu *editMenu;

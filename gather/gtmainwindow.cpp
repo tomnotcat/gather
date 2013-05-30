@@ -133,15 +133,25 @@ void GtMainWindow::open()
 {
     if (okToContinue()) {
         QString fileName = QFileDialog::getOpenFileName(this,
-                                                        tr("Open Spreadsheet"), ".",
-                                                        tr("Spreadsheet files (*.sp)"));
-        if (!fileName.isEmpty())
-            loadFile(fileName);
+                                                        tr("Open Document"),
+                                                        lastOpenPath,
+                                                        tr("Document Files (*.pdf *.txt);;All Files (*.*)"));
+
+        if (fileName.isEmpty())
+            return;
+
+        lastOpenPath = QFileInfo(fileName).path();
+        loadFile(fileName);
     }
 }
 
 bool GtMainWindow::loadFile(const QString &fileName)
 {
+    GtDocument *doc = docLoader->load(fileName);
+
+    if (NULL == doc)
+        return false;
+
     setCurrentFile(fileName);
     statusBar()->showMessage(tr("File loaded"), 2000);
     return true;
@@ -179,7 +189,7 @@ void GtMainWindow::setCurrentFile(const QString &fileName)
     curFile = fileName;
     setWindowModified(false);
 
-    QString shownName = tr("Untitled");
+    QString shownName = tr("gather");
     if (!curFile.isEmpty()) {
         shownName = strippedName(curFile);
         recentFiles.removeAll(curFile);
@@ -187,8 +197,7 @@ void GtMainWindow::setCurrentFile(const QString &fileName)
         updateRecentFileActions();
     }
 
-    setWindowTitle(tr("%1[*] - %2").arg(shownName)
-                   .arg(tr("Spreadsheet")));
+    setWindowTitle(shownName);
 }
 
 QString GtMainWindow::strippedName(const QString &fullFileName)
@@ -247,6 +256,7 @@ void GtMainWindow::writeSettings()
     QSettings settings("Software Inc.", "Spreadsheet");
     settings.setValue("geometry", saveGeometry());
     settings.setValue("recentFiles", recentFiles);
+    settings.setValue("lastOpenPath", lastOpenPath);
 }
 
 void GtMainWindow::readSettings()
@@ -254,6 +264,7 @@ void GtMainWindow::readSettings()
     QSettings settings("Software Inc.", "Spreadsheet");
     restoreGeometry(settings.value("geometry").toByteArray());
     recentFiles = settings.value("recentFiles").toStringList();
+    lastOpenPath = settings.value("lastOpenPath").toString();
     updateRecentFileActions();
 }
 
