@@ -21,7 +21,8 @@ public:
     ~GtDocLoader();
 
 public:
-    GtDocument* load(const QString &fileName);
+    int registerLoaders(const QString &loaderDir);
+    GtDocument* loadDocument(const QString &fileName);
 
 private:
     QScopedPointer<GtDocLoaderPrivate> d_ptr;

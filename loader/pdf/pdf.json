@@ -1,0 +1,5 @@
+{
+    module: "pdf.so",
+    description: "PDF Documents",
+    mime_type: "application/pdf;application/x-bzpdf;application/x-gzpdf;application/x-xzpdf;application/x-ext-pdf",
+}

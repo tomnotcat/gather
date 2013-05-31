@@ -3,14 +3,15 @@
  */
 #include "gtmainwindow.h"
 #include "gtdocloader.h"
+#include <QtCore/QtDebug>
+#include <QtCore/QSettings>
+#include <QtGui/QCloseEvent>
 #include <QtWidgets/QAction>
 #include <QtWidgets/QApplication>
-#include <QtGui/QCloseEvent>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QMessageBox>
-#include <QtWidgets/QSettings>
 #include <QtWidgets/QStatusBar>
 #include <QtWidgets/QToolBar>
 
@@ -19,6 +20,13 @@ GT_BEGIN_NAMESPACE
 GtMainWindow::GtMainWindow()
     : docLoader(new GtDocLoader())
 {
+    QDir dir(QCoreApplication::applicationDirPath());
+
+    if (dir.cd("loader")) {
+        int count = docLoader->registerLoaders(dir.absolutePath());
+        qDebug() << "registered loaders:" << count;
+    }
+
     // setCentralWidget(view);
     createActions();
     createMenus();
@@ -156,7 +164,7 @@ void GtMainWindow::open()
 
 bool GtMainWindow::loadFile(const QString &fileName)
 {
-    GtDocument *doc = docLoader->load(fileName);
+    GtDocument *doc = docLoader->loadDocument(fileName);
 
     if (NULL == doc)
         return false;

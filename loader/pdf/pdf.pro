@@ -6,7 +6,7 @@ SOURCES += pdfdocument.cpp pdfdocpage.cpp
 INCLUDEPATH += ../../gtbase
 
 CONFIG(debug, debug|release) {
-    DESTDIR = ../../build/debug
+    DESTDIR = ../../build/debug/loader
 } else {
-    DESTDIR = ../../build/release
+    DESTDIR = ../../build/release/loader
 }
