@@ -3,6 +3,7 @@
  */
 #include "gtmainwindow.h"
 #include "gtdocloader.h"
+#include "gtdocument.h"
 #include <QtCore/QtDebug>
 #include <QtCore/QSettings>
 #include <QtGui/QCloseEvent>
@@ -171,6 +172,7 @@ bool GtMainWindow::loadFile(const QString &fileName)
 
     setCurrentFile(fileName);
     statusBar()->showMessage(tr("File loaded"), 2000);
+    delete doc;
     return true;
 }
 

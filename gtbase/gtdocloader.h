@@ -17,11 +17,22 @@ class GT_BASE_EXPORT GtDocLoader : public QObject
     Q_OBJECT
 
 public:
+    struct LoaderInfo
+    {
+        QString module;
+        QString description;
+        QString mimetype;
+        QString extension;
+        QString path;
+    };
+
+public:
     explicit GtDocLoader(QObject *parent = 0);
     ~GtDocLoader();
 
 public:
     int registerLoaders(const QString &loaderDir);
+    QList<const LoaderInfo *> loaderInfos();
     GtDocument* loadDocument(const QString &fileName);
 
 private:

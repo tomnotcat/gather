@@ -21,7 +21,6 @@ public:
     ~GtDocument();
 
 public:
-    virtual bool load(QDataStream &stream) = 0;
     virtual int countPages() = 0;
     virtual GtDocPage* loadPage(int page) = 0;
 

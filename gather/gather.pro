@@ -1,5 +1,6 @@
 TEMPLATE = app
 TARGET = gather
+CONFIG += qt debug
 QT += widgets
 HEADERS += gtmainwindow.h
 SOURCES += gtmainwindow.cpp gtmain.cpp

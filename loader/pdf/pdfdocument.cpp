@@ -3,6 +3,7 @@
  */
 #include "pdfdocument.h"
 #include "gtdocument_p.h"
+#include <QtCore/QDebug>
 
 GT_BEGIN_NAMESPACE
 
@@ -21,6 +22,7 @@ PdfDocumentPrivate::PdfDocumentPrivate()
 
 PdfDocumentPrivate::~PdfDocumentPrivate()
 {
+    qDebug() << "destroy PdfDocument";
 }
 
 PdfDocument::PdfDocument(QObject *parent)
@@ -32,12 +34,6 @@ PdfDocument::~PdfDocument()
 {
 }
 
-bool PdfDocument::load(QDataStream &stream)
-{
-    Q_UNUSED(stream);
-    return false;
-}
-
 int PdfDocument::countPages()
 {
     return 0;
@@ -47,6 +43,12 @@ GtDocPage* PdfDocument::loadPage(int page)
 {
     Q_UNUSED(page);
     return 0;
+}
+
+GtDocument* gather_load_document(QIODevice *device)
+{
+    Q_UNUSED(device);
+    return new PdfDocument();
 }
 
 GT_END_NAMESPACE

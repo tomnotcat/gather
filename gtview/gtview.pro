@@ -1,5 +1,5 @@
 TEMPLATE = lib
-CONFIG += qt
+CONFIG += qt debug
 QT += widgets
 HEADERS += gtdocview.h
 SOURCES += gtdocview.cpp

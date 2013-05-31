@@ -5,6 +5,9 @@
 #define __PDF_DOCUMENT_H__
 
 #include "gtdocument.h"
+#include <QtCore/qplugin.h>
+
+class QIODevice;
 
 GT_BEGIN_NAMESPACE
 
@@ -19,7 +22,6 @@ public:
     ~PdfDocument();
 
 public:
-    bool load(QDataStream &stream);
     int countPages();
     GtDocPage* loadPage(int page);
 
@@ -27,6 +29,8 @@ private:
     Q_DISABLE_COPY(PdfDocument)
     Q_DECLARE_PRIVATE(PdfDocument)
 };
+
+Q_EXTERN_C GtDocument* gather_load_document(QIODevice *device);
 
 GT_END_NAMESPACE
 
