@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtdocument_p.h"
+#include <QtCore/QDebug>
 
 GT_BEGIN_NAMESPACE
 

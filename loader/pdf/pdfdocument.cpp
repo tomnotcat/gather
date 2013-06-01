@@ -22,7 +22,6 @@ PdfDocumentPrivate::PdfDocumentPrivate()
 
 PdfDocumentPrivate::~PdfDocumentPrivate()
 {
-    qDebug() << "destroy PdfDocument";
 }
 
 PdfDocument::PdfDocument(QObject *parent)

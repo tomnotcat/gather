@@ -5,22 +5,51 @@
 #define __GT_DOC_VIEW_H__
 
 #include "gtcommon.h"
-#include <QtWidgets/qwidget.h>
+#include <QtWidgets/qabstractscrollarea.h>
 
 GT_BEGIN_NAMESPACE
 
+class GtDocModel;
 class GtDocViewPrivate;
 
-class GtDocView : public QWidget
+class GtDocView : public QAbstractScrollArea
 {
     Q_OBJECT
 
 public:
-    explicit GtDocView(QWidget *parent = 0, Qt::WindowFlags f = 0);
+    explicit GtDocView(QWidget *parent = 0);
+    explicit GtDocView(GtDocModel *model, QWidget *parent = 0);
     ~GtDocView();
 
+public:
+    GtDocModel* model() const;
+    void setModel(GtDocModel *model);
+
+    bool canZoomIn() const;
+    void zoomIn();
+
+    bool canZoomOut() const;
+    void zoomOut();
+
+private Q_SLOTS:
+    void modelDestroyed(QObject *object);
+    void scrollValueChanged(int value);
+
 protected:
-    GtDocView(GtDocViewPrivate &dd, QWidget *parent = 0, Qt::WindowFlags f = 0);
+    QPoint contentAreaPosition() const;
+
+protected:
+    void resizeEvent(QResizeEvent *);
+
+    // mouse / keyboard events
+    void keyPressEvent(QKeyEvent *);
+    void keyReleaseEvent(QKeyEvent *);
+    void inputMethodEvent(QInputMethodEvent *);
+    void wheelEvent(QWheelEvent *);
+
+    void paintEvent(QPaintEvent *);
+
+private:
     QScopedPointer<GtDocViewPrivate> d_ptr;
 
 private:

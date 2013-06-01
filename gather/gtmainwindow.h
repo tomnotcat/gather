@@ -13,6 +13,9 @@ class QLabel;
 GT_BEGIN_NAMESPACE
 
 class GtDocLoader;
+class GtDocument;
+class GtDocModel;
+class GtDocView;
 
 class GtMainWindow : public QMainWindow
 {
@@ -48,6 +51,10 @@ private:
 
 private:
     QScopedPointer<GtDocLoader> docLoader;
+    QSharedPointer<GtDocument> document;
+    QSharedPointer<GtDocModel> docModel;
+    GtDocView *docView;
+
     QLabel *locationLabel;
     QLabel *formulaLabel;
     QStringList recentFiles;

@@ -3,7 +3,9 @@
  */
 #include "gtmainwindow.h"
 #include "gtdocloader.h"
+#include "gtdocmodel.h"
 #include "gtdocument.h"
+#include "gtdocview.h"
 #include <QtCore/QtDebug>
 #include <QtCore/QSettings>
 #include <QtGui/QCloseEvent>
@@ -28,7 +30,11 @@ GtMainWindow::GtMainWindow()
         qDebug() << "registered loaders:" << count;
     }
 
-    // setCentralWidget(view);
+    docModel = QSharedPointer<GtDocModel>(new GtDocModel());
+    docView = new GtDocView(docModel.data(), this);
+
+    setCentralWidget(docView);
+
     createActions();
     createMenus();
     createContextMenu();
@@ -170,9 +176,11 @@ bool GtMainWindow::loadFile(const QString &fileName)
     if (NULL == doc)
         return false;
 
+    docModel->setDocument(doc);
+    document = QSharedPointer<GtDocument>(doc);
+
     setCurrentFile(fileName);
     statusBar()->showMessage(tr("File loaded"), 2000);
-    delete doc;
     return true;
 }
 

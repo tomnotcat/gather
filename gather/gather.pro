@@ -14,4 +14,4 @@ CONFIG(debug, debug|release) {
     DESTDIR = ../build/release
 }
 
-unix: LIBS += -L$$DESTDIR -lgtbase
+unix: LIBS += -L$$DESTDIR -lgtbase -lgtview
