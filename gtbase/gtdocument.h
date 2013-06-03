@@ -25,9 +25,11 @@ public:
     virtual GtDocPage* loadPage(int page) = 0;
 
 public:
-    bool getUniformPageSize(double *width, double *height);
-    void getMaxPageSize(double *width, double *height);
-    void getMinPageSize(double *width, double *height);
+    bool uniformPageSize(double *width, double *height);
+    void maxPageSize(double *width, double *height);
+    void minPageSize(double *width, double *height);
+    int pageCount();
+    GtDocPage* page(int page);
 
 protected:
     friend class GtDocLoaderPrivate;

@@ -21,6 +21,8 @@ public:
 
 protected:
     GtDocument *q_ptr;
+    GtDocPage **pages;
+    int pageCount;
     double uniformWidth;
     double uniformHeight;
     double maxWidth;

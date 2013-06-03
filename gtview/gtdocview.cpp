@@ -151,7 +151,7 @@ QSize GtDocViewPrivate::getMaxPageSize()
     double height = 0.;
 
     if (document)
-        document->getMaxPageSize(&width, &height);
+        document->maxPageSize(&width, &height);
 
     width *= scale;
     height *= scale;
