@@ -19,28 +19,28 @@ public:
 protected:
     GtDocModel *q_ptr;
     GtDocument *document;
-    int page_count;
+    int pageCount;
     int page;
     double scale;
     double maxScale;
     double minScale;
     int rotation;
     bool continuous;
-    GtDocModel::PageMode pageMode;
+    GtDocModel::LayoutMode layoutMode;
     GtDocModel::SizingMode sizingMode;
 };
 
 GtDocModelPrivate::GtDocModelPrivate()
     : document(NULL)
-    , page_count(0)
+    , pageCount(0)
     , page(-1)
     , scale(1.)
     , maxScale(std::numeric_limits<double>::max())
     , minScale(0.)
     , rotation(0)
     , continuous(true)
-    , pageMode(GtDocModel::SinglePage)
-    , sizingMode(GtDocModel::FreeMode)
+    , layoutMode(GtDocModel::SinglePage)
+    , sizingMode(GtDocModel::FitWidth)
 {
 }
 
@@ -63,9 +63,9 @@ GtDocModel::GtDocModel(GtDocument *document, QObject *parent)
 
     if (document) {
         d_ptr->document = document;
-        d_ptr->page_count = document->countPages();
+        d_ptr->pageCount = document->countPages();
 
-        if (d_ptr->page_count > 0)
+        if (d_ptr->pageCount > 0)
             d_ptr->page = 0;
 
         connect(d_ptr->document,
@@ -101,8 +101,8 @@ void GtDocModel::setDocument(GtDocument *document)
 
     d->document = document;
     if (d->document) {
-        d->page_count = document->countPages();
-        setPage(CLAMP(d->page, 0, d->page_count - 1));
+        d->pageCount = document->countPages();
+        setPage(CLAMP(d->page, 0, d->pageCount - 1));
 
         connect(d->document,
                 SIGNAL(destroyed(QObject*)),
@@ -126,7 +126,7 @@ void GtDocModel::setPage(int page)
     if (d->page == page)
         return;
 
-    if (page < 0 || (d->document && page >= d->page_count))
+    if (page < 0 || (d->document && page >= d->pageCount))
         return;
 
     d->page = page;
@@ -145,7 +145,7 @@ void GtDocModel::setScale(double scale)
     Q_D(GtDocModel);
 
     double realScale = CLAMP (scale,
-                              d->sizingMode == FreeMode ?
+                              d->sizingMode == FreeSize ?
                               d->minScale : 0, d->maxScale);
     if (realScale == d->scale)
         return;
@@ -236,22 +236,22 @@ void GtDocModel::setContinuous(bool continuous)
     emit continuousChanged(d->continuous);
 }
 
-GtDocModel::PageMode GtDocModel::pageMode() const
+GtDocModel::LayoutMode GtDocModel::layoutMode() const
 {
     Q_D(const GtDocModel);
-    return d->pageMode;
+    return d->layoutMode;
 }
 
-void GtDocModel::setPageMode(PageMode mode)
+void GtDocModel::setLayoutMode(LayoutMode mode)
 {
     Q_D(GtDocModel);
 
-    if (mode == d->pageMode)
+    if (mode == d->layoutMode)
         return;
 
-    d->pageMode = mode;
+    d->layoutMode = mode;
 
-    emit pageModeChanged(d->pageMode);
+    emit layoutModeChanged(d->layoutMode);
 }
 
 GtDocModel::SizingMode GtDocModel::sizingMode() const

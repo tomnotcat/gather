@@ -24,7 +24,13 @@ public:
     virtual int countPages() = 0;
     virtual GtDocPage* loadPage(int page) = 0;
 
+public:
+    bool getUniformPageSize(double *width, double *height);
+    void getMaxPageSize(double *width, double *height);
+    void getMinPageSize(double *width, double *height);
+
 protected:
+    friend class GtDocLoaderPrivate;
     GtDocument(GtDocumentPrivate &dd, QObject *parent);
     QScopedPointer<GtDocumentPrivate> d_ptr;
 

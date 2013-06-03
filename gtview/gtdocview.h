@@ -10,6 +10,7 @@
 GT_BEGIN_NAMESPACE
 
 class GtDocModel;
+class GtDocument;
 class GtDocViewPrivate;
 
 class GtDocView : public QAbstractScrollArea
@@ -34,6 +35,14 @@ public:
 private Q_SLOTS:
     void modelDestroyed(QObject *object);
     void scrollValueChanged(int value);
+    void documentChanged(GtDocument *document);
+    void pageChanged(int page);
+    void scaleChanged(double scale);
+    void rotationChanged(int rotation);
+    void continuousChanged(bool continuous);
+    void layoutModeChanged(int mode);
+    void sizingModeChanged(int mode);
+    void relayoutPages();
 
 protected:
     QPoint contentAreaPosition() const;

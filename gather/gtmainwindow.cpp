@@ -47,6 +47,7 @@ GtMainWindow::GtMainWindow()
 
 GtMainWindow::~GtMainWindow()
 {
+    docView->setModel(0);
 }
 
 void GtMainWindow::createActions()

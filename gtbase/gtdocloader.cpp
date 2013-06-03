@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtdocloader.h"
+#include "gtdocument_p.h"
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
 #include <QtCore/QLibrary>
@@ -67,6 +68,9 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
 
         if (file.open(QIODevice::ReadOnly)) {
             document = ((GtDocument* (*)(QIODevice*))info.load)(&file);
+            if (document)
+                document->d_ptr->initialize();
+
             file.close();
         }
         else {

@@ -43,19 +43,19 @@ public:
     bool continuous() const;
     void setContinuous(bool continuous);
 
-    enum PageMode {
+    enum LayoutMode {
         SinglePage,
         EvenPageLeft,
         OddPageLeft
     };
 
-    PageMode pageMode() const;
-    void setPageMode(PageMode mode);
+    LayoutMode layoutMode() const;
+    void setLayoutMode(LayoutMode mode);
 
     enum SizingMode {
-        FreeMode,
-        BestFitMode,
-        FitWidthMode
+        FreeSize,
+        BestFit,
+        FitWidth
     };
 
     SizingMode sizingMode() const;
@@ -67,8 +67,8 @@ Q_SIGNALS:
     void scaleChanged(double scale);
     void rotationChanged(int rotation);
     void continuousChanged(bool continuous);
-    void pageModeChanged(PageMode mode);
-    void sizingModeChanged(SizingMode mode);
+    void layoutModeChanged(int mode);
+    void sizingModeChanged(int mode);
 
 private Q_SLOTS:
     void documentDestroyed(QObject *object);

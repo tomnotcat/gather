@@ -16,8 +16,19 @@ public:
     GtDocumentPrivate();
     virtual ~GtDocumentPrivate();
 
+public:
+    void initialize();
+
 protected:
     GtDocument *q_ptr;
+    double uniformWidth;
+    double uniformHeight;
+    double maxWidth;
+    double maxHeight;
+    double minWidth;
+    double minHeight;
+    bool uniform;
+    bool initialized;
 };
 
 GT_END_NAMESPACE
