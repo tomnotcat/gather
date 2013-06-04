@@ -16,6 +16,9 @@ public:
     GtDocPagePrivate();
     virtual ~GtDocPagePrivate();
 
+public:
+    int index;
+
 protected:
     GtDocPage *q_ptr;
 };

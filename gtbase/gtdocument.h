@@ -21,15 +21,18 @@ public:
     ~GtDocument();
 
 public:
-    virtual int countPages() = 0;
-    virtual GtDocPage* loadPage(int page) = 0;
-
-public:
     bool uniformPageSize(double *width, double *height);
     void maxPageSize(double *width, double *height);
     void minPageSize(double *width, double *height);
     int pageCount();
     GtDocPage* page(int index);
+
+protected:
+    virtual int countPages() = 0;
+    virtual GtDocPage* loadPage(int index) = 0;
+
+private Q_SLOTS:
+    void deviceDestroyed(QObject *object);
 
 protected:
     friend class GtDocLoaderPrivate;

@@ -27,7 +27,11 @@ public:
     virtual void extractText(QChar *texts, QRectF *rects) = 0;
     virtual void paint(QPainter &p, double scale, int rotation) = 0;
 
+public:
+    int index();
+
 protected:
+    friend class GtDocumentPrivate;
     GtDocPage(GtDocPagePrivate &dd, QObject *parent);
     QScopedPointer<GtDocPagePrivate> d_ptr;
 

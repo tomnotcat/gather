@@ -3,13 +3,10 @@
  */
 #include "pdfdocument.h"
 #include "gtdocument_p.h"
+#include "pdfdocpage.h"
 #include <QtCore/QDebug>
 #include <QtCore/QMutex>
 #include <QtCore/QThread>
-
-extern "C" {
-#include "mupdf-internal.h"
-}
 
 GT_BEGIN_NAMESPACE
 
@@ -49,28 +46,21 @@ PdfDocumentPrivate::~PdfDocumentPrivate()
 fz_context* PdfDocumentPrivate::context()
 {
     // Thread ID to context
-    static QHash<int, fz_context*> contexts;
+    static QHash<Qt::HANDLE, fz_context*> contexts;
     static QMutex mutex;
-    int threadId = reinterpret_cast<int>(QThread::currentThreadId());
+    Qt::HANDLE threadId = QThread::currentThreadId();
     fz_context *context = 0;
     bool done = false;
 
-    if (contexts.size() == 0) {
-        mutex.lock();
-
-        if (contexts.size() == 0) {
-        }
-
-        mutex.unlock();
-    }
-
     mutex.lock();
 
-    context = contexts.take(threadId);
-    if (context)
+    if (contexts.contains(threadId)) {
+        context = contexts[threadId];
         done = true;
-    else if (contexts.size() > 0)
+    }
+    else if (contexts.size() > 0) {
         context = *contexts.begin();
+    }
 
     mutex.unlock();
 
@@ -98,7 +88,7 @@ fz_context* PdfDocumentPrivate::context()
         context = fz_new_context(NULL, &locks, FZ_STORE_UNLIMITED);
     }
 
-    qDebug() << "Create pdf context for thread:" << threadId;
+    qDebug() << "Create fz_context for thread:" << threadId;
 
     mutex.lock();
 
@@ -117,27 +107,59 @@ fz_context* PdfDocumentPrivate::context()
 
 void PdfDocumentPrivate::lockContext(void *user, int lock)
 {
-    QMutex *mutexs = static_cast<QMutex*>(user);
-    mutexs[lock].lock();
+    QMutex **mutexs = static_cast<QMutex**>(user);
+    mutexs[lock]->lock();
 }
 
 void PdfDocumentPrivate::unlockContext(void *user, int lock)
 {
-    QMutex *mutexs = static_cast<QMutex*>(user);
-    mutexs[lock].unlock();
+    QMutex **mutexs = static_cast<QMutex**>(user);
+    mutexs[lock]->unlock();
 }
 
 int PdfDocumentPrivate::readPdfStream(fz_stream *stm, unsigned char *buf, int len)
 {
-    return 0;
+    QIODevice *device = static_cast<QIODevice*>(stm->state);
+    return device->read((char*)buf, len);
 }
 
 void PdfDocumentPrivate::seekPdfStream(fz_stream *stm, int offset, int whence)
 {
+    QIODevice *device = static_cast<QIODevice*>(stm->state);
+    qint64 pos = 0;
+
+    switch (whence) {
+    case SEEK_SET:
+        break;
+
+    case SEEK_CUR:
+        pos = device->pos();
+        break;
+
+    case SEEK_END:
+        pos = device->size();
+        break;
+
+    default:
+        Q_ASSERT(0);
+    }
+
+    pos += offset;
+
+    if (device->seek(pos)) {
+        stm->pos = pos;
+        stm->rp = stm->bp;
+        stm->wp = stm->bp;
+    }
+    else {
+        qWarning() << "pdf seek error:" << whence << offset;
+    }
 }
 
-void PdfDocumentPrivate::closePdfStream(fz_context *ctx, void *state)
+void PdfDocumentPrivate::closePdfStream(fz_context*, void *state)
 {
+    QIODevice *device = static_cast<QIODevice*>(state);
+    device->close();
 }
 
 PdfDocument::PdfDocument(QObject *parent)
@@ -161,21 +183,37 @@ bool PdfDocument::loadDocument(QIODevice *device)
                            PdfDocumentPrivate::readPdfStream,
                            PdfDocumentPrivate::closePdfStream);
     stream->seek = PdfDocumentPrivate::seekPdfStream;
-    d->document = fz_open_document_with_stream(context, "pdf", stream);
+
+    fz_try(context) {
+        d->document = fz_open_document_with_stream(context, "pdf", stream);
+    }
+    fz_catch(context) {
+        if (d->document) {
+            fz_close_document(d->document);
+            d->document = 0;
+        }
+    }
+
     fz_close (stream);
-    qDebug() << "load pdf";
-    return true;
+
+    return (d->document != 0);
 }
 
 int PdfDocument::countPages()
 {
-    return 0;
+    Q_D(PdfDocument);
+    return fz_count_pages (d->document);
 }
 
-GtDocPage* PdfDocument::loadPage(int page)
+GtDocPage* PdfDocument::loadPage(int index)
 {
-    Q_UNUSED(page);
-    return 0;
+    Q_D(PdfDocument);
+
+    fz_page *page = fz_load_page(d->document, index);
+    if (0 == page)
+        return 0;
+
+    return new PdfDocPage(d->document, page);
 }
 
 GtDocument* gather_load_document(QIODevice *device)

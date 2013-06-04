@@ -64,14 +64,14 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
     }
 
     if (info.load) {
-        QFile file(fileName);
+        QScopedPointer<QFile> file(new QFile(fileName));
 
-        if (file.open(QIODevice::ReadOnly)) {
-            document = ((GtDocument* (*)(QIODevice*))info.load)(&file);
-            if (document)
-                document->d_ptr->initialize();
-
-            file.close();
+        if (file->open(QIODevice::ReadOnly)) {
+            document = ((GtDocument* (*)(QIODevice*))info.load)(file.data());
+            if (document) {
+                file->setParent(document);
+                document->d_ptr->initialize(file.take());
+            }
         }
         else {
             qWarning() << "open file failed:" << fileName;

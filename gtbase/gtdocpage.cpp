@@ -6,6 +6,7 @@
 GT_BEGIN_NAMESPACE
 
 GtDocPagePrivate::GtDocPagePrivate()
+    : index(-1)
 {
 }
 
@@ -29,6 +30,12 @@ GtDocPage::GtDocPage(GtDocPagePrivate &dd, QObject *parent)
 
 GtDocPage::~GtDocPage()
 {
+}
+
+int GtDocPage::index()
+{
+    Q_D(GtDocPage);
+    return d->index;
 }
 
 GT_END_NAMESPACE

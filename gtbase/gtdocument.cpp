@@ -2,7 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtdocument_p.h"
-#include "gtdocpage.h"
+#include "gtdocpage_p.h"
 #include <QtCore/QDebug>
 
 GT_BEGIN_NAMESPACE
@@ -18,6 +18,7 @@ GtDocumentPrivate::GtDocumentPrivate()
     , minHeight(0)
     , uniform(false)
     , initialized(false)
+    , destroyed(false)
 {
 }
 
@@ -27,9 +28,11 @@ GtDocumentPrivate::~GtDocumentPrivate()
         delete pages[i];
 
     delete[] pages;
+
+    destroyed = true;
 }
 
-void GtDocumentPrivate::initialize()
+void GtDocumentPrivate::initialize(QObject *device)
 {
     Q_Q(GtDocument);
 
@@ -48,6 +51,7 @@ void GtDocumentPrivate::initialize()
                 continue;
             }
 
+            pages[i]->d_ptr->index = i;
             pages[i]->getSize(&pageWidth, &pageHeight);
             if (i == 0) {
                 uniformWidth = pageWidth;
@@ -79,6 +83,11 @@ void GtDocumentPrivate::initialize()
             }
         }
     }
+
+    q->connect(device,
+               SIGNAL(destroyed(QObject*)),
+               q,
+               SLOT(deviceDestroyed(QObject*)));
 
     initialized = true;
 }
@@ -158,6 +167,15 @@ GtDocPage* GtDocument::page(int index)
         return 0;
 
     return d->pages[index];
+}
+
+void GtDocument::deviceDestroyed(QObject*)
+{
+    Q_D(GtDocument);
+
+    // The device should not release before document destroy
+    Q_ASSERT(d->initialized);
+    Q_ASSERT(d->destroyed);
 }
 
 GT_END_NAMESPACE

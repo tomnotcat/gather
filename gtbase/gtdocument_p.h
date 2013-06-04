@@ -16,8 +16,8 @@ public:
     GtDocumentPrivate();
     virtual ~GtDocumentPrivate();
 
-public:
-    void initialize();
+protected:
+    void initialize(QObject *device);
 
 protected:
     GtDocument *q_ptr;
@@ -31,6 +31,7 @@ protected:
     double minHeight;
     bool uniform;
     bool initialized;
+    bool destroyed;
 };
 
 GT_END_NAMESPACE

@@ -7,6 +7,10 @@
 #include "gtdocument.h"
 #include <QtCore/qplugin.h>
 
+extern "C" {
+#include "mupdf-internal.h"
+}
+
 class QIODevice;
 
 GT_BEGIN_NAMESPACE
@@ -24,9 +28,9 @@ public:
 public:
     bool loadDocument(QIODevice *device);
 
-public:
+protected:
     int countPages();
-    GtDocPage* loadPage(int page);
+    GtDocPage* loadPage(int index);
 
 private:
     Q_DISABLE_COPY(PdfDocument)

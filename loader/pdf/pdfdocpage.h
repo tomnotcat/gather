@@ -6,6 +6,10 @@
 
 #include "gtdocpage.h"
 
+extern "C" {
+#include "mupdf-internal.h"
+}
+
 GT_BEGIN_NAMESPACE
 
 class PdfDocPagePrivate;
@@ -15,7 +19,7 @@ class PdfDocPage : public GtDocPage
     Q_OBJECT
 
 public:
-    explicit PdfDocPage(QObject *parent = 0);
+    PdfDocPage(fz_document *document, fz_page *page, QObject *parent = 0);
     ~PdfDocPage();
 
 public:
