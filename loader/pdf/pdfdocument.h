@@ -22,6 +22,9 @@ public:
     ~PdfDocument();
 
 public:
+    bool loadDocument(QIODevice *device);
+
+public:
     int countPages();
     GtDocPage* loadPage(int page);
 

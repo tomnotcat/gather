@@ -4,11 +4,25 @@ CONFIG += qt debug
 HEADERS += pdfdocument.h pdfdocpage.h
 SOURCES += pdfdocument.cpp pdfdocpage.cpp
 INCLUDEPATH += ../../gtbase
+INCLUDEPATH += ../../../mupdf/fitz
+INCLUDEPATH += ../../../mupdf/pdf
 
 CONFIG(debug, debug|release) {
     DESTDIR = ../../build/debug/loader
+    LIBS += ../../../mupdf/build/debug/libfitz.a
+    LIBS += ../../../mupdf/build/debug/libfreetype.a
+    LIBS += ../../../mupdf/build/debug/libjbig2dec.a
+    LIBS += ../../../mupdf/build/debug/libjpeg.a
+    LIBS += ../../../mupdf/build/debug/libopenjpeg.a
+    LIBS += ../../../mupdf/build/debug/libz.a
 } else {
     DESTDIR = ../../build/release/loader
+    LIBS += ../../../mupdf/build/release/libfitz.a
+    LIBS += ../../../mupdf/build/release/libfreetype.a
+    LIBS += ../../../mupdf/build/release/libjbig2dec.a
+    LIBS += ../../../mupdf/build/release/libjpeg.a
+    LIBS += ../../../mupdf/build/release/libopenjpeg.a
+    LIBS += ../../../mupdf/build/release/libz.a
 }
 
 metafile.target = $$DESTDIR/pdf.json

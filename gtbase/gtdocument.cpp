@@ -150,14 +150,14 @@ int GtDocument::pageCount()
     return d->pageCount;
 }
 
-GtDocPage* GtDocument::page(int page)
+GtDocPage* GtDocument::page(int index)
 {
     Q_D(GtDocument);
 
-    if (page < 0 || page >= d->pageCount)
+    if (index < 0 || index >= d->pageCount)
         return 0;
 
-    return d->pages[page];
+    return d->pages[index];
 }
 
 GT_END_NAMESPACE

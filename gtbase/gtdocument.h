@@ -29,7 +29,7 @@ public:
     void maxPageSize(double *width, double *height);
     void minPageSize(double *width, double *height);
     int pageCount();
-    GtDocPage* page(int page);
+    GtDocPage* page(int index);
 
 protected:
     friend class GtDocLoaderPrivate;
