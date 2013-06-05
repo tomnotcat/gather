@@ -16,7 +16,7 @@ public:
     GtDocumentPrivate();
     virtual ~GtDocumentPrivate();
 
-protected:
+public:
     void initialize(QObject *device);
 
 protected:

@@ -41,7 +41,7 @@ PdfDocPage::~PdfDocPage()
 {
 }
 
-void PdfDocPage::getSize(double *width, double *height)
+void PdfDocPage::pageSize(double *width, double *height)
 {
     Q_D(PdfDocPage);
 

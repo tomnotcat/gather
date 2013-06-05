@@ -22,7 +22,7 @@ public:
     ~GtDocPage();
 
 public:
-    virtual void getSize(double *width, double *height) = 0;
+    virtual void pageSize(double *width, double *height) = 0;
     virtual int textLength() = 0;
     virtual void extractText(QChar *texts, QRectF *rects) = 0;
     virtual void paint(QPainter &p, double scale, int rotation) = 0;

@@ -63,7 +63,7 @@ GtDocModel::GtDocModel(GtDocument *document, QObject *parent)
 
     if (document) {
         d_ptr->document = document;
-        d_ptr->pageCount = document->countPages();
+        d_ptr->pageCount = document->pageCount();
 
         if (d_ptr->pageCount > 0)
             d_ptr->page = 0;
@@ -101,7 +101,7 @@ void GtDocModel::setDocument(GtDocument *document)
 
     d->document = document;
     if (d->document) {
-        d->pageCount = document->countPages();
+        d->pageCount = document->pageCount();
         setPage(CLAMP(d->page, 0, d->pageCount - 1));
 
         connect(d->document,

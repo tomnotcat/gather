@@ -3,6 +3,7 @@
  */
 #include "gtdocview.h"
 #include "gtdocmodel.h"
+#include "gtdocpage.h"
 #include "gtdocument.h"
 #include <QtCore/QDebug>
 #include <QtGui/QPaintEvent>
@@ -15,6 +16,27 @@ class GtDocViewPrivate
     Q_DECLARE_PUBLIC(GtDocView)
 
 public:
+    class HeightCache {
+    public:
+        HeightCache();
+        ~HeightCache();
+
+    public:
+        void height(GtDocument *d, int page,
+                    int r, int e, double s,
+                    double *h, double *dh);
+    private:
+        void rebuild();
+
+    private:
+        GtDocument *document;
+        int rotation;
+        int evenPageLeft;
+        double *heightToPage;
+        double *dualHeightToPage;
+    };
+
+public:
     GtDocViewPrivate(GtDocView *parent);
     ~GtDocViewPrivate();
 
@@ -22,8 +44,10 @@ public:
     void setupCaches();
     void clearCaches();
     void changePage(int page);
-    void resizeContentArea(int width, int height);
+    void resizeContentArea(const QSize &size);
     void updatePageStep();
+    int evenPageLeft();
+    void heightToPage(int page, double *height, double *dualHeight);
     int getPageYOffset(int page);
     QSize getMaxPageSize();
     QRect computeBorder(const QSize &size);
@@ -55,7 +79,145 @@ private:
     GtDocModel::LayoutMode layoutMode;
     GtDocModel::SizingMode sizingMode;
     PendingScroll pendingScroll;
+    HeightCache heightCache;
 };
+
+GtDocViewPrivate::HeightCache::HeightCache()
+    : document(0)
+    , rotation(0)
+    , evenPageLeft(0)
+    , heightToPage(0)
+    , dualHeightToPage(0)
+{
+}
+
+GtDocViewPrivate::HeightCache::~HeightCache()
+{
+    delete[] heightToPage;
+    delete[] dualHeightToPage;
+}
+
+void GtDocViewPrivate::HeightCache::height(GtDocument *d, int page,
+                                           int r, int e, double s,
+                                           double *h, double *dh)
+{
+    if (d != document || r != rotation || e != evenPageLeft) {
+        document = d;
+        rotation = r;
+        evenPageLeft = e;
+
+        rebuild();
+    }
+
+    if (h)
+        *h = heightToPage[page] * s;
+
+    if (dh)
+        *dh = dualHeightToPage[page] * s;
+}
+
+void GtDocViewPrivate::HeightCache::rebuild()
+{
+    delete[] heightToPage;
+    delete[] dualHeightToPage;
+
+    if (!document) {
+        heightToPage = 0;
+        dualHeightToPage = 0;
+        return;
+    }
+
+    GtDocPage *page;
+    bool swap, uniform;
+    int i, pageCount;
+    double uniformHeight, pageHeight, nextPageHeight;
+    double savedHeight;
+    double uWidth, uHeight;
+
+    swap = (rotation == 90 || rotation == 270);
+
+    uniform = document->uniformPageSize(&uWidth, &uHeight);
+    pageCount = document->pageCount();
+
+    heightToPage = new double[pageCount + 1];
+    dualHeightToPage = new double[pageCount + 2];
+    savedHeight = 0;
+
+    for (i = 0; i <= pageCount; ++i) {
+        if (uniform) {
+            uniformHeight = swap ? uWidth : uHeight;
+            heightToPage[i] = i * uniformHeight;
+        }
+        else {
+            if (i < pageCount) {
+                double w, h;
+
+                page = document->page(i);
+                page->pageSize(&w, &h);
+                pageHeight = swap ? w : h;
+            }
+            else {
+                pageHeight = 0;
+            }
+
+            heightToPage[i] = savedHeight;
+            savedHeight += pageHeight;
+        }
+    }
+
+    if (evenPageLeft && !uniform) {
+        double w, h;
+
+        page = document->page(0);
+        page->pageSize(&w, &h);
+        savedHeight = swap ? w : h;
+    }
+    else {
+        savedHeight = 0;
+    }
+
+    for (i = evenPageLeft; i < pageCount + 2; i += 2) {
+        if (uniform) {
+            uniformHeight = swap ? uWidth : uHeight;
+            dualHeightToPage[i] = ((i + evenPageLeft) / 2) * uniformHeight;
+
+            if (i + 1 < pageCount + 2)
+                dualHeightToPage[i + 1] = ((i + evenPageLeft) / 2) * uniformHeight;
+        }
+        else {
+            if (i + 1 < pageCount) {
+                double w, h;
+
+                page = document->page(i + 1);
+                page->pageSize(&w, &h);
+                nextPageHeight = swap ? w : h;
+            }
+            else {
+                nextPageHeight = 0;
+            }
+
+            if (i < pageCount) {
+                double w, h;
+
+                page = document->page(i);
+                page->pageSize(&w, &h);
+                pageHeight = swap ? w : h;
+            }
+            else {
+                pageHeight = 0;
+            }
+
+            if (i + 1 < pageCount + 2) {
+                dualHeightToPage[i] = savedHeight;
+                dualHeightToPage[i + 1] = savedHeight;
+                savedHeight += MAX(pageHeight, nextPageHeight);
+            }
+            else {
+                dualHeightToPage[i] = savedHeight;
+            }
+        }
+    }
+}
 
 GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     : q_ptr(parent)
@@ -121,13 +283,13 @@ void GtDocViewPrivate::changePage(int page)
     QMetaObject::invokeMethod(q, "relayoutPages", Qt::QueuedConnection);
 }
 
-void GtDocViewPrivate::resizeContentArea(int width, int height)
+void GtDocViewPrivate::resizeContentArea(const QSize &size)
 {
     Q_Q(GtDocView);
 
     const QSize vs = q->viewport()->size();
-    q->horizontalScrollBar()->setRange(0, width - vs.width());
-    q->verticalScrollBar()->setRange(0, height - vs.height());
+    q->horizontalScrollBar()->setRange(0, size.width() - vs.width());
+    q->verticalScrollBar()->setRange(0, size.height() - vs.height());
     updatePageStep();
 }
 
@@ -140,9 +302,36 @@ void GtDocViewPrivate::updatePageStep()
     q->verticalScrollBar()->setPageStep(vs.height());
 }
 
+int GtDocViewPrivate::evenPageLeft()
+{
+    return (layoutMode == GtDocModel::EvenPageLeft) ? 1 : 0;
+}
+
+void GtDocViewPrivate::heightToPage(int page, double *height, double *dualHeight)
+{
+    heightCache.height(document, page,
+                       rotation, evenPageLeft(), scale,
+                       height, dualHeight);
+}
+
 int GtDocViewPrivate::getPageYOffset(int page)
 {
-    return 0;
+    QSize maxSize = getMaxPageSize();
+    QRect border = computeBorder(maxSize);
+    double offset = 0;
+
+    if (layoutMode != GtDocModel::SinglePage) {
+        int e = evenPageLeft();
+        heightToPage(page, NULL, &offset);
+        offset += ((page + e) / 2 + 1) * spacing +
+                  ((page + e) / 2 ) * (border.top() + border.bottom());
+    }
+    else {
+        heightToPage(page, &offset, NULL);
+        offset += (page + 1) * spacing + page * (border.top() + border.bottom());
+    }
+
+    return offset;
 }
 
 QSize GtDocViewPrivate::getMaxPageSize()
@@ -393,7 +582,7 @@ void GtDocView::documentChanged(GtDocument *document)
 
     d->clearCaches();
     d->document = document;
-    d->pageCount = document ? document->countPages() : 0;
+    d->pageCount = document ? document->pageCount() : 0;
 
     if (d->document) {
         d->setupCaches();
@@ -411,49 +600,58 @@ void GtDocView::documentChanged(GtDocument *document)
 
 void GtDocView::pageChanged(int page)
 {
+    Q_UNUSED(page);
 }
 
 void GtDocView::scaleChanged(double scale)
 {
+    Q_UNUSED(scale);
 }
 
 void GtDocView::rotationChanged(int rotation)
 {
+    Q_UNUSED(rotation);
 }
 
 void GtDocView::continuousChanged(bool continuous)
 {
+    Q_UNUSED(continuous);
 }
 
 void GtDocView::layoutModeChanged(int mode)
 {
+    Q_UNUSED(mode);
 }
 
 void GtDocView::sizingModeChanged(int mode)
 {
+    Q_UNUSED(mode);
 }
 
 void GtDocView::relayoutPages()
 {
     Q_D(GtDocView);
 
+    QSize size;
     if (NULL == d->document) {
-        d->resizeContentArea(0, 0);
+        d->resizeContentArea(size);
         return;
     }
 
     if (d->continuous) {
         if (d->layoutMode == GtDocModel::SinglePage)
-            d->layoutPagesContinuous();
+            size = d->layoutPagesContinuous();
         else
-            d->layoutPagesContinuousDualPage();
+            size = d->layoutPagesContinuousDualPage();
     }
     else {
         if (d->layoutMode == GtDocModel::SinglePage)
-            d->layoutPages();
+            size = d->layoutPages();
         else
-            d->layoutPagesDualPage();
+            size = d->layoutPagesDualPage();
     }
+
+    d->resizeContentArea(size);
 }
 
 QPoint GtDocView::contentAreaPosition() const
@@ -490,9 +688,6 @@ void GtDocView::wheelEvent(QWheelEvent *e)
         QAbstractScrollArea::wheelEvent(e);
         return;
     }
-
-    int delta = e->delta();
-    int vScroll = verticalScrollBar()->value();
 
     e->accept();
     Qt::KeyboardModifiers modifiers = e->modifiers();
