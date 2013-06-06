@@ -6,6 +6,7 @@
 #include "gtdocpage.h"
 #include "gtdocument.h"
 #include <QtCore/QDebug>
+#include <QtCore/QTimer>
 #include <QtGui/QPaintEvent>
 #include <QtWidgets/QScrollBar>
 
@@ -41,15 +42,13 @@ public:
     ~GtDocViewPrivate();
 
 public:
-    void setupCaches();
-    void clearCaches();
     void changePage(int page);
     void resizeContentArea(const QSize &size);
     void updatePageStep();
     int evenPageLeft();
     void heightToPage(int page, double *height, double *dualHeight);
-    int getPageYOffset(int page);
-    QSize getMaxPageSize();
+    int pageYOffset(int page);
+    QSize maxPageSize();
     QRect computeBorder(const QSize &size);
     QSize layoutPagesContinuous();
     QSize layoutPagesContinuousDualPage();
@@ -80,6 +79,15 @@ private:
     GtDocModel::SizingMode sizingMode;
     PendingScroll pendingScroll;
     HeightCache heightCache;
+
+    QTimer *delayResizeEventTimer;
+
+    // prevent page repaint
+    int lockPageRepaint;
+    bool lockPageNeedRepaint;
+
+    // infinite resizing loop prevention
+    bool verticalScrollBarVisible;
 };
 
 GtDocViewPrivate::HeightCache::HeightCache()
@@ -234,8 +242,16 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     , layoutMode(GtDocModel::SinglePage)
     , sizingMode(GtDocModel::FitWidth)
     , pendingScroll(SCROLL_TO_KEEP_POSITION)
+    , lockPageRepaint(0)
+    , lockPageNeedRepaint(false)
+    , verticalScrollBarVisible(false)
+
 {
     Q_Q(GtDocView);
+
+    delayResizeEventTimer = new QTimer(q);
+    delayResizeEventTimer->setSingleShot(true);
+    q->connect(delayResizeEventTimer, SIGNAL(timeout()), q, SLOT(delayedResizeEvent()));
 
     q->setFrameStyle(QFrame::NoFrame);
     q->setAttribute(Qt::WA_StaticContents);
@@ -254,22 +270,16 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     // the apparently "magic" value of 20 is the same used internally in QScrollArea
     QScrollBar *sb = q->verticalScrollBar();
     sb->setSingleStep(20);
-    q->connect(sb, SIGNAL(valueChanged(int)), q, SLOT(scrollValueChanged(int)));
+    q->connect(sb, SIGNAL(valueChanged(int)), q, SLOT(repaintVisiblePages(int)));
 
     sb = q->horizontalScrollBar();
     sb->setSingleStep(20);
-    q->connect(sb, SIGNAL(valueChanged(int)), q, SLOT(scrollValueChanged(int)));
+    q->connect(sb, SIGNAL(valueChanged(int)), q, SLOT(repaintVisiblePages(int)));
+
+    q->setAttribute(Qt::WA_InputMethodEnabled, true);
 }
 
 GtDocViewPrivate::~GtDocViewPrivate()
-{
-}
-
-void GtDocViewPrivate::setupCaches()
-{
-}
-
-void GtDocViewPrivate::clearCaches()
 {
 }
 
@@ -314,9 +324,9 @@ void GtDocViewPrivate::heightToPage(int page, double *height, double *dualHeight
                        height, dualHeight);
 }
 
-int GtDocViewPrivate::getPageYOffset(int page)
+int GtDocViewPrivate::pageYOffset(int page)
 {
-    QSize maxSize = getMaxPageSize();
+    QSize maxSize = maxPageSize();
     QRect border = computeBorder(maxSize);
     double offset = 0;
 
@@ -334,7 +344,7 @@ int GtDocViewPrivate::getPageYOffset(int page)
     return offset;
 }
 
-QSize GtDocViewPrivate::getMaxPageSize()
+QSize GtDocViewPrivate::maxPageSize()
 {
     double width = 0.;
     double height = 0.;
@@ -373,7 +383,8 @@ QRect GtDocViewPrivate::computeBorder(const QSize &size)
 QSize GtDocViewPrivate::layoutPagesContinuous()
 {
     QSize size;
-    size.setHeight(getPageYOffset(pageCount));
+
+    size.setHeight(pageYOffset(pageCount));
 
     switch (sizingMode) {
     case GtDocModel::FitWidth:
@@ -383,7 +394,7 @@ QSize GtDocViewPrivate::layoutPagesContinuous()
 
     case GtDocModel::FreeSize:
         {
-            QSize maxSize = getMaxPageSize();
+            QSize maxSize = maxPageSize();
             QRect border = computeBorder(maxSize);
 
             size.setWidth(maxSize.width() + (spacing * 2) +
@@ -542,6 +553,28 @@ void GtDocView::setModel(GtDocModel *model)
     documentChanged(newdoc);
 }
 
+void GtDocView::lockPageRepaint()
+{
+    Q_D(GtDocView);
+    d->lockPageRepaint++;
+}
+
+void GtDocView::unlockPageRepaint(bool repaint)
+{
+    Q_D(GtDocView);
+
+    Q_ASSERT(d->lockPageRepaint > 0);
+
+    if (repaint)
+        d->lockPageNeedRepaint = true;
+
+    d->lockPageRepaint--;
+    if (0 == d->lockPageRepaint && d->lockPageNeedRepaint) {
+        QMetaObject::invokeMethod(this, "repaintVisiblePages", Qt::QueuedConnection);
+        d->lockPageNeedRepaint = false;
+    }
+}
+
 bool GtDocView::canZoomIn() const
 {
     return false;
@@ -568,9 +601,13 @@ void GtDocView::modelDestroyed(QObject *object)
         setModel(0);
 }
 
-void GtDocView::scrollValueChanged(int value)
+void GtDocView::delayedResizeEvent()
 {
-    Q_UNUSED(value);
+    Q_D(GtDocView);
+
+    d->delayResizeEventTimer->stop();
+    relayoutPages();
+    repaintVisiblePages();
 }
 
 void GtDocView::documentChanged(GtDocument *document)
@@ -580,13 +617,10 @@ void GtDocView::documentChanged(GtDocument *document)
     if (d->document == document)
         return;
 
-    d->clearCaches();
     d->document = document;
     d->pageCount = document ? document->pageCount() : 0;
 
     if (d->document) {
-        d->setupCaches();
-
         int currentPage = d->model->page();
         if (d->currentPage != currentPage) {
             d->changePage(currentPage);
@@ -654,15 +688,45 @@ void GtDocView::relayoutPages()
     d->resizeContentArea(size);
 }
 
+void GtDocView::repaintVisiblePages(int newValue)
+{
+    Q_D(GtDocView);
+
+    if (d->lockPageRepaint > 0)
+        return;
+}
+
 QPoint GtDocView::contentAreaPosition() const
 {
     return QPoint(horizontalScrollBar()->value(),
                   verticalScrollBar()->value());
 }
 
-void GtDocView::resizeEvent(QResizeEvent *)
+void GtDocView::resizeEvent(QResizeEvent *e)
 {
-    qDebug() << "resize";
+    Q_D(GtDocView);
+
+    if (!d->document) {
+        d->resizeContentArea(e->size());
+        return;
+    }
+
+    if (d->sizingMode == GtDocModel::FitWidth &&
+        d->verticalScrollBarVisible && !verticalScrollBar()->isVisible() &&
+        qAbs(e->oldSize().height() - e->size().height()) < verticalScrollBar()->width())
+    {
+        // this saves us from infinite resizing loop because of scrollbars appearing and disappearing
+        // see bug 160628 for more info
+        // TODO looks are still a bit ugly because things are left uncentered
+        // but better a bit ugly than unusable
+        d->verticalScrollBarVisible = false;
+        d->resizeContentArea(e->size());
+        return;
+    }
+
+    // start a timer that will refresh the pixmap after 0.2s
+    d->delayResizeEventTimer->start(200);
+    d->verticalScrollBarVisible = verticalScrollBar()->isVisible();
 }
 
 void GtDocView::keyPressEvent(QKeyEvent *)
@@ -677,7 +741,6 @@ void GtDocView::keyReleaseEvent(QKeyEvent *)
 
 void GtDocView::inputMethodEvent(QInputMethodEvent *)
 {
-    qDebug() << "input method";
 }
 
 void GtDocView::wheelEvent(QWheelEvent *e)
@@ -689,15 +752,34 @@ void GtDocView::wheelEvent(QWheelEvent *e)
         return;
     }
 
-    e->accept();
+    int delta = e->delta();
+    int vScroll = verticalScrollBar()->value();
     Qt::KeyboardModifiers modifiers = e->modifiers();
+
+    e->accept();
     if ((modifiers & Qt::ControlModifier) == Qt::ControlModifier) {
-        if (e->delta() < 0)
+        if (delta < 0)
             zoomOut();
         else
             zoomIn();
     }
     else if ((modifiers & Qt::ShiftModifier) == Qt::ShiftModifier) {
+    }
+    else if (delta <= -120 && !d->continuous &&
+             vScroll == verticalScrollBar()->maximum())
+    {
+        // go to next page
+        if (d->currentPage + 1 < d->pageCount) {
+            qDebug() << "next page";
+        }
+    }
+    else if (delta >= 120 && !d->continuous &&
+             vScroll == verticalScrollBar()->minimum())
+    {
+        // go to prev page
+        if (d->currentPage > 0) {
+            qDebug() << "prev page";
+        }
     }
     else
         QAbstractScrollArea::wheelEvent(e);

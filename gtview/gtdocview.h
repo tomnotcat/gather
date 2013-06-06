@@ -26,6 +26,9 @@ public:
     GtDocModel* model() const;
     void setModel(GtDocModel *model);
 
+    void lockPageRepaint();
+    void unlockPageRepaint(bool repaint=true);
+
     bool canZoomIn() const;
     void zoomIn();
 
@@ -34,7 +37,7 @@ public:
 
 private Q_SLOTS:
     void modelDestroyed(QObject *object);
-    void scrollValueChanged(int value);
+    void delayedResizeEvent();
     void documentChanged(GtDocument *document);
     void pageChanged(int page);
     void scaleChanged(double scale);
@@ -43,6 +46,7 @@ private Q_SLOTS:
     void layoutModeChanged(int mode);
     void sizingModeChanged(int mode);
     void relayoutPages();
+    void repaintVisiblePages(int newValue = -1);
 
 protected:
     QPoint contentAreaPosition() const;

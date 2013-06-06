@@ -25,6 +25,7 @@ PdfDocPagePrivate::PdfDocPagePrivate(fz_document *d, fz_page *p)
     : document(d)
     , page(p)
 {
+    fz_bound_page(document, page, &bbox);
 }
 
 PdfDocPagePrivate::~PdfDocPagePrivate()
