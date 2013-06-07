@@ -5,7 +5,8 @@
 #define __GT_DOCUMENT_H__
 
 #include "gtcommon.h"
-#include <QtCore/qobject.h>
+#include <QtCore/QObject>
+#include <QtCore/QSize>
 
 GT_BEGIN_NAMESPACE
 
@@ -26,6 +27,7 @@ public:
     void minPageSize(double *width, double *height);
     int pageCount();
     GtDocPage* page(int index);
+    QSize pageSizeForScaleRotation(int index, double scale, int rotation);
 
 protected:
     virtual int countPages() = 0;

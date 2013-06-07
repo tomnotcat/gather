@@ -26,8 +26,8 @@ public:
     GtDocModel* model() const;
     void setModel(GtDocModel *model);
 
-    void lockPageRepaint();
-    void unlockPageRepaint(bool repaint=true);
+    void lockPageUpdate();
+    void unlockPageUpdate(bool update=true);
 
     bool canZoomIn() const;
     void zoomIn();
@@ -46,7 +46,7 @@ private Q_SLOTS:
     void layoutModeChanged(int mode);
     void sizingModeChanged(int mode);
     void relayoutPages();
-    void repaintVisiblePages(int newValue = -1);
+    void updateVisiblePages(int newValue = -1);
 
 protected:
     QPoint contentAreaPosition() const;

@@ -52,7 +52,7 @@ void GtDocumentPrivate::initialize(QObject *device)
             }
 
             pages[i]->d_ptr->index = i;
-            pages[i]->getSize(&pageWidth, &pageHeight);
+            pages[i]->pageSize(&pageWidth, &pageHeight);
             if (i == 0) {
                 uniformWidth = pageWidth;
                 uniformHeight = pageHeight;
@@ -167,6 +167,22 @@ GtDocPage* GtDocument::page(int index)
         return 0;
 
     return d->pages[index];
+}
+
+QSize GtDocument::pageSizeForScaleRotation(int index, double scale, int rotation)
+{
+    double width, height;
+
+    page(index)->pageSize(&width, &height);
+
+    width *= scale;
+    height *= scale;
+
+    if (rotation == 0 || rotation == 180)
+        return QSize(width + 0.5, height + 0.5);
+
+    Q_ASSERT(rotation == 90 || rotation == 270);
+    return QSize(height + 0.5, width + 0.5);
 }
 
 void GtDocument::deviceDestroyed(QObject*)
