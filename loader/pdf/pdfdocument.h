@@ -25,10 +25,8 @@ public:
     explicit PdfDocument(QObject *parent = 0);
     ~PdfDocument();
 
-public:
-    bool loadDocument(QIODevice *device);
-
 protected:
+    bool loadDocument();
     int countPages();
     GtDocPage* loadPage(int index);
 
@@ -37,7 +35,7 @@ private:
     Q_DECLARE_PRIVATE(PdfDocument)
 };
 
-Q_EXTERN_C GtDocument* gather_load_document(QIODevice *device);
+Q_EXTERN_C GtDocument* gather_new_document(void);
 
 GT_END_NAMESPACE
 

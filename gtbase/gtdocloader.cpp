@@ -29,7 +29,7 @@ public:
     ~GtDocLoaderPrivate();
 
 public:
-    GtDocument* loadDocument(LoaderInfo &info, const QString &fileName);
+    GtDocument* loadDocument(LoaderInfo &info, const QString &fileName, QThread *thread);
 
 public:
     GtDocLoader *q_ptr;
@@ -45,7 +45,8 @@ GtDocLoaderPrivate::~GtDocLoaderPrivate()
 }
 
 GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
-                                             const QString &fileName)
+                                             const QString &fileName,
+                                             QThread *thread)
 {
     GtDocument *document = NULL;
 
@@ -55,7 +56,7 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
             return NULL;
         }
 
-        info.load = info.lib->resolve("gather_load_document");
+        info.load = info.lib->resolve("gather_new_document");
         if (NULL == info.load) {
             qWarning() << "resolve symbol gather_load_document failed:"
                        << info.lib->fileName();
@@ -67,11 +68,15 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
         QScopedPointer<QFile> file(new QFile(fileName));
 
         if (file->open(QIODevice::ReadOnly)) {
-            document = ((GtDocument* (*)(QIODevice*))info.load)(file.data());
-            if (document) {
-                file->setParent(document);
-                document->d_ptr->initialize(file.take());
-            }
+            document = ((GtDocument* (*)())info.load)();
+
+            file->setParent(document);
+            document->d_ptr->setDevice(file.take());
+
+            if (thread)
+                document->moveToThread(thread);
+
+            QMetaObject::invokeMethod(document, "loadDocument");
         }
         else {
             qWarning() << "open file failed:" << fileName;
@@ -186,7 +191,7 @@ QList<const GtDocLoader::LoaderInfo *> GtDocLoader::loaderInfos()
     return constInfoList;
 }
 
-GtDocument* GtDocLoader::loadDocument(const QString &fileName)
+GtDocument* GtDocLoader::loadDocument(const QString &fileName, QThread *thread)
 {
     Q_D(GtDocLoader);
 
@@ -199,7 +204,7 @@ GtDocument* GtDocLoader::loadDocument(const QString &fileName)
     // By extension
     for (int i = 0, count = infoList.count(); i != count; ++i) {
         if (infoList[i].info.extension == ext) {
-            document = d->loadDocument(infoList[i], fileName);
+            document = d->loadDocument(infoList[i], fileName, thread);
             if (document)
                 return document;
         }

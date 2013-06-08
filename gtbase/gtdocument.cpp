@@ -8,7 +8,8 @@
 GT_BEGIN_NAMESPACE
 
 GtDocumentPrivate::GtDocumentPrivate()
-    : pages(0)
+    : device(0)
+    , pages(0)
     , pageCount(0)
     , uniformWidth(0)
     , uniformHeight(0)
@@ -30,13 +31,27 @@ GtDocumentPrivate::~GtDocumentPrivate()
     delete[] pages;
 
     destroyed = true;
+    qDebug() << "!!!!!!!!!!!!!!!!!!!!";
 }
 
-void GtDocumentPrivate::initialize(QObject *device)
+void GtDocumentPrivate::setDevice(QIODevice *device)
 {
-    Q_Q(GtDocument);
+    Q_ASSERT(0 == this->device);
 
-    Q_ASSERT(!initialized);
+    this->device = device;
+
+    q_ptr->connect(device,
+                   SIGNAL(destroyed(QObject*)),
+                   q_ptr,
+                   SLOT(deviceDestroyed(QObject*)));
+}
+
+void GtDocumentPrivate::initialize()
+{
+    if (initialized)
+        return;
+
+    Q_Q(GtDocument);
 
     pageCount = q->countPages();
     if (pageCount > 0) {
@@ -83,11 +98,6 @@ void GtDocumentPrivate::initialize(QObject *device)
             }
         }
     }
-
-    q->connect(device,
-               SIGNAL(destroyed(QObject*)),
-               q,
-               SLOT(deviceDestroyed(QObject*)));
 
     initialized = true;
 }

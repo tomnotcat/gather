@@ -4,6 +4,7 @@
 #include "gtdocview.h"
 #include "gtdocmodel.h"
 #include "gtdocpage.h"
+#include "gtdocrendercache.h"
 #include "gtdocument.h"
 #include <QtCore/QDebug>
 #include <QtCore/QTimer>
@@ -38,7 +39,7 @@ public:
     };
 
 public:
-    GtDocViewPrivate(GtDocView *parent);
+    explicit GtDocViewPrivate(GtDocView *parent);
     ~GtDocViewPrivate();
 
 public:
@@ -99,6 +100,7 @@ private:
     HeightCache heightCache;
 
     QTimer *delayResizeEventTimer;
+    GtDocRenderCache *renderCache;
 
     // prevent update visible pages
     int lockPageUpdate;
@@ -270,6 +272,8 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     delayResizeEventTimer = new QTimer(q);
     delayResizeEventTimer->setSingleShot(true);
     q->connect(delayResizeEventTimer, SIGNAL(timeout()), q, SLOT(delayedResizeEvent()));
+
+    renderCache = new GtDocRenderCache(q);
 
     q->setFrameStyle(QFrame::NoFrame);
     q->setAttribute(Qt::WA_StaticContents);
@@ -886,17 +890,8 @@ void GtDocView::updateVisiblePages(int newValue)
     }
 
     qDebug() << "visible:" << d->beginPage << d->endPage << d->currentPage;
-    /*
-    ctk_doc_render_cache_set_page_range (priv->render_cache,
-                                         priv->begin_page,
-                                         priv->end_page);
 
-    if (ctk_doc_render_cache_get_surface (priv->render_cache,
-                                          priv->cur_page))
-    {
-        gtk_widget_queue_draw (GTK_WIDGET (self));
-    }
-    */
+    d->renderCache->setPageRange(d->beginPage, d->endPage);
 }
 
 QPoint GtDocView::contentAreaPosition() const
@@ -999,6 +994,8 @@ void GtDocView::paintEvent(QPaintEvent *e)
     QRect contentsRect = e->rect().translated(areaPos).intersected(viewportRect);
     if (!contentsRect.isValid())
         return;
+
+    qDebug() << "paint";
 }
 
 GT_END_NAMESPACE

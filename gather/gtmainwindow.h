@@ -50,11 +50,14 @@ private:
     QString strippedName(const QString &fullFileName);
 
 private:
-    QScopedPointer<GtDocLoader> docLoader;
-    QSharedPointer<GtDocument> document;
+    // Objects in document thread
+    QThread *docThread;
+    QSharedPointer<GtDocLoader> docLoader;
     QSharedPointer<GtDocModel> docModel;
-    GtDocView *docView;
+    QSharedPointer<GtDocument> document;
 
+    // Objects in GUI thread
+    GtDocView *docView;
     QLabel *locationLabel;
     QLabel *formulaLabel;
     QStringList recentFiles;

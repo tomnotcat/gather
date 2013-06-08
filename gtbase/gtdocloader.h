@@ -33,7 +33,7 @@ public:
 public:
     int registerLoaders(const QString &loaderDir);
     QList<const LoaderInfo *> loaderInfos();
-    GtDocument* loadDocument(const QString &fileName);
+    GtDocument* loadDocument(const QString &fileName, QThread *thread = 0);
 
 private:
     QScopedPointer<GtDocLoaderPrivate> d_ptr;

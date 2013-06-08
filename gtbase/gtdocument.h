@@ -8,6 +8,8 @@
 #include <QtCore/QObject>
 #include <QtCore/QSize>
 
+class QIODevice;
+
 GT_BEGIN_NAMESPACE
 
 class GtDocPage;
@@ -22,6 +24,7 @@ public:
     ~GtDocument();
 
 public:
+    QIODevice* device();
     bool uniformPageSize(double *width, double *height);
     void maxPageSize(double *width, double *height);
     void minPageSize(double *width, double *height);
@@ -30,6 +33,7 @@ public:
     QSize pageSizeForScaleRotation(int index, double scale, int rotation);
 
 protected:
+    virtual bool loadDocument() = 0;
     virtual int countPages() = 0;
     virtual GtDocPage* loadPage(int index) = 0;
 

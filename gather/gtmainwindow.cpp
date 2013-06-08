@@ -8,6 +8,7 @@
 #include "gtdocview.h"
 #include <QtCore/QtDebug>
 #include <QtCore/QSettings>
+#include <QtCore/QThread>
 #include <QtGui/QCloseEvent>
 #include <QtWidgets/QAction>
 #include <QtWidgets/QApplication>
@@ -21,8 +22,12 @@
 GT_BEGIN_NAMESPACE
 
 GtMainWindow::GtMainWindow()
-    : docLoader(new GtDocLoader())
 {
+    // document thread
+    docThread = new QThread(this);
+    docLoader = QSharedPointer<GtDocLoader>(new GtDocLoader(), &QObject::deleteLater);
+    docModel = QSharedPointer<GtDocModel>(new GtDocModel(), &QObject::deleteLater);
+
     QDir dir(QCoreApplication::applicationDirPath());
 
     if (dir.cd("loader")) {
@@ -30,9 +35,12 @@ GtMainWindow::GtMainWindow()
         qDebug() << "registered loaders:" << count;
     }
 
-    docModel = QSharedPointer<GtDocModel>(new GtDocModel());
-    docView = new GtDocView(docModel.data(), this);
+    docLoader->moveToThread(docThread);
+    docModel->moveToThread(docThread);
+    docThread->start();
 
+    // GUI thread
+    docView = new GtDocView(docModel.data(), this);
     setCentralWidget(docView);
 
     createActions();
@@ -48,6 +56,12 @@ GtMainWindow::GtMainWindow()
 GtMainWindow::~GtMainWindow()
 {
     docView->setModel(0);
+    document.clear();
+    docModel.clear();
+    docLoader.clear();
+
+    docThread->quit();
+    docThread->wait();
 }
 
 void GtMainWindow::createActions()
@@ -172,13 +186,14 @@ void GtMainWindow::open()
 
 bool GtMainWindow::loadFile(const QString &fileName)
 {
-    GtDocument *doc = docLoader->loadDocument(fileName);
+    GtDocument *doc = docLoader->loadDocument(fileName, docThread);
 
     if (NULL == doc)
         return false;
 
     docModel->setDocument(doc);
-    document = QSharedPointer<GtDocument>(doc);
+    document = QSharedPointer<GtDocument>(doc, &QObject::deleteLater);
+    Q_ASSERT(document->thread() == docThread);
 
     setCurrentFile(fileName);
     statusBar()->showMessage(tr("File loaded"), 2000);

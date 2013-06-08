@@ -94,7 +94,7 @@ fz_context* PdfDocumentPrivate::context()
 
     if (contexts.contains(threadId)) {
         fz_free_context(context);
-        context = contexts.take(threadId);
+        context = contexts[threadId];
     }
     else {
         contexts.insert(threadId, context);
@@ -171,10 +171,11 @@ PdfDocument::~PdfDocument()
 {
 }
 
-bool PdfDocument::loadDocument(QIODevice *device)
+bool PdfDocument::loadDocument()
 {
     Q_D(PdfDocument);
 
+    QIODevice *device = this->device();
     fz_context *context;
     fz_stream *stream;
 
@@ -216,14 +217,9 @@ GtDocPage* PdfDocument::loadPage(int index)
     return new PdfDocPage(d->document, page);
 }
 
-GtDocument* gather_load_document(QIODevice *device)
+GtDocument* gather_new_document(void)
 {
-    QScopedPointer<PdfDocument> doc(new PdfDocument());
-
-    if (!doc->loadDocument(device))
-        return 0;
-
-    return doc.take();
+    return new PdfDocument();
 }
 
 GT_END_NAMESPACE

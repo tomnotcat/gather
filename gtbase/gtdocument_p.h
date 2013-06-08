@@ -17,10 +17,14 @@ public:
     virtual ~GtDocumentPrivate();
 
 public:
-    void initialize(QObject *device);
+    void setDevice(QIODevice *device);
+
+private:
+    void initialize(void);
 
 protected:
     GtDocument *q_ptr;
+    QIODevice *device;
     GtDocPage **pages;
     int pageCount;
     double uniformWidth;

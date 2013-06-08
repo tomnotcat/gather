@@ -1,8 +1,8 @@
 TEMPLATE = lib
 CONFIG += qt debug
 QT += widgets
-HEADERS += gtdocview.h
-SOURCES += gtdocview.cpp
+HEADERS += gtdocview.h gtdocrendercache.h
+SOURCES += gtdocview.cpp gtdocrendercache.cpp
 INCLUDEPATH += ../gtbase
 
 CONFIG(debug, debug|release) {
