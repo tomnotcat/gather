@@ -191,6 +191,9 @@ bool GtMainWindow::loadFile(const QString &fileName)
     if (NULL == doc)
         return false;
 
+    if (!doc->isLoaded())
+        connect(doc, SIGNAL(loaded()), this, SLOT(docLoaded()));
+
     docModel->setDocument(doc);
     document = QSharedPointer<GtDocument>(doc, &QObject::deleteLater);
     Q_ASSERT(document->thread() == docThread);

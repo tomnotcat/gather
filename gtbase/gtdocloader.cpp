@@ -76,7 +76,7 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
             if (thread)
                 document->moveToThread(thread);
 
-            QMetaObject::invokeMethod(document, "loadDocument");
+            QMetaObject::invokeMethod(document, "slotLoadDocument");
         }
         else {
             qWarning() << "open file failed:" << fileName;

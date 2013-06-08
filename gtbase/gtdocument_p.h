@@ -19,9 +19,6 @@ public:
 public:
     void setDevice(QIODevice *device);
 
-private:
-    void initialize(void);
-
 protected:
     GtDocument *q_ptr;
     QIODevice *device;
@@ -34,7 +31,7 @@ protected:
     double minWidth;
     double minHeight;
     bool uniform;
-    bool initialized;
+    bool loaded;
     bool destroyed;
 };
 

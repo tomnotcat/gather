@@ -18,7 +18,7 @@ GtDocumentPrivate::GtDocumentPrivate()
     , minWidth(0)
     , minHeight(0)
     , uniform(false)
-    , initialized(false)
+    , loaded(false)
     , destroyed(false)
 {
 }
@@ -46,62 +46,6 @@ void GtDocumentPrivate::setDevice(QIODevice *device)
                    SLOT(deviceDestroyed(QObject*)));
 }
 
-void GtDocumentPrivate::initialize()
-{
-    if (initialized)
-        return;
-
-    Q_Q(GtDocument);
-
-    pageCount = q->countPages();
-    if (pageCount > 0) {
-        double pageWidth, pageHeight;
-
-        pages = new GtDocPage*[pageCount];
-        uniform = true;
-        for (int i = 0; i < pageCount; ++i) {
-            pages[i] = q->loadPage(i);
-            if (0 == pages[i]) {
-                qWarning() << "load page failed:" << i;
-                continue;
-            }
-
-            pages[i]->d_ptr->index = i;
-            pages[i]->pageSize(&pageWidth, &pageHeight);
-            if (i == 0) {
-                uniformWidth = pageWidth;
-                uniformHeight = pageHeight;
-                maxWidth = uniformWidth;
-                maxHeight = uniformHeight;
-                minWidth = uniformWidth;
-                minHeight = uniformHeight;
-            }
-            else if (uniform &&
-                     (uniformWidth != pageWidth ||
-                      uniformHeight != pageHeight))
-            {
-                uniform = false;
-            }
-
-            if (!uniform) {
-                if (pageWidth > maxWidth)
-                    maxWidth = pageWidth;
-
-                if (pageWidth < minWidth)
-                    minWidth = pageWidth;
-
-                if (pageHeight > maxHeight)
-                    maxHeight = pageHeight;
-
-                if (pageHeight < minHeight)
-                    minHeight = pageHeight;
-            }
-        }
-    }
-
-    initialized = true;
-}
-
 GtDocument::GtDocument(QObject *parent)
     : QObject(parent)
     , d_ptr(new GtDocumentPrivate())
@@ -120,11 +64,23 @@ GtDocument::~GtDocument()
 {
 }
 
+QIODevice* GtDocument::device()
+{
+    Q_D(GtDocument);
+    return d->device;
+}
+
+bool GtDocument::isLoaded()
+{
+    Q_D(GtDocument);
+    return d->loaded;
+}
+
 bool GtDocument::uniformPageSize(double *width, double *height)
 {
     Q_D(GtDocument);
 
-    Q_ASSERT(d->initialized);
+    Q_ASSERT(d->loaded);
 
     if (d->uniform) {
         if (width)
@@ -141,7 +97,7 @@ void GtDocument::maxPageSize(double *width, double *height)
 {
     Q_D(GtDocument);
 
-    Q_ASSERT(d->initialized);
+    Q_ASSERT(d->loaded);
 
     if (width)
         *width = d->maxWidth;
@@ -154,7 +110,7 @@ void GtDocument::minPageSize(double *width, double *height)
 {
     Q_D(GtDocument);
 
-    Q_ASSERT(d->initialized);
+    Q_ASSERT(d->loaded);
 
     if (width)
         *width = d->minWidth;
@@ -200,8 +156,65 @@ void GtDocument::deviceDestroyed(QObject*)
     Q_D(GtDocument);
 
     // The device should not release before document destroy
-    Q_ASSERT(d->initialized);
     Q_ASSERT(d->destroyed);
+}
+
+void GtDocument::slotLoadDocument()
+{
+    Q_D(GtDocument);
+
+    Q_ASSERT(!d->loaded);
+
+    if (!loadDocument())
+        return;
+
+    d->pageCount = countPages();
+    if (d->pageCount > 0) {
+        double pageWidth, pageHeight;
+
+        d->pages = new GtDocPage*[d->pageCount];
+        d->uniform = true;
+        for (int i = 0; i < d->pageCount; ++i) {
+            d->pages[i] = loadPage(i);
+            if (0 == d->pages[i]) {
+                qWarning() << "load page failed:" << i;
+                continue;
+            }
+
+            d->pages[i]->d_ptr->index = i;
+            d->pages[i]->pageSize(&pageWidth, &pageHeight);
+            if (i == 0) {
+                d->uniformWidth = pageWidth;
+                d->uniformHeight = pageHeight;
+                d->maxWidth = d->uniformWidth;
+                d->maxHeight = d->uniformHeight;
+                d->minWidth = d->uniformWidth;
+                d->minHeight = d->uniformHeight;
+            }
+            else if (d->uniform &&
+                     (d->uniformWidth != pageWidth ||
+                      d->uniformHeight != pageHeight))
+            {
+                d->uniform = false;
+            }
+
+            if (!d->uniform) {
+                if (pageWidth > d->maxWidth)
+                    d->maxWidth = pageWidth;
+
+                if (pageWidth < d->minWidth)
+                    d->minWidth = pageWidth;
+
+                if (pageHeight > d->maxHeight)
+                    d->maxHeight = pageHeight;
+
+                if (pageHeight < d->minHeight)
+                    d->minHeight = pageHeight;
+            }
+        }
+    }
+
+    d->loaded = true;
 }
 
 GT_END_NAMESPACE

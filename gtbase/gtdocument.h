@@ -25,6 +25,7 @@ public:
 
 public:
     QIODevice* device();
+    bool isLoaded();
     bool uniformPageSize(double *width, double *height);
     void maxPageSize(double *width, double *height);
     void minPageSize(double *width, double *height);
@@ -39,6 +40,7 @@ protected:
 
 private Q_SLOTS:
     void deviceDestroyed(QObject *object);
+    void slotLoadDocument();
 
 protected:
     friend class GtDocLoaderPrivate;

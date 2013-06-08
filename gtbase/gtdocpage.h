@@ -31,7 +31,7 @@ public:
     int index();
 
 protected:
-    friend class GtDocumentPrivate;
+    friend class GtDocument;
     GtDocPage(GtDocPagePrivate &dd, QObject *parent);
     QScopedPointer<GtDocPagePrivate> d_ptr;
 
