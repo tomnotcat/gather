@@ -26,7 +26,7 @@ public:
     void pageSize(double *width, double *height);
     int textLength();
     void extractText(QChar *texts, QRectF *rects);
-    void paint(QPainter &p, double scale, int rotation);
+    void paint(QPaintDevice *device, double scale, int rotation);
 
 private:
     Q_DISABLE_COPY(PdfDocPage)

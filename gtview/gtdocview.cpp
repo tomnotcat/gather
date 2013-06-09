@@ -100,7 +100,7 @@ private:
     HeightCache heightCache;
 
     QTimer *delayResizeEventTimer;
-    GtDocRenderCache *renderCache;
+    QSharedPointer<GtDocRenderCache> renderCache;
 
     // prevent update visible pages
     int lockPageUpdate;
@@ -262,6 +262,7 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     , layoutMode(GtDocModel::SinglePage)
     , sizingMode(GtDocModel::FitWidth)
     , pendingScroll(SCROLL_TO_KEEP_POSITION)
+    , renderCache(new GtDocRenderCache(), &QObject::deleteLater)
     , lockPageUpdate(0)
     , lockPageNeedUpdate(false)
     , verticalScrollBarVisible(false)
@@ -272,8 +273,6 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     delayResizeEventTimer = new QTimer(q);
     delayResizeEventTimer->setSingleShot(true);
     q->connect(delayResizeEventTimer, SIGNAL(timeout()), q, SLOT(delayedResizeEvent()));
-
-    renderCache = new GtDocRenderCache(q);
 
     q->setFrameStyle(QFrame::NoFrame);
     q->setAttribute(Qt::WA_StaticContents);
@@ -608,6 +607,8 @@ void GtDocView::setModel(GtDocModel *model)
 
     GtDocument *newdoc = NULL;
     d->model = model;
+    d->renderCache->setModel(d->model);
+
     if (d->model) {
         newdoc = model->document();
         d->rotation = model->rotation();
@@ -658,6 +659,18 @@ void GtDocView::setModel(GtDocModel *model)
     }
 
     documentChanged(newdoc);
+}
+
+void GtDocView::setRenderThread(QThread *thread)
+{
+    Q_D(GtDocView);
+    d->renderCache->moveToThread(thread);
+}
+
+void GtDocView::setRenderCacheSize(int size)
+{
+    Q_D(GtDocView);
+    d->renderCache->setMaxSize(size);
 }
 
 void GtDocView::lockPageUpdate()

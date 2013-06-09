@@ -7,7 +7,7 @@
 #include "gtcommon.h"
 #include <QtCore/qobject.h>
 
-class QPainter;
+class QPaintDevice;
 
 GT_BEGIN_NAMESPACE
 
@@ -25,7 +25,7 @@ public:
     virtual void pageSize(double *width, double *height) = 0;
     virtual int textLength() = 0;
     virtual void extractText(QChar *texts, QRectF *rects) = 0;
-    virtual void paint(QPainter &p, double scale, int rotation) = 0;
+    virtual void paint(QPaintDevice *device, double scale, int rotation) = 0;
 
 public:
     int index();

@@ -34,6 +34,7 @@ private Q_SLOTS:
     void about();
     void openRecentFile();
     void updateStatusBar();
+    void docLoaded(GtDocument *doc);
 
 private:
     void createActions();

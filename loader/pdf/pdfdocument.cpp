@@ -169,6 +169,7 @@ PdfDocument::PdfDocument(QObject *parent)
 
 PdfDocument::~PdfDocument()
 {
+    destroy();
 }
 
 bool PdfDocument::loadDocument()

@@ -25,13 +25,7 @@ GtDocumentPrivate::GtDocumentPrivate()
 
 GtDocumentPrivate::~GtDocumentPrivate()
 {
-    for (int i = 0; i < pageCount; ++i)
-        delete pages[i];
-
-    delete[] pages;
-
-    destroyed = true;
-    qDebug() << "!!!!!!!!!!!!!!!!!!!!";
+    Q_ASSERT(destroyed);
 }
 
 void GtDocumentPrivate::setDevice(QIODevice *device)
@@ -165,8 +159,10 @@ void GtDocument::slotLoadDocument()
 
     Q_ASSERT(!d->loaded);
 
-    if (!loadDocument())
+    if (!loadDocument()) {
+        emit loaded(this);
         return;
+    }
 
     d->pageCount = countPages();
     if (d->pageCount > 0) {
@@ -215,6 +211,21 @@ void GtDocument::slotLoadDocument()
     }
 
     d->loaded = true;
+    emit loaded(this);
+}
+
+void GtDocument::destroy()
+{
+    Q_D(GtDocument);
+
+    Q_ASSERT(!d->destroyed);
+
+    for (int i = 0; i < d->pageCount; ++i)
+        delete d->pages[i];
+
+    delete[] d->pages;
+
+    d->destroyed = true;
 }
 
 GT_END_NAMESPACE

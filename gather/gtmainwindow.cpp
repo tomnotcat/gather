@@ -24,9 +24,9 @@ GT_BEGIN_NAMESPACE
 GtMainWindow::GtMainWindow()
 {
     // document thread
+    docLoader = QSharedPointer<GtDocLoader>(new GtDocLoader());
+    docModel = QSharedPointer<GtDocModel>(new GtDocModel());
     docThread = new QThread(this);
-    docLoader = QSharedPointer<GtDocLoader>(new GtDocLoader(), &QObject::deleteLater);
-    docModel = QSharedPointer<GtDocModel>(new GtDocModel(), &QObject::deleteLater);
 
     QDir dir(QCoreApplication::applicationDirPath());
 
@@ -35,12 +35,13 @@ GtMainWindow::GtMainWindow()
         qDebug() << "registered loaders:" << count;
     }
 
-    docLoader->moveToThread(docThread);
-    docModel->moveToThread(docThread);
     docThread->start();
 
     // GUI thread
     docView = new GtDocView(docModel.data(), this);
+    docView->setRenderThread(docThread);
+    docView->setRenderCacheSize(1024 * 1024 * 10);
+
     setCentralWidget(docView);
 
     createActions();
@@ -168,6 +169,19 @@ void GtMainWindow::updateStatusBar()
 {
 }
 
+void GtMainWindow::docLoaded(GtDocument *doc)
+{
+    if (doc != document.data()) {
+        qWarning() << "invalid document loaded:" << document.data() << doc;
+        return;
+    }
+
+    if (document->isLoaded())
+        docModel->setDocument(document.data());
+    else
+        Q_ASSERT(0);
+}
+
 void GtMainWindow::open()
 {
     if (okToContinue()) {
@@ -186,17 +200,21 @@ void GtMainWindow::open()
 
 bool GtMainWindow::loadFile(const QString &fileName)
 {
-    GtDocument *doc = docLoader->loadDocument(fileName, docThread);
+    docModel->setDocument(0);
 
+    GtDocument *doc = docLoader->loadDocument(fileName, docThread);
     if (NULL == doc)
         return false;
 
-    if (!doc->isLoaded())
-        connect(doc, SIGNAL(loaded()), this, SLOT(docLoaded()));
-
-    docModel->setDocument(doc);
     document = QSharedPointer<GtDocument>(doc, &QObject::deleteLater);
     Q_ASSERT(document->thread() == docThread);
+
+    if (document->isLoaded()) {
+        docLoaded(doc);
+    }
+    else {
+        connect(doc, SIGNAL(loaded(GtDocument*)), this, SLOT(docLoaded(GtDocument*)));
+    }
 
     setCurrentFile(fileName);
     statusBar()->showMessage(tr("File loaded"), 2000);

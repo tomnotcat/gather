@@ -24,8 +24,15 @@ public:
     void setModel(GtDocModel *model);
     void setMaxSize(int maxSize);
     void setPageRange(int beginPage, int endPage);
-    QImage* pageImage(int index);
+    QImage* image(int index);
     void clear(void);
+
+Q_SIGNALS:
+    void finished(int index);
+
+private Q_SLOTS:
+    void modelDestroyed(QObject *object);
+    void renderNext();
 
 private:
     QScopedPointer<GtDocRenderCachePrivate> d_ptr;

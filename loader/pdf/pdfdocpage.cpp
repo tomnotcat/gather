@@ -64,9 +64,9 @@ void PdfDocPage::extractText(QChar *texts, QRectF *rects)
     Q_UNUSED(rects);
 }
 
-void PdfDocPage::paint(QPainter &p, double scale, int rotation)
+void PdfDocPage::paint(QPaintDevice *device, double scale, int rotation)
 {
-    Q_UNUSED(p);
+    Q_UNUSED(device);
     Q_UNUSED(scale);
     Q_UNUSED(rotation);
 }

@@ -26,6 +26,9 @@ public:
     GtDocModel* model() const;
     void setModel(GtDocModel *model);
 
+    void setRenderThread(QThread *thread);
+    void setRenderCacheSize(int size);
+
     void lockPageUpdate();
     void unlockPageUpdate(bool update=true);
 

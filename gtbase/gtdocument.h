@@ -37,6 +37,10 @@ protected:
     virtual bool loadDocument() = 0;
     virtual int countPages() = 0;
     virtual GtDocPage* loadPage(int index) = 0;
+    void destroy();
+
+Q_SIGNALS:
+    void loaded(GtDocument * = 0);
 
 private Q_SLOTS:
     void deviceDestroyed(QObject *object);
