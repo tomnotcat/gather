@@ -2,16 +2,25 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtdocpage_p.h"
+#include "gtabstractdocument.h"
+#include "gtdocument_p.h"
+#include <QtCore/QMutex>
 
 GT_BEGIN_NAMESPACE
 
 GtDocPagePrivate::GtDocPagePrivate()
-    : index(-1)
+    : abstractPage(0)
+    , document(0)
+    , index(-1)
+    , textLength(-1)
+    , width(0)
+    , height(0)
 {
 }
 
 GtDocPagePrivate::~GtDocPagePrivate()
 {
+    delete abstractPage;
 }
 
 GtDocPage::GtDocPage(QObject *parent)
@@ -32,10 +41,72 @@ GtDocPage::~GtDocPage()
 {
 }
 
+GtDocument* GtDocPage::document()
+{
+    Q_D(GtDocPage);
+    return d->document;
+}
+
 int GtDocPage::index()
 {
     Q_D(GtDocPage);
     return d->index;
+}
+
+void GtDocPage::size(double *width, double *height)
+{
+    Q_D(GtDocPage);
+
+    if (width)
+        *width = d->width;
+
+    if (height)
+        *height = d->height;
+}
+
+QSize GtDocPage::size(double scale, int rotation)
+{
+    Q_D(GtDocPage);
+
+    double width = d->width * scale;
+    double height = d->height * scale;
+
+    if (rotation == 0 || rotation == 180)
+        return QSize(width + 0.5, height + 0.5);
+
+    Q_ASSERT(rotation == 90 || rotation == 270);
+    return QSize(height + 0.5, width + 0.5);
+}
+
+int GtDocPage::textLength()
+{
+    Q_D(GtDocPage);
+
+    if (-1 == d->textLength) {
+        GtAbstractPage *abstractPage = d->document->d_ptr->lockPage(d->index);
+        d->textLength = abstractPage->textLength();
+        d->document->d_ptr->unlockPage(d->index);
+    }
+
+    return d->textLength;
+}
+
+void GtDocPage::extractText(ushort *texts, QRectF *rects)
+{
+    Q_D(GtDocPage);
+
+    GtAbstractPage *abstractPage = d->document->d_ptr->lockPage(d->index);
+    abstractPage->extractText(texts, rects);
+    d->document->d_ptr->unlockPage(d->index);
+}
+
+void GtDocPage::paint(QPaintDevice *device, double scale, int rotation)
+{
+    Q_D(GtDocPage);
+
+    GtAbstractPage *abstractPage = d->document->d_ptr->lockPage(d->index);
+    abstractPage->paint(device, scale, rotation);
+    d->document->d_ptr->unlockPage(d->index);
 }
 
 GT_END_NAMESPACE

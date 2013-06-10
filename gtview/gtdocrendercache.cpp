@@ -20,7 +20,7 @@ public:
     ~GtDocRenderCachePrivate();
 
 public:
-    int pageSize(int index, double scale, int rotation);
+    int pageBytes(int index, double scale, int rotation);
 
     void preloadRange(int beginPage, int endPage,
                       double scale, int rotation,
@@ -71,10 +71,10 @@ GtDocRenderCachePrivate::~GtDocRenderCachePrivate()
 {
 }
 
-int GtDocRenderCachePrivate::pageSize(int index, double scale, int rotation)
+int GtDocRenderCachePrivate::pageBytes(int index, double scale, int rotation)
 {
     GtDocument *document = model->document();
-    QSize size = document->pageSizeForScaleRotation(index, scale, rotation);
+    QSize size = document->page(index)->size(scale, rotation);
     return size.width() * size.height() * 4;
 }
 
@@ -89,7 +89,7 @@ void GtDocRenderCachePrivate::preloadRange(int beginPage, int endPage,
 
     /* Get the size of the current range */
     for (int i = beginPage; i < endPage; ++i)
-        rangeSize += pageSize(i, scale, rotation);
+        rangeSize += pageBytes(i, scale, rotation);
 
     if (rangeSize >= maxSize) {
         *preloadBegin = beginPage;
@@ -105,7 +105,7 @@ void GtDocRenderCachePrivate::preloadRange(int beginPage, int endPage,
         bool updated = false;
 
         if (endPage + i - 1 < pageCount) {
-            size = pageSize(endPage + i - 1, scale, rotation);
+            size = pageBytes(endPage + i - 1, scale, rotation);
             if (size + rangeSize <= maxSize) {
                 rangeSize += size;
                 preloadCacheSize++;
@@ -117,7 +117,7 @@ void GtDocRenderCachePrivate::preloadRange(int beginPage, int endPage,
         }
 
         if (beginPage - i >= 0) {
-            size = pageSize(beginPage - i, scale, rotation);
+            size = pageBytes(beginPage - i, scale, rotation);
             if (size + rangeSize <= maxSize) {
                 rangeSize += size;
                 if (!updated)
@@ -223,6 +223,9 @@ void GtDocRenderCache::setPageRange(int beginPage, int endPage)
         d->caches.remove(0, c);
         d->caches.resize(preloadEnd - preloadBegin);
     }
+    else {
+        d->caches.resize(preloadEnd - preloadBegin);
+    }
 
     d->index = preloadBegin;
     d->currentPage = d->model->page();
@@ -311,9 +314,10 @@ next:
         info->rendered = true;
     }
 
-    QImage image;
     GtDocument *document = d->model->document();
     GtDocPage *page = document->page(pageIndex);
+    QSize size = page->size(scale, rotation);
+    QImage image(size, QImage::Format_ARGB32);
 
     page->paint(&image, scale, rotation);
 

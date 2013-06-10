@@ -9,6 +9,12 @@
 #define GT_BEGIN_NAMESPACE namespace Gather {
 #define GT_END_NAMESPACE }
 
+#ifdef __cplusplus
+#define GT_EXTERN_C extern "C"
+#else
+#define GT_EXTERN_C extern
+#endif
+
 #if defined(GT_BUILD_BASE_LIB)
 #define GT_BASE_EXPORT Q_DECL_EXPORT
 #else

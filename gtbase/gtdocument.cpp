@@ -2,17 +2,17 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtdocument_p.h"
+#include "gtabstractdocument.h"
 #include "gtdocpage_p.h"
 #include <QtCore/QDebug>
 
 GT_BEGIN_NAMESPACE
 
-GtDocumentPrivate::GtDocumentPrivate()
+GtDocumentPrivate::GtDocumentPrivate(GtAbstractDocument *ad)
     : device(0)
     , pages(0)
     , pageCount(0)
-    , uniformWidth(0)
-    , uniformHeight(0)
+    , pageCacheSize(0)
     , maxWidth(0)
     , maxHeight(0)
     , minWidth(0)
@@ -20,12 +20,18 @@ GtDocumentPrivate::GtDocumentPrivate()
     , uniform(false)
     , loaded(false)
     , destroyed(false)
+    , abstractDoc(ad)
 {
 }
 
 GtDocumentPrivate::~GtDocumentPrivate()
 {
-    Q_ASSERT(destroyed);
+    for (int i = 0; i < pageCount; ++i)
+        delete pages[i];
+
+    delete[] pages;
+
+    destroyed = true;
 }
 
 void GtDocumentPrivate::setDevice(QIODevice *device)
@@ -40,9 +46,43 @@ void GtDocumentPrivate::setDevice(QIODevice *device)
                    SLOT(deviceDestroyed(QObject*)));
 }
 
-GtDocument::GtDocument(QObject *parent)
+GtAbstractPage* GtDocumentPrivate::lockPage(int index)
+{
+    if (index < 0 || index >= pageCount)
+        return 0;
+
+    mutex.lock();
+
+    if (0 == pages[index]->d_ptr->abstractPage) {
+        pages[index]->d_ptr->abstractPage = abstractDoc->loadPage(index);
+        if (pageCacheSize > 0) {
+            cachedPages.append(index);
+
+            if (cachedPages.size() > pageCacheSize) {
+                GtDocPage *temp = pages[cachedPages.front()];
+
+                if (temp->d_ptr->abstractPage) {
+                    delete temp->d_ptr->abstractPage;
+                    temp->d_ptr->abstractPage = 0;
+                }
+
+                cachedPages.pop_front();
+            }
+        }
+    }
+
+    return pages[index]->d_ptr->abstractPage;
+}
+
+void GtDocumentPrivate::unlockPage(int index)
+{
+    Q_UNUSED(index);
+    mutex.unlock();
+}
+
+GtDocument::GtDocument(GtAbstractDocument *ad, QObject *parent)
     : QObject(parent)
-    , d_ptr(new GtDocumentPrivate())
+    , d_ptr(new GtDocumentPrivate(ad))
 {
     d_ptr->q_ptr = this;
 }
@@ -58,59 +98,49 @@ GtDocument::~GtDocument()
 {
 }
 
-QIODevice* GtDocument::device()
-{
-    Q_D(GtDocument);
-    return d->device;
-}
-
 bool GtDocument::isLoaded()
 {
     Q_D(GtDocument);
     return d->loaded;
 }
 
-bool GtDocument::uniformPageSize(double *width, double *height)
+bool GtDocument::isPageSizeUniform()
 {
     Q_D(GtDocument);
-
     Q_ASSERT(d->loaded);
-
-    if (d->uniform) {
-        if (width)
-            *width = d->uniformWidth;
-
-        if (height)
-            *height = d->uniformHeight;
-    }
-
     return d->uniform;
 }
 
-void GtDocument::maxPageSize(double *width, double *height)
+QSize GtDocument::maxPageSize(double scale, int rotation)
 {
     Q_D(GtDocument);
 
     Q_ASSERT(d->loaded);
 
-    if (width)
-        *width = d->maxWidth;
+    double width = d->maxWidth * scale;
+    double height = d->maxHeight * scale;
 
-    if (height)
-        *height = d->maxHeight;
+    if (rotation == 0 || rotation == 180)
+        return QSize(width + 0.5, height + 0.5);
+
+    Q_ASSERT(rotation == 90 || rotation == 270);
+    return QSize(height + 0.5, width + 0.5);
 }
 
-void GtDocument::minPageSize(double *width, double *height)
+QSize GtDocument::minPageSize(double scale, int rotation)
 {
     Q_D(GtDocument);
 
     Q_ASSERT(d->loaded);
 
-    if (width)
-        *width = d->minWidth;
+    double width = d->minWidth * scale;
+    double height = d->minHeight * scale;
 
-    if (height)
-        *height = d->minHeight;
+    if (rotation == 0 || rotation == 180)
+        return QSize(width + 0.5, height + 0.5);
+
+    Q_ASSERT(rotation == 90 || rotation == 270);
+    return QSize(height + 0.5, width + 0.5);
 }
 
 int GtDocument::pageCount()
@@ -129,22 +159,6 @@ GtDocPage* GtDocument::page(int index)
     return d->pages[index];
 }
 
-QSize GtDocument::pageSizeForScaleRotation(int index, double scale, int rotation)
-{
-    double width, height;
-
-    page(index)->pageSize(&width, &height);
-
-    width *= scale;
-    height *= scale;
-
-    if (rotation == 0 || rotation == 180)
-        return QSize(width + 0.5, height + 0.5);
-
-    Q_ASSERT(rotation == 90 || rotation == 270);
-    return QSize(height + 0.5, width + 0.5);
-}
-
 void GtDocument::deviceDestroyed(QObject*)
 {
     Q_D(GtDocument);
@@ -157,39 +171,40 @@ void GtDocument::slotLoadDocument()
 {
     Q_D(GtDocument);
 
-    Q_ASSERT(!d->loaded);
+    Q_ASSERT(!d->loaded && d->device);
 
-    if (!loadDocument()) {
+    if (!d->abstractDoc->load(d->device)) {
         emit loaded(this);
         return;
     }
 
-    d->pageCount = countPages();
+    d->pageCount = d->abstractDoc->countPages();
     if (d->pageCount > 0) {
         double pageWidth, pageHeight;
+        double uniformWidth, uniformHeight;
 
         d->pages = new GtDocPage*[d->pageCount];
         d->uniform = true;
         for (int i = 0; i < d->pageCount; ++i) {
-            d->pages[i] = loadPage(i);
-            if (0 == d->pages[i]) {
+            QScopedPointer<GtAbstractPage> page(d->abstractDoc->loadPage(i));
+            if (0 == page) {
                 qWarning() << "load page failed:" << i;
                 continue;
             }
 
-            d->pages[i]->d_ptr->index = i;
-            d->pages[i]->pageSize(&pageWidth, &pageHeight);
+            d->pages[i] = new GtDocPage();
+            page->size(&pageWidth, &pageHeight);
+            d->pages[i]->d_ptr->initialize(this, i, pageWidth, pageHeight);
             if (i == 0) {
-                d->uniformWidth = pageWidth;
-                d->uniformHeight = pageHeight;
-                d->maxWidth = d->uniformWidth;
-                d->maxHeight = d->uniformHeight;
-                d->minWidth = d->uniformWidth;
-                d->minHeight = d->uniformHeight;
+                uniformWidth = pageWidth;
+                uniformHeight = pageHeight;
+                d->maxWidth = uniformWidth;
+                d->maxHeight = uniformHeight;
+                d->minWidth = uniformWidth;
+                d->minHeight = uniformHeight;
             }
-            else if (d->uniform &&
-                     (d->uniformWidth != pageWidth ||
-                      d->uniformHeight != pageHeight))
+            else if (d->uniform && (uniformWidth != pageWidth ||
+                                    uniformHeight != pageHeight))
             {
                 d->uniform = false;
             }
@@ -212,20 +227,6 @@ void GtDocument::slotLoadDocument()
 
     d->loaded = true;
     emit loaded(this);
-}
-
-void GtDocument::destroy()
-{
-    Q_D(GtDocument);
-
-    Q_ASSERT(!d->destroyed);
-
-    for (int i = 0; i < d->pageCount; ++i)
-        delete d->pages[i];
-
-    delete[] d->pages;
-
-    d->destroyed = true;
 }
 
 GT_END_NAMESPACE

@@ -57,15 +57,14 @@ public:
 
     void heightToPage(int page, double *height, double *dualHeight);
     int pageYOffset(int page);
-    QSize maxPageSize();
     QRect computeBorder(const QSize &size);
 
     inline QSize pageSizeOfView (int index) {
-        return document->pageSizeForScaleRotation(index, scale, rotation);
+        return document->page(index)->size(scale, rotation);
     }
 
     inline QSize pageSizeOfDoc (int index) {
-        return document->pageSizeForScaleRotation(index, 1.0, rotation);
+        return document->page(index)->size(1.0, rotation);
     }
 
     void pageExtents(int page, QRect *rect, QRect *border);
@@ -164,8 +163,15 @@ void GtDocViewPrivate::HeightCache::rebuild()
 
     swap = (rotation == 90 || rotation == 270);
 
-    uniform = document->uniformPageSize(&uWidth, &uHeight);
+    uniform = document->isPageSizeUniform();
     pageCount = document->pageCount();
+
+    if (uniform) {
+        if (pageCount > 0)
+            document->page(0)->size(&uWidth, &uHeight);
+        else
+            qWarning() << "can't get uniform page size";
+    }
 
     heightToPage = new double[pageCount + 1];
     dualHeightToPage = new double[pageCount + 2];
@@ -181,7 +187,7 @@ void GtDocViewPrivate::HeightCache::rebuild()
                 double w, h;
 
                 page = document->page(i);
-                page->pageSize(&w, &h);
+                page->size(&w, &h);
                 pageHeight = swap ? w : h;
             }
             else {
@@ -197,7 +203,7 @@ void GtDocViewPrivate::HeightCache::rebuild()
         double w, h;
 
         page = document->page(0);
-        page->pageSize(&w, &h);
+        page->size(&w, &h);
         savedHeight = swap ? w : h;
     }
     else {
@@ -217,7 +223,7 @@ void GtDocViewPrivate::HeightCache::rebuild()
                 double w, h;
 
                 page = document->page(i + 1);
-                page->pageSize(&w, &h);
+                page->size(&w, &h);
                 nextPageHeight = swap ? w : h;
             }
             else {
@@ -228,7 +234,7 @@ void GtDocViewPrivate::HeightCache::rebuild()
                 double w, h;
 
                 page = document->page(i);
-                page->pageSize(&w, &h);
+                page->size(&w, &h);
                 pageHeight = swap ? w : h;
             }
             else {
@@ -342,7 +348,7 @@ void GtDocViewPrivate::heightToPage(int page, double *height, double *dualHeight
 
 int GtDocViewPrivate::pageYOffset(int page)
 {
-    QSize maxSize = maxPageSize();
+    QSize maxSize = document->maxPageSize(scale, rotation);
     QRect border = computeBorder(maxSize);
     double offset = 0;
 
@@ -358,22 +364,6 @@ int GtDocViewPrivate::pageYOffset(int page)
     }
 
     return offset;
-}
-
-QSize GtDocViewPrivate::maxPageSize()
-{
-    double width = 0.;
-    double height = 0.;
-
-    if (document)
-        document->maxPageSize(&width, &height);
-
-    width *= scale;
-    height *= scale;
-
-    return (rotation % 180) ?
-            QSize(height, width) :
-            QSize(width, height);
 }
 
 QRect GtDocViewPrivate::computeBorder(const QSize &size)
@@ -411,7 +401,7 @@ void GtDocViewPrivate::pageExtents(int page, QRect *rect, QRect *border)
     rect->setHeight(pageSize.height() + border->top() + border->bottom());
 
     if (continuous) {
-        QSize maxSize = maxPageSize();
+        QSize maxSize = document->maxPageSize(scale, rotation);
         int maxWidth;
 
         maxWidth = maxSize.width() + border->left() + border->right();
@@ -500,7 +490,7 @@ QSize GtDocViewPrivate::layoutPagesContinuous()
 
     case GtDocModel::FreeSize:
         {
-            QSize maxSize = maxPageSize();
+            QSize maxSize = document->maxPageSize(scale, rotation);
             QRect border = computeBorder(maxSize);
 
             size.setWidth(maxSize.width() + (spacing * 2) +

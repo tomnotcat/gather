@@ -68,8 +68,10 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
         QScopedPointer<QFile> file(new QFile(fileName));
 
         if (file->open(QIODevice::ReadOnly)) {
-            document = ((GtDocument* (*)())info.load)();
+            GtAbstractDocument *ad = ((GtAbstractDocument* (*)())info.load)();
+            Q_ASSERT(ad);
 
+            document = new GtDocument(ad);
             file->setParent(document);
             document->d_ptr->setDevice(file.take());
 

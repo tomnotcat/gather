@@ -8,10 +8,9 @@
 #include <QtCore/QObject>
 #include <QtCore/QSize>
 
-class QIODevice;
-
 GT_BEGIN_NAMESPACE
 
+class GtAbstractDocument;
 class GtDocPage;
 class GtDocumentPrivate;
 
@@ -20,24 +19,16 @@ class GT_BASE_EXPORT GtDocument : public QObject
     Q_OBJECT
 
 public:
-    explicit GtDocument(QObject *parent = 0);
+    explicit GtDocument(GtAbstractDocument *ad, QObject *parent = 0);
     ~GtDocument();
 
 public:
-    QIODevice* device();
     bool isLoaded();
-    bool uniformPageSize(double *width, double *height);
-    void maxPageSize(double *width, double *height);
-    void minPageSize(double *width, double *height);
+    bool isPageSizeUniform();
+    QSize maxPageSize(double scale = 1.0, int rotation = 0);
+    QSize minPageSize(double scale = 1.0, int rotation = 0);
     int pageCount();
     GtDocPage* page(int index);
-    QSize pageSizeForScaleRotation(int index, double scale, int rotation);
-
-protected:
-    virtual bool loadDocument() = 0;
-    virtual int countPages() = 0;
-    virtual GtDocPage* loadPage(int index) = 0;
-    void destroy();
 
 Q_SIGNALS:
     void loaded(GtDocument * = 0);
@@ -47,6 +38,7 @@ private Q_SLOTS:
     void slotLoadDocument();
 
 protected:
+    friend class GtDocPage;
     friend class GtDocLoaderPrivate;
     GtDocument(GtDocumentPrivate &dd, QObject *parent);
     QScopedPointer<GtDocumentPrivate> d_ptr;

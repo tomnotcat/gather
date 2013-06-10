@@ -2,40 +2,19 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "pdfdocument.h"
-#include "gtdocument_p.h"
-#include "pdfdocpage.h"
+#include "pdfpage.h"
 #include <QtCore/QDebug>
 #include <QtCore/QMutex>
 #include <QtCore/QThread>
 
 GT_BEGIN_NAMESPACE
 
-class PdfDocumentPrivate : public GtDocumentPrivate
-{
-    Q_DECLARE_PUBLIC(PdfDocument)
-
-public:
-    PdfDocumentPrivate();
-    ~PdfDocumentPrivate();
-
-public:
-    static fz_context* context();
-    static void lockContext(void *user, int lock);
-    static void unlockContext(void *user, int lock);
-    static int readPdfStream(fz_stream *stm, unsigned char *buf, int len);
-    static void seekPdfStream(fz_stream *stm, int offset, int whence);
-    static void closePdfStream(fz_context *ctx, void *state);
-
-private:
-    fz_document *document;
-};
-
-PdfDocumentPrivate::PdfDocumentPrivate()
+PdfDocument::PdfDocument()
     : document(0)
 {
 }
 
-PdfDocumentPrivate::~PdfDocumentPrivate()
+PdfDocument::~PdfDocument()
 {
     if (document) {
         fz_close_document(document);
@@ -43,7 +22,47 @@ PdfDocumentPrivate::~PdfDocumentPrivate()
     }
 }
 
-fz_context* PdfDocumentPrivate::context()
+bool PdfDocument::load(QIODevice *device)
+{
+    fz_context *context;
+    fz_stream *stream;
+
+    context = PdfDocument::context();
+    stream = fz_new_stream(context, device,
+                           PdfDocument::readPdfStream,
+                           PdfDocument::closePdfStream);
+    stream->seek = PdfDocument::seekPdfStream;
+
+    fz_try(context) {
+        document = fz_open_document_with_stream(context, "pdf", stream);
+    }
+    fz_catch(context) {
+        if (document) {
+            fz_close_document(document);
+            document = 0;
+        }
+    }
+
+    fz_close (stream);
+
+    return (document != 0);
+}
+
+int PdfDocument::countPages()
+{
+    return fz_count_pages(document);
+}
+
+GtAbstractPage* PdfDocument::loadPage(int index)
+{
+    fz_page *page = fz_load_page(document, index);
+    if (0 == page)
+        return 0;
+
+    return new PdfPage(document, page);
+}
+
+fz_context* PdfDocument::context()
 {
     // Thread ID to context
     static QHash<Qt::HANDLE, fz_context*> contexts;
@@ -85,7 +104,7 @@ fz_context* PdfDocumentPrivate::context()
         locks.unlock = unlockContext;
         mutex.unlock();
 
-        context = fz_new_context(NULL, &locks, FZ_STORE_UNLIMITED);
+        context = fz_new_context(NULL, &locks, FZ_STORE_DEFAULT);
     }
 
     qDebug() << "Create fz_context for thread:" << threadId;
@@ -105,25 +124,25 @@ fz_context* PdfDocumentPrivate::context()
     return context;
 }
 
-void PdfDocumentPrivate::lockContext(void *user, int lock)
+void PdfDocument::lockContext(void *user, int lock)
 {
     QMutex **mutexs = static_cast<QMutex**>(user);
     mutexs[lock]->lock();
 }
 
-void PdfDocumentPrivate::unlockContext(void *user, int lock)
+void PdfDocument::unlockContext(void *user, int lock)
 {
     QMutex **mutexs = static_cast<QMutex**>(user);
     mutexs[lock]->unlock();
 }
 
-int PdfDocumentPrivate::readPdfStream(fz_stream *stm, unsigned char *buf, int len)
+int PdfDocument::readPdfStream(fz_stream *stm, unsigned char *buf, int len)
 {
     QIODevice *device = static_cast<QIODevice*>(stm->state);
     return device->read((char*)buf, len);
 }
 
-void PdfDocumentPrivate::seekPdfStream(fz_stream *stm, int offset, int whence)
+void PdfDocument::seekPdfStream(fz_stream *stm, int offset, int whence)
 {
     QIODevice *device = static_cast<QIODevice*>(stm->state);
     qint64 pos = 0;
@@ -156,71 +175,12 @@ void PdfDocumentPrivate::seekPdfStream(fz_stream *stm, int offset, int whence)
     }
 }
 
-void PdfDocumentPrivate::closePdfStream(fz_context*, void *state)
+void PdfDocument::closePdfStream(fz_context*, void *state)
 {
     QIODevice *device = static_cast<QIODevice*>(state);
     device->close();
 }
 
-PdfDocument::PdfDocument(QObject *parent)
-    : GtDocument(*new PdfDocumentPrivate(), parent)
-{
-}
-
-PdfDocument::~PdfDocument()
-{
-    destroy();
-}
-
-bool PdfDocument::loadDocument()
-{
-    Q_D(PdfDocument);
-
-    QIODevice *device = this->device();
-    fz_context *context;
-    fz_stream *stream;
-
-    context = PdfDocumentPrivate::context();
-    stream = fz_new_stream(context, device,
-                           PdfDocumentPrivate::readPdfStream,
-                           PdfDocumentPrivate::closePdfStream);
-    stream->seek = PdfDocumentPrivate::seekPdfStream;
-
-    fz_try(context) {
-        d->document = fz_open_document_with_stream(context, "pdf", stream);
-    }
-    fz_catch(context) {
-        if (d->document) {
-            fz_close_document(d->document);
-            d->document = 0;
-        }
-    }
-
-    fz_close (stream);
-
-    return (d->document != 0);
-}
-
-int PdfDocument::countPages()
-{
-    Q_D(PdfDocument);
-    return fz_count_pages (d->document);
-}
-
-GtDocPage* PdfDocument::loadPage(int index)
-{
-    Q_D(PdfDocument);
-
-    fz_page *page = fz_load_page(d->document, index);
-    if (0 == page)
-        return 0;
-
-    return new PdfDocPage(d->document, page);
-}
-
-GtDocument* gather_new_document(void)
-{
-    return new PdfDocument();
-}
+GT_DEFINE_DOCUMENT_LOADER(PdfDocument())
 
 GT_END_NAMESPACE

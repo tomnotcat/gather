@@ -4,38 +4,39 @@
 #ifndef __PDF_DOCUMENT_H__
 #define __PDF_DOCUMENT_H__
 
-#include "gtdocument.h"
+#include "gtabstractdocument.h"
 #include <QtCore/qplugin.h>
 
 extern "C" {
 #include "mupdf-internal.h"
 }
 
-class QIODevice;
-
 GT_BEGIN_NAMESPACE
 
-class PdfDocumentPrivate;
-
-class PdfDocument : public GtDocument
+class PdfDocument : public GtAbstractDocument
 {
-    Q_OBJECT
-
 public:
-    explicit PdfDocument(QObject *parent = 0);
+    explicit PdfDocument();
     ~PdfDocument();
 
-protected:
-    bool loadDocument();
+public:
+    bool load(QIODevice *device);
     int countPages();
-    GtDocPage* loadPage(int index);
+    GtAbstractPage* loadPage(int index);
+
+public:
+    static fz_context* context();
+
+protected:
+    static void lockContext(void *user, int lock);
+    static void unlockContext(void *user, int lock);
+    static int readPdfStream(fz_stream *stm, unsigned char *buf, int len);
+    static void seekPdfStream(fz_stream *stm, int offset, int whence);
+    static void closePdfStream(fz_context *ctx, void *state);
 
 private:
-    Q_DISABLE_COPY(PdfDocument)
-    Q_DECLARE_PRIVATE(PdfDocument)
+    fz_document *document;
 };
-
-Q_EXTERN_C GtDocument* gather_new_document(void);
 
 GT_END_NAMESPACE
 

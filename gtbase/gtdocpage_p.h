@@ -8,6 +8,9 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtDocument;
+class GtAbstractPage;
+
 class GT_BASE_EXPORT GtDocPagePrivate
 {
     Q_DECLARE_PUBLIC(GtDocPage)
@@ -17,10 +20,23 @@ public:
     virtual ~GtDocPagePrivate();
 
 public:
-    int index;
+    inline void initialize(GtDocument *d, int i, double w, double h) {
+        document = d;
+        index = i;
+        width = w;
+        height = h;
+    }
+
+public:
+    GtAbstractPage *abstractPage;
 
 protected:
     GtDocPage *q_ptr;
+    GtDocument *document;
+    int index;
+    int textLength;
+    double width;
+    double height;
 };
 
 GT_END_NAMESPACE

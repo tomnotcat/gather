@@ -5,13 +5,15 @@
 #define __GT_DOC_PAGE_H__
 
 #include "gtcommon.h"
-#include <QtCore/qobject.h>
+#include <QtCore/QObject>
+#include <QtCore/QSize>
 
 class QPaintDevice;
 
 GT_BEGIN_NAMESPACE
 
 class GtDocPagePrivate;
+class GtDocument;
 
 class GT_BASE_EXPORT GtDocPage : public QObject
 {
@@ -22,16 +24,17 @@ public:
     ~GtDocPage();
 
 public:
-    virtual void pageSize(double *width, double *height) = 0;
-    virtual int textLength() = 0;
-    virtual void extractText(QChar *texts, QRectF *rects) = 0;
-    virtual void paint(QPaintDevice *device, double scale, int rotation) = 0;
-
-public:
+    GtDocument* document();
     int index();
+    void size(double *width, double *height);
+    QSize size(double scale = 1.0, int rotation = 0);
+    int textLength();
+    void extractText(ushort *texts, QRectF *rects);
+    void paint(QPaintDevice *device, double scale = 1.0, int rotation = 0);
 
 protected:
     friend class GtDocument;
+    friend class GtDocumentPrivate;
     GtDocPage(GtDocPagePrivate &dd, QObject *parent);
     QScopedPointer<GtDocPagePrivate> d_ptr;
 
