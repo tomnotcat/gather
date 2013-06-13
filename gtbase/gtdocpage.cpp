@@ -4,9 +4,24 @@
 #include "gtdocpage_p.h"
 #include "gtabstractdocument.h"
 #include "gtdocument_p.h"
+#include <QtCore/QDebug>
 #include <QtCore/QMutex>
+#include <QtCore/QRectF>
 
 GT_BEGIN_NAMESPACE
+
+GtDocText::GtDocText(QChar *texts, QRectF *rects, int length)
+    : _texts(texts)
+    , _rects(rects)
+    , _length(length)
+{
+}
+
+GtDocText::~GtDocText()
+{
+    delete[] _texts;
+    delete[] _rects;
+}
 
 GtDocPagePrivate::GtDocPagePrivate()
     : abstractPage(0)
@@ -78,26 +93,29 @@ QSize GtDocPage::size(double scale, int rotation)
     return QSize(height + 0.5, width + 0.5);
 }
 
-int GtDocPage::textLength()
+QSharedDataPointer<GtDocText> GtDocPage::text()
 {
     Q_D(GtDocPage);
 
-    if (-1 == d->textLength) {
+    QSharedDataPointer<GtDocText> r(d->text);
+    if (!r) {
+        QChar *texts = 0;
+        QRectF *rects = 0;
         GtAbstractPage *abstractPage = d->document->d_ptr->lockPage(d->index);
-        d->textLength = abstractPage->textLength();
+        int length = abstractPage->textLength();
+
+        if (length > 0) {
+            texts = new QChar[length];
+            rects = new QRectF[length];
+            d->abstractPage->extractText(texts, rects);
+        }
+
         d->document->d_ptr->unlockPage(d->index);
+        r = new GtDocText(texts, rects, length);
+        d->document->d_ptr->cacheText(d->index, r);
     }
 
-    return d->textLength;
-}
-
-void GtDocPage::extractText(ushort *texts, QRectF *rects)
-{
-    Q_D(GtDocPage);
-
-    GtAbstractPage *abstractPage = d->document->d_ptr->lockPage(d->index);
-    abstractPage->extractText(texts, rects);
-    d->document->d_ptr->unlockPage(d->index);
+    return r;
 }
 
 void GtDocPage::paint(QPaintDevice *device, double scale, int rotation)

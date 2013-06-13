@@ -8,10 +8,14 @@
 #include "gtdocument.h"
 #include <QtCore/QDebug>
 #include <QtCore/QTimer>
+#include <QtGui/QPainter>
 #include <QtGui/QPaintEvent>
 #include <QtWidgets/QScrollBar>
 
 GT_BEGIN_NAMESPACE
+
+#define ZOOM_IN_FACTOR  1.2
+#define ZOOM_OUT_FACTOR (1.0/ZOOM_IN_FACTOR)
 
 class GtDocViewPrivate
 {
@@ -45,11 +49,10 @@ public:
 public:
     void changePage(int page);
     void resizeContentArea(const QSize &size);
-    void updatePageStep();
 
     inline int evenPageLeft() {
         return (layoutMode == GtDocModel::EvenPageLeft) ? 1 : 0;
-    };
+    }
 
     inline bool dualPage() {
         return (layoutMode != GtDocModel::SinglePage);
@@ -59,12 +62,26 @@ public:
     int pageYOffset(int page);
     QRect computeBorder(const QSize &size);
 
-    inline QSize pageSizeOfView (int index) {
+    inline QSize pageSizeOfView(int index) {
         return document->page(index)->size(scale, rotation);
     }
 
-    inline QSize pageSizeOfDoc (int index) {
+    inline QSize pageSizeOfDoc(int index) {
         return document->page(index)->size(1.0, rotation);
+    }
+
+    inline double zoomForSizeFitWidth(const QSize &docSize,
+                                      const QSize &viewSize)
+    {
+        return (double)viewSize.width() / docSize.width();
+    }
+
+    inline double zoomForSizeBestFit(const QSize &docSize,
+                                     const QSize &viewSize)
+    {
+        double wScale = (double)viewSize.width() / docSize.width();
+        double hScale = (double)viewSize.height() / docSize.height();
+        return MIN(wScale, hScale);
     }
 
     void pageExtents(int page, QRect *rect, QRect *border);
@@ -72,14 +89,13 @@ public:
     QSize layoutPagesContinuousDualPage();
     QSize layoutPages();
     QSize layoutPagesDualPage();
-
-public:
-    enum PendingScroll {
-        SCROLL_TO_KEEP_POSITION,
-        SCROLL_TO_PAGE_POSITION,
-        SCROLL_TO_CENTER,
-        SCROLL_TO_FIND_LOCATION
-    };
+    void zoomForSizeContinuousAndDualPage(int width, int height);
+    void zoomForSizeContinuous(int width, int height);
+    void zoomForSizeDualPage(int width, int height);
+    void zoomForSizeSinglePage(int width, int height);
+    void drawPage(QPainter &p, int index, const QRect &exposeArea,
+                  const QColor &backColor, QRegion &remainingArea,
+                  int scrollX, int scrollY);
 
 private:
     GtDocView *q_ptr;
@@ -95,10 +111,8 @@ private:
     bool continuous;
     GtDocModel::LayoutMode layoutMode;
     GtDocModel::SizingMode sizingMode;
-    PendingScroll pendingScroll;
     HeightCache heightCache;
 
-    QTimer *delayResizeEventTimer;
     QSharedPointer<GtDocRenderCache> renderCache;
 
     // prevent update visible pages
@@ -267,7 +281,6 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     , continuous(true)
     , layoutMode(GtDocModel::SinglePage)
     , sizingMode(GtDocModel::FitWidth)
-    , pendingScroll(SCROLL_TO_KEEP_POSITION)
     , renderCache(new GtDocRenderCache(), &QObject::deleteLater)
     , lockPageUpdate(0)
     , lockPageNeedUpdate(false)
@@ -276,9 +289,7 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
 {
     Q_Q(GtDocView);
 
-    delayResizeEventTimer = new QTimer(q);
-    delayResizeEventTimer->setSingleShot(true);
-    q->connect(delayResizeEventTimer, SIGNAL(timeout()), q, SLOT(delayedResizeEvent()));
+    q->connect(renderCache.data(), SIGNAL(finished(int)), q, SLOT(renderFinished(int)));
 
     q->setFrameStyle(QFrame::NoFrame);
     q->setAttribute(Qt::WA_StaticContents);
@@ -315,7 +326,6 @@ void GtDocViewPrivate::changePage(int page)
     Q_Q(GtDocView);
 
     currentPage = page;
-    pendingScroll = SCROLL_TO_PAGE_POSITION;
 
     QMetaObject::invokeMethod(q, "relayoutPages", Qt::QueuedConnection);
 }
@@ -325,16 +335,10 @@ void GtDocViewPrivate::resizeContentArea(const QSize &size)
     Q_Q(GtDocView);
 
     const QSize vs = q->viewport()->size();
+
     q->horizontalScrollBar()->setRange(0, size.width() - vs.width());
     q->verticalScrollBar()->setRange(0, size.height() - vs.height());
-    updatePageStep();
-}
 
-void GtDocViewPrivate::updatePageStep()
-{
-    Q_Q(GtDocView);
-
-    const QSize vs = q->viewport()->size();
     q->horizontalScrollBar()->setPageStep(vs.width());
     q->verticalScrollBar()->setPageStep(vs.height());
 }
@@ -523,6 +527,172 @@ QSize GtDocViewPrivate::layoutPagesDualPage()
     return QSize();
 }
 
+void GtDocViewPrivate::zoomForSizeContinuousAndDualPage(int width, int height)
+{
+    Q_Q(GtDocView);
+
+    QSize docSize(document->maxPageSize(1.0, this->rotation));
+    QRect border(computeBorder(docSize));
+
+    docSize.setWidth(docSize.width() * 2);
+    width -= (2 * (border.left() + border.right()) + 3 * spacing);
+    height -= (border.top() + border.bottom() + 2 * spacing - 1);
+
+    QSize viewSize(width - q->verticalScrollBar()->width(), height);
+
+    if (sizingMode == GtDocModel::FitWidth) {
+        model->setScale(zoomForSizeFitWidth(docSize, viewSize));
+    }
+    else if (sizingMode == GtDocModel::BestFit) {
+        model->setScale(zoomForSizeBestFit(docSize, viewSize));
+    }
+    else {
+        Q_ASSERT(0);
+    }
+}
+
+void GtDocViewPrivate::zoomForSizeContinuous(int width, int height)
+{
+    Q_Q(GtDocView);
+
+    QSize docSize(document->maxPageSize(1.0, this->rotation));
+    QRect border(computeBorder(docSize));
+
+    width -= (border.left() + border.right() + 2 * spacing);
+    height -= (border.top() + border.bottom() + 2 * spacing - 1);
+
+    QSize viewSize(width - q->verticalScrollBar()->width(), height);
+
+    if (sizingMode == GtDocModel::FitWidth) {
+        model->setScale(zoomForSizeFitWidth(docSize, viewSize));
+    }
+    else if (sizingMode == GtDocModel::BestFit) {
+        model->setScale(zoomForSizeBestFit(docSize, viewSize));
+    }
+    else {
+        Q_ASSERT(0);
+    }
+}
+
+void GtDocViewPrivate::zoomForSizeDualPage(int width, int height)
+{
+    Q_Q(GtDocView);
+
+    /* Find the largest of the two. */
+    QSize docSize(pageSizeOfDoc(currentPage));
+    int otherPage = currentPage ^ 1;
+
+    if (otherPage < pageCount) {
+        QSize docSize2(pageSizeOfDoc(otherPage));
+
+        if (docSize2.width() > docSize.width())
+            docSize.setWidth(docSize2.width());
+
+        if (docSize2.height() > docSize.height())
+            docSize.setHeight(docSize2.height());
+    }
+
+    QRect border(computeBorder(QSize(width, height)));
+
+    docSize.setWidth(docSize.width() * 2);
+    width -= ((border.left() + border.right())* 2 + 3 * spacing);
+    height -= (border.top() + border.bottom() + 2 * spacing);
+
+    if (sizingMode == GtDocModel::FitWidth) {
+        QSize viewSize(width - q->verticalScrollBar()->width(), height);
+        model->setScale(zoomForSizeFitWidth(docSize, viewSize));
+    }
+    else if (sizingMode == GtDocModel::BestFit) {
+        QSize viewSize(width, height);
+        model->setScale(zoomForSizeBestFit(docSize, viewSize));
+    }
+    else {
+        Q_ASSERT(0);
+    }
+}
+
+void GtDocViewPrivate::zoomForSizeSinglePage(int width, int height)
+{
+    Q_Q(GtDocView);
+
+    QSize docSize(pageSizeOfDoc(currentPage));
+    QRect border(computeBorder(QSize(width, height)));
+
+    width -= (border.left() + border.right() + 2 * spacing);
+    height -= (border.top() + border.bottom() + 2 * spacing);
+
+    if (sizingMode == GtDocModel::FitWidth) {
+        QSize viewSize(width - q->verticalScrollBar()->width(), height);
+        model->setScale(zoomForSizeFitWidth(docSize, viewSize));
+    }
+    else if (sizingMode == GtDocModel::BestFit) {
+        QSize viewSize(width, height);
+        model->setScale(zoomForSizeBestFit(docSize, viewSize));
+    }
+    else {
+        Q_ASSERT(0);
+    }
+}
+
+void GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &exposeArea,
+                                const QColor &backColor, QRegion &remainingArea,
+                                int scrollX, int scrollY)
+{
+    QRect pageArea;
+    QRect border;
+
+    if (!document)
+        return;
+
+    pageExtents(index, &pageArea, &border);
+    pageArea.translate(-scrollX, -scrollY);
+
+    QRect overlap = pageArea.intersected(exposeArea);
+    if (!overlap.isValid())
+        return;
+
+    QRect realArea(pageArea.x() + border.left(),
+                   pageArea.y() + border.top(),
+                   pageArea.width() - border.left() - border.right(),
+                   pageArea.height() - border.top() - border.bottom());
+
+    // draw border and background
+    int levels = border.right() - border.left();
+    int x = realArea.x();
+    int y = realArea.y();
+    int width = realArea.width();
+    int height = realArea.height();
+
+    p.setPen(Qt::black);
+    p.drawRect(x - 1, y - 1, width + 1, height + 1);
+
+    // draw bottom/right gradient
+    int r = backColor.red() / (levels + 2) + 6;
+    int g = backColor.green() / (levels + 2) + 6;
+    int b = backColor.blue() / (levels + 2) + 6;
+
+    p.translate(x, y);
+    for (int i = 0; i < levels; i++) {
+        p.setPen(QColor(r * (i+2), g * (i+2), b * (i+2)));
+        p.drawLine(i, i + height + 1, i + width + 1, i + height + 1);
+        p.drawLine(i + width + 1, i, i + width + 1, i + height);
+        p.setPen(backColor);
+        p.drawLine(-1, i + height + 1, i - 1, i + height + 1);
+        p.drawLine(i + width + 1, -1, i + width + 1, i - 1);
+    }
+
+    p.translate(-x, -y);
+
+    // draw page contents
+    QImage image = renderCache->image(index);
+    if (!image.isNull())
+        p.drawImage(realArea, image);
+    else
+        p.fillRect(realArea, QColor(255, 255, 255));
+
+    remainingArea -= pageArea;
+}
+
 GtDocView::GtDocView(QWidget *parent)
     : QAbstractScrollArea(parent)
     , d_ptr(new GtDocViewPrivate(this))
@@ -687,20 +857,62 @@ void GtDocView::unlockPageUpdate(bool update)
 
 bool GtDocView::canZoomIn() const
 {
+    Q_D(const GtDocView);
+
+    if (d->model)
+        return d->scale < d->model->maxScale();
+
     return false;
 }
 
 void GtDocView::zoomIn()
 {
+    Q_D(GtDocView);
+
+    double scale = d->model->scale() * ZOOM_IN_FACTOR;
+    d->model->setSizingMode(GtDocModel::FreeSize);
+    d->model->setScale(scale);
 }
 
 bool GtDocView::canZoomOut() const
 {
+    Q_D(const GtDocView);
+
+    if (d->model)
+        return d->scale > d->model->minScale();
+
     return false;
 }
 
 void GtDocView::zoomOut()
 {
+    Q_D(GtDocView);
+
+    double scale = d->model->scale() * ZOOM_OUT_FACTOR;
+    d->model->setSizingMode(GtDocModel::FreeSize);
+    d->model->setScale(scale);
+}
+
+void GtDocView::scrollTo(int x, int y)
+{
+    lockPageUpdate();
+    horizontalScrollBar()->setValue(x);
+    verticalScrollBar()->setValue(y);
+    unlockPageUpdate();
+}
+
+void GtDocView::renderFinished(int page)
+{
+    Q_D(GtDocView);
+
+    QRect pageArea;
+    QRect border;
+    int scrollX = horizontalScrollBar()->value();
+    int scrollY = verticalScrollBar()->value();
+
+    qDebug() << page;
+    d->pageExtents(page, &pageArea, &border);
+    viewport()->repaint(pageArea.translated(-scrollX, -scrollY));
 }
 
 void GtDocView::modelDestroyed(QObject *object)
@@ -709,15 +921,6 @@ void GtDocView::modelDestroyed(QObject *object)
 
     if (object == static_cast<QObject *>(d->model))
         setModel(0);
-}
-
-void GtDocView::delayedResizeEvent()
-{
-    Q_D(GtDocView);
-
-    d->delayResizeEventTimer->stop();
-    relayoutPages();
-    updateVisiblePages();
 }
 
 void GtDocView::documentChanged(GtDocument *document)
@@ -729,6 +932,7 @@ void GtDocView::documentChanged(GtDocument *document)
 
     d->document = document;
     d->pageCount = document ? document->pageCount() : 0;
+    d->renderCache->clear();
 
     if (d->document) {
         int currentPage = d->model->page();
@@ -736,40 +940,81 @@ void GtDocView::documentChanged(GtDocument *document)
             d->changePage(currentPage);
         }
         else {
-            d->pendingScroll = GtDocViewPrivate::SCROLL_TO_KEEP_POSITION;
             QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
         }
+    }
+    else {
+        QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
     }
 }
 
 void GtDocView::pageChanged(int page)
 {
-    Q_UNUSED(page);
+    Q_D(GtDocView);
+
+    if (!d->document)
+        return;
+
+    if (d->currentPage != page) {
+        d->changePage(page);
+    }
+    else {
+        QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
+    }
 }
 
 void GtDocView::scaleChanged(double scale)
 {
-    Q_UNUSED(scale);
+    Q_D(GtDocView);
+
+    if (ABS(d->scale - scale) < 0.0000001)
+        return;
+
+    d->scale = scale;
+
+    if (d->sizingMode == GtDocModel::FreeSize)
+        QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
 }
 
 void GtDocView::rotationChanged(int rotation)
 {
-    Q_UNUSED(rotation);
+    Q_D(GtDocView);
+
+    d->rotation = rotation;
+    d->renderCache->clear();
+
+    QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
 }
 
 void GtDocView::continuousChanged(bool continuous)
 {
-    Q_UNUSED(continuous);
+    Q_D(GtDocView);
+
+    d->continuous = continuous;
+
+    QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
 }
 
 void GtDocView::layoutModeChanged(int mode)
 {
-    Q_UNUSED(mode);
+    Q_D(GtDocView);
+
+    d->layoutMode = static_cast<GtDocModel::LayoutMode>(mode);
+
+    /* FIXME: if we're keeping the pixbuf cache around, we should
+     * extend the preload_cache_size to be 2 if dual_page is set.
+     */
+    QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
 }
 
 void GtDocView::sizingModeChanged(int mode)
 {
-    Q_UNUSED(mode);
+    Q_D(GtDocView);
+
+    d->sizingMode = static_cast<GtDocModel::SizingMode>(mode);
+
+    if (mode != GtDocModel::FreeSize)
+        QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
 }
 
 void GtDocView::relayoutPages()
@@ -780,6 +1025,25 @@ void GtDocView::relayoutPages()
     if (NULL == d->document) {
         d->resizeContentArea(size);
         return;
+    }
+
+    QScrollBar *hsbar = horizontalScrollBar();
+    QScrollBar *vsbar = verticalScrollBar();
+    double dx = (double)hsbar->value() / hsbar->maximum();
+    double dy = (double)vsbar->value() / vsbar->maximum();
+
+    if (d->sizingMode != GtDocModel::FreeSize) {
+        int width = viewport()->width();
+        int height = viewport()->height();
+
+        if (d->continuous && d->dualPage())
+            d->zoomForSizeContinuousAndDualPage(width, height);
+        else if (d->continuous)
+            d->zoomForSizeContinuous(width, height);
+        else if (d->dualPage())
+            d->zoomForSizeDualPage(width, height);
+        else
+            d->zoomForSizeSinglePage(width, height);
     }
 
     if (d->continuous) {
@@ -796,6 +1060,8 @@ void GtDocView::relayoutPages()
     }
 
     d->resizeContentArea(size);
+
+    scrollTo(hsbar->maximum() * dx, vsbar->maximum() * dy);
 }
 
 void GtDocView::updateVisiblePages(int newValue)
@@ -808,7 +1074,12 @@ void GtDocView::updateVisiblePages(int newValue)
     int begin = d->beginPage;
     int end = d->endPage;
 
-    if (d->continuous) {
+    if (!d->document) {
+        d->beginPage = -1;
+        d->endPage = -1;
+        d->currentPage = -1;
+    }
+    else if (d->continuous) {
         QRect unused, pageArea, border;
         bool found = false;
         int areaMax = -1, area;
@@ -854,13 +1125,11 @@ void GtDocView::updateVisiblePages(int newValue)
             }
         }
 
-        if (d->pendingScroll == GtDocViewPrivate::SCROLL_TO_KEEP_POSITION) {
-            bestCurrentPage = MAX(bestCurrentPage, d->beginPage);
+        bestCurrentPage = MAX(bestCurrentPage, d->beginPage);
 
-            if (d->currentPage != bestCurrentPage) {
-                d->currentPage = bestCurrentPage;
-                d->model->setPage(bestCurrentPage);
-            }
+        if (d->currentPage != bestCurrentPage) {
+            d->currentPage = bestCurrentPage;
+            d->model->setPage(bestCurrentPage);
         }
     }
     else if (d->dualPage()) {
@@ -892,25 +1161,15 @@ void GtDocView::updateVisiblePages(int newValue)
     if (begin != d->beginPage || end != d->endPage) {
     }
 
-    qDebug() << "visible:" << d->beginPage << d->endPage << d->currentPage;
-
     d->renderCache->setPageRange(d->beginPage, d->endPage);
-}
 
-QPoint GtDocView::contentAreaPosition() const
-{
-    return QPoint(horizontalScrollBar()->value(),
-                  verticalScrollBar()->value());
+    if (-1 == newValue)
+        viewport()->update();
 }
 
 void GtDocView::resizeEvent(QResizeEvent *e)
 {
     Q_D(GtDocView);
-
-    if (!d->document) {
-        d->resizeContentArea(e->size());
-        return;
-    }
 
     if (d->sizingMode == GtDocModel::FitWidth &&
         d->verticalScrollBarVisible && !verticalScrollBar()->isVisible() &&
@@ -925,19 +1184,16 @@ void GtDocView::resizeEvent(QResizeEvent *e)
         return;
     }
 
-    // start a timer that will refresh the pixmap after 0.2s
-    d->delayResizeEventTimer->start(200);
     d->verticalScrollBarVisible = verticalScrollBar()->isVisible();
+    QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
 }
 
 void GtDocView::keyPressEvent(QKeyEvent *)
 {
-    qDebug() << "key press";
 }
 
 void GtDocView::keyReleaseEvent(QKeyEvent *)
 {
-    qDebug() << "key release";
 }
 
 void GtDocView::inputMethodEvent(QInputMethodEvent *)
@@ -959,10 +1215,14 @@ void GtDocView::wheelEvent(QWheelEvent *e)
 
     e->accept();
     if ((modifiers & Qt::ControlModifier) == Qt::ControlModifier) {
-        if (delta < 0)
-            zoomOut();
-        else
-            zoomIn();
+        if (delta < 0) {
+            if (canZoomOut())
+                zoomOut();
+        }
+        else {
+            if (canZoomIn())
+                zoomIn();
+        }
     }
     else if ((modifiers & Qt::ShiftModifier) == Qt::ShiftModifier) {
     }
@@ -988,17 +1248,31 @@ void GtDocView::wheelEvent(QWheelEvent *e)
 
 void GtDocView::paintEvent(QPaintEvent *e)
 {
-    const QPoint areaPos = contentAreaPosition();
+    Q_D(GtDocView);
 
-    // create the rect into contents from the clipped screen rect
     QRect viewportRect = viewport()->rect();
-    viewportRect.translate(areaPos);
-
-    QRect contentsRect = e->rect().translated(areaPos).intersected(viewportRect);
+    QRect contentsRect = e->rect().intersected(viewportRect);
     if (!contentsRect.isValid())
         return;
 
-    qDebug() << "paint";
+    QPainter p(viewport());
+    int scrollX = horizontalScrollBar()->value();
+    int scrollY = verticalScrollBar()->value();
+    QRegion remainingArea(contentsRect);
+    QColor backColor = viewport()->palette().color(QPalette::Dark);
+
+    // draw page contents
+    for (int i = d->beginPage; i < d->endPage; ++i) {
+        d->drawPage(p, i, contentsRect, backColor,
+                    remainingArea, scrollX, scrollY);
+    }
+
+    // fill with background color the unpainted area
+    const QVector<QRect> &backRects = remainingArea.rects();
+    int backRectsNumber = backRects.count();
+
+    for (int i = 0; i < backRectsNumber; ++i)
+        p.fillRect(backRects[i], backColor);
 }
 
 GT_END_NAMESPACE

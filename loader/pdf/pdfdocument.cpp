@@ -10,7 +10,8 @@
 GT_BEGIN_NAMESPACE
 
 PdfDocument::PdfDocument()
-    : document(0)
+    : _context(0)
+    , document(0)
 {
 }
 
@@ -24,19 +25,18 @@ PdfDocument::~PdfDocument()
 
 bool PdfDocument::load(QIODevice *device)
 {
-    fz_context *context;
     fz_stream *stream;
 
-    context = PdfDocument::context();
-    stream = fz_new_stream(context, device,
+    _context = PdfDocument::context();
+    stream = fz_new_stream(_context, device,
                            PdfDocument::readPdfStream,
                            PdfDocument::closePdfStream);
     stream->seek = PdfDocument::seekPdfStream;
 
-    fz_try(context) {
-        document = fz_open_document_with_stream(context, "pdf", stream);
+    fz_try(_context) {
+        document = fz_open_document_with_stream(_context, "pdf", stream);
     }
-    fz_catch(context) {
+    fz_catch(_context) {
         if (document) {
             fz_close_document(document);
             document = 0;
@@ -59,7 +59,7 @@ GtAbstractPage* PdfDocument::loadPage(int index)
     if (0 == page)
         return 0;
 
-    return new PdfPage(document, page);
+    return new PdfPage(_context, document, page);
 }
 
 fz_context* PdfDocument::context()

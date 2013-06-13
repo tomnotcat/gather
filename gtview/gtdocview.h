@@ -38,9 +38,11 @@ public:
     bool canZoomOut() const;
     void zoomOut();
 
+    void scrollTo(int x, int y);
+
 private Q_SLOTS:
+    void renderFinished(int page);
     void modelDestroyed(QObject *object);
-    void delayedResizeEvent();
     void documentChanged(GtDocument *document);
     void pageChanged(int page);
     void scaleChanged(double scale);
@@ -50,9 +52,6 @@ private Q_SLOTS:
     void sizingModeChanged(int mode);
     void relayoutPages();
     void updateVisiblePages(int newValue = -1);
-
-protected:
-    QPoint contentAreaPosition() const;
 
 protected:
     void resizeEvent(QResizeEvent *);

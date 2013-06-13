@@ -4,6 +4,7 @@
 #include "gtmainwindow.h"
 #include "gtdocloader.h"
 #include "gtdocmodel.h"
+#include "gtdocpage.h"
 #include "gtdocument.h"
 #include "gtdocview.h"
 #include <QtCore/QtDebug>
@@ -26,6 +27,8 @@ GtMainWindow::GtMainWindow()
     // document thread
     docLoader = QSharedPointer<GtDocLoader>(new GtDocLoader());
     docModel = QSharedPointer<GtDocModel>(new GtDocModel());
+    docModel->setMinScale(0.1);
+    docModel->setMaxScale(4.0);
     docThread = new QThread(this);
 
     QDir dir(QCoreApplication::applicationDirPath());
@@ -40,7 +43,7 @@ GtMainWindow::GtMainWindow()
     // GUI thread
     docView = new GtDocView(docModel.data(), this);
     docView->setRenderThread(docThread);
-    docView->setRenderCacheSize(1024 * 1024 * 10);
+    docView->setRenderCacheSize(1024 * 1024 * 20);
 
     setCentralWidget(docView);
 
@@ -67,6 +70,7 @@ GtMainWindow::~GtMainWindow()
 
 void GtMainWindow::createActions()
 {
+    // file
     openAction = new QAction(tr("&Open"), this);
     // openAction->setIcon(QIcon(":/images/open.png"));
     openAction->setShortcut(QKeySequence::Open);
@@ -80,6 +84,12 @@ void GtMainWindow::createActions()
                 this, SLOT(openRecentFile()));
     }
 
+    exitAction = new QAction(tr("E&xit"), this);
+    exitAction->setShortcut(tr("Ctrl+Q"));
+    exitAction->setStatusTip(tr("Exit the application"));
+    connect(exitAction, SIGNAL(triggered()), this, SLOT(close()));
+
+    // edit
     cutAction = new QAction(tr("Cu&t"), this);
     cutAction->setShortcut(QKeySequence::Cut);
     cutAction->setStatusTip(tr("Cut"));
@@ -100,14 +110,39 @@ void GtMainWindow::createActions()
     findAction->setShortcut(QKeySequence::Find);
     findAction->setStatusTip(tr("Find"));
 
+    // view
+    zoomInAction = new QAction(tr("Zoom &In"), this);
+    if (1) {
+        QList<QKeySequence> shortcuts;
+        shortcuts.append(QKeySequence("Ctrl++"));
+        shortcuts.append(QKeySequence("Ctrl+="));
+        zoomInAction->setShortcuts(shortcuts);
+    }
+    else {
+        //zoomInAction->setShortcut(QKeySequence::ZoomIn);
+    }
+    zoomInAction->setStatusTip(tr("Zoom In"));
+    connect(zoomInAction, SIGNAL(triggered()), this, SLOT(zoomIn()));
+
+    zoomOutAction = new QAction(tr("Zoom &Out"), this);
+    zoomOutAction->setShortcut(QKeySequence::ZoomOut);
+    zoomOutAction->setStatusTip(tr("Zoom Out"));
+    connect(zoomOutAction, SIGNAL(triggered()), this, SLOT(zoomOut()));
+
+    rotateLeftAction = new QAction(tr("Rotate &Left"), this);
+    rotateLeftAction->setShortcut(QKeySequence("Ctrl+Left"));
+    rotateLeftAction->setStatusTip(tr("Rotate Left"));
+    connect(rotateLeftAction, SIGNAL(triggered()), this, SLOT(rotateLeft()));
+
+    rotateRightAction = new QAction(tr("Rotate &Right"), this);
+    rotateRightAction->setShortcut(QKeySequence("Ctrl+Right"));
+    rotateRightAction->setStatusTip(tr("Rotate Right"));
+    connect(rotateRightAction, SIGNAL(triggered()), this, SLOT(rotateRight()));
+
+    // help
     aboutAction = new QAction(tr("About &Gather"), this);
     aboutAction->setStatusTip(tr("Show the Qt library's About box"));
     connect(aboutAction, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
-
-    exitAction = new QAction(tr("E&xit"), this);
-    exitAction->setShortcut(tr("Ctrl+Q"));
-    exitAction->setStatusTip(tr("Exit the application"));
-    connect(exitAction, SIGNAL(triggered()), this, SLOT(close()));
 }
 
 void GtMainWindow::createMenus()
@@ -129,6 +164,14 @@ void GtMainWindow::createMenus()
     editMenu->addAction(deleteAction);
     editMenu->addSeparator();
     editMenu->addAction(findAction);
+
+    viewMenu = menuBar()->addMenu(tr("&View"));
+    viewMenu->addAction(zoomInAction);
+    viewMenu->addAction(zoomOutAction);
+    viewMenu->addSeparator();
+    QMenu *menu = viewMenu->addMenu(tr("Ori&entation"));
+    menu->addAction(rotateLeftAction);
+    menu->addAction(rotateRightAction);
 
     helpMenu = menuBar()->addMenu(tr("&Help"));
     helpMenu->addAction(aboutAction);
@@ -302,6 +345,26 @@ void GtMainWindow::openRecentFile()
 
 void GtMainWindow::find()
 {
+}
+
+void GtMainWindow::zoomIn()
+{
+    docView->zoomIn();
+}
+
+void GtMainWindow::zoomOut()
+{
+    docView->zoomOut();
+}
+
+void GtMainWindow::rotateLeft()
+{
+    docModel->setRotation(docModel->rotation() - 90);
+}
+
+void GtMainWindow::rotateRight()
+{
+    docModel->setRotation(docModel->rotation() + 90);
 }
 
 void GtMainWindow::about()

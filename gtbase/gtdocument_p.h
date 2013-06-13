@@ -6,12 +6,14 @@
 
 #include "gtdocument.h"
 #include <QtCore/QMutex>
+#include <QtCore/QSharedDataPointer>
 
 class QIODevice;
 
 GT_BEGIN_NAMESPACE
 
 class GtAbstractPage;
+class GtDocText;
 
 class GT_BASE_EXPORT GtDocumentPrivate
 {
@@ -25,13 +27,14 @@ public:
     void setDevice(QIODevice *device);
     GtAbstractPage* lockPage(int index);
     void unlockPage(int index);
+    void cacheText(int index, const QSharedDataPointer<GtDocText> &text);
+    inline QMutex* mutex() { return &_mutex; }
 
 protected:
     GtDocument *q_ptr;
     QIODevice *device;
     GtDocPage **pages;
     int pageCount;
-    int pageCacheSize;
     double maxWidth;
     double maxHeight;
     double minWidth;
@@ -39,8 +42,9 @@ protected:
     bool uniform;
     bool loaded;
     bool destroyed;
-    QMutex mutex;
-    QList<int> cachedPages;
+    QMutex _mutex;
+    QList<int> cachedPage;
+    QList<int> cachedText;
     QScopedPointer<GtAbstractDocument> abstractDoc;
 };
 

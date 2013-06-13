@@ -7,6 +7,7 @@
 #include "gtdocument.h"
 #include <QtCore/QDebug>
 #include <QtCore/QMutex>
+#include <QtGui/QColor>
 #include <QtGui/QImage>
 
 GT_BEGIN_NAMESPACE
@@ -19,12 +20,6 @@ public:
     explicit GtDocRenderCachePrivate(GtDocRenderCache *parent);
     ~GtDocRenderCachePrivate();
 
-public:
-    int pageBytes(int index, double scale, int rotation);
-
-    void preloadRange(int beginPage, int endPage,
-                      double scale, int rotation,
-                      int *preloadBegin, int *preloadEnd);
 public:
     enum {
         MaxPreloadedPages = 3
@@ -47,6 +42,20 @@ public:
         int rotation;
         bool rendered;
     };
+
+public:
+    int pageBytes(int index, double scale, int rotation);
+
+    void preloadRange(int beginPage, int endPage,
+                      double scale, int rotation,
+                      int *preloadBegin, int *preloadEnd);
+
+    inline CacheInfo* cacheInfo(int i) {
+        if (i >= index && i < index + caches.size())
+            return &caches[i - index];
+
+        return 0;
+    }
 
 private:
     GtDocRenderCache *q_ptr;
@@ -190,7 +199,7 @@ void GtDocRenderCache::setPageRange(int beginPage, int endPage)
     int rotation;
     int preloadBegin;
     int preloadEnd;
-    int i, j, c;
+    int i, c;
 
     scale = d->model->scale();
     rotation = d->model->rotation();
@@ -202,16 +211,17 @@ void GtDocRenderCache::setPageRange(int beginPage, int endPage)
     QMutexLocker lock(&d->mutex);
     int offset = d->index - preloadBegin;
     if (offset > 0) {
-        GtDocRenderCachePrivate::CacheInfo *data = d->caches.data();
-        c = d->caches.size();
         d->caches.resize(preloadEnd - preloadBegin);
+        c = d->caches.size();
 
-        if (c > d->caches.size() - offset)
-            c = d->caches.size() - offset;
-
-        for (i = 0, j = offset; i < c; ++i, ++j) {
-            data[j] = data[i];
-            data[i] = GtDocRenderCachePrivate::CacheInfo();
+        GtDocRenderCachePrivate::CacheInfo *data = d->caches.data();
+        for (i = c - 1; i >= 0; --i) {
+            if (i >= offset) {
+                data[i] = data[i - offset];
+            }
+            else {
+                data[i] = GtDocRenderCachePrivate::CacheInfo();
+            }
         }
     }
     else if (offset < 0) {
@@ -245,19 +255,18 @@ void GtDocRenderCache::setPageRange(int beginPage, int endPage)
     QMetaObject::invokeMethod(this, "renderNext", Qt::QueuedConnection);
 }
 
-QImage* GtDocRenderCache::image(int index)
+QImage GtDocRenderCache::image(int index)
 {
     Q_D(GtDocRenderCache);
 
+    QImage image;
     QMutexLocker lock(&d->mutex);
 
-    if (index < d->index)
-        return 0;
+    GtDocRenderCachePrivate::CacheInfo *info = d->cacheInfo(index);
+    if (info)
+        image = info->image;
 
-    if (index >= d->index + d->caches.size())
-        return 0;
-
-    return &d->caches[index].image;
+    return image;
 }
 
 void GtDocRenderCache::clear(void)
@@ -285,6 +294,7 @@ next:
     int rotation = 0;
     int pageIndex = -1;
 
+    // Find next task
     if (1) {
         QMutexLocker lock(&d->mutex);
         int i, j, c;
@@ -314,12 +324,33 @@ next:
         info->rendered = true;
     }
 
+    // Do painting
     GtDocument *document = d->model->document();
+    if (!document) {
+        qWarning() << "document is null when rendering";
+        return;
+    }
+
     GtDocPage *page = document->page(pageIndex);
     QSize size = page->size(scale, rotation);
     QImage image(size, QImage::Format_ARGB32);
 
+    image.fill(QColor(255, 255, 255));
     page->paint(&image, scale, rotation);
+
+    // Notify UI thread
+    GtDocRenderCachePrivate::CacheInfo *info = 0;
+    if (1) {
+        QMutexLocker lock(&d->mutex);
+
+        info = d->cacheInfo(pageIndex);
+        if (info)
+            info->image = image;
+    }
+
+    if (info) {
+        emit finished(page->index());
+    }
 
     goto next;
 }

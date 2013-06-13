@@ -8,6 +8,7 @@
 
 class QIODevice;
 class QPaintDevice;
+class QChar;
 class QRectF;
 
 GT_BEGIN_NAMESPACE
@@ -21,7 +22,7 @@ public:
 public:
     virtual void size(double *width, double *height) = 0;
     virtual int textLength() = 0;
-    virtual void extractText(ushort *texts, QRectF *rects) = 0;
+    virtual void extractText(QChar *texts, QRectF *rects) = 0;
     virtual void paint(QPaintDevice *device, double scale, int rotation) = 0;
 };
 

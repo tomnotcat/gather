@@ -31,6 +31,10 @@ protected:
 private Q_SLOTS:
     void open();
     void find();
+    void zoomIn();
+    void zoomOut();
+    void rotateLeft();
+    void rotateRight();
     void about();
     void openRecentFile();
     void updateStatusBar();
@@ -67,24 +71,34 @@ private:
 
     QMenu *fileMenu;
     QMenu *editMenu;
+    QMenu *viewMenu;
     QMenu *helpMenu;
 
     QToolBar *fileToolBar;
     QToolBar *editToolBar;
 
+    // file
     QAction *openAction;
     enum { MaxRecentFiles = 5 };
     QAction *recentFileActions[MaxRecentFiles];
     QAction *separatorAction;
+    QAction *exitAction;
 
+    // edit
     QAction *cutAction;
     QAction *copyAction;
     QAction *pasteAction;
     QAction *deleteAction;
     QAction *findAction;
 
+    // view
+    QAction *zoomInAction;
+    QAction *zoomOutAction;
+    QAction *rotateLeftAction;
+    QAction *rotateRightAction;
+
+    // help
     QAction *aboutAction;
-    QAction *exitAction;
 };
 
 GT_END_NAMESPACE

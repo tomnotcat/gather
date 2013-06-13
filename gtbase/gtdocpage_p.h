@@ -8,9 +8,6 @@
 
 GT_BEGIN_NAMESPACE
 
-class GtDocument;
-class GtAbstractPage;
-
 class GT_BASE_EXPORT GtDocPagePrivate
 {
     Q_DECLARE_PUBLIC(GtDocPage)
@@ -20,15 +17,16 @@ public:
     virtual ~GtDocPagePrivate();
 
 public:
-    inline void initialize(GtDocument *d, int i, double w, double h) {
+    inline void initialize(GtDocument *d, int i, double w, double h)
+    {
         document = d;
         index = i;
         width = w;
         height = h;
     }
 
-public:
     GtAbstractPage *abstractPage;
+    QSharedDataPointer<GtDocText> text;
 
 protected:
     GtDocPage *q_ptr;

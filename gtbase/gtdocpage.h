@@ -6,14 +6,33 @@
 
 #include "gtcommon.h"
 #include <QtCore/QObject>
+#include <QtCore/QSharedDataPointer>
 #include <QtCore/QSize>
 
 class QPaintDevice;
 
 GT_BEGIN_NAMESPACE
 
+class GtAbstractPage;
 class GtDocPagePrivate;
 class GtDocument;
+
+class GT_BASE_EXPORT GtDocText : public QSharedData
+{
+public:
+    GtDocText(QChar *texts, QRectF *rects, int length);
+    ~GtDocText();
+
+public:
+    inline const QChar* texts() { return _texts; }
+    inline const QRectF* rects() { return _rects; }
+    inline int length() { return _length; }
+
+private:
+    QChar *_texts;
+    QRectF *_rects;
+    int _length;
+};
 
 class GT_BASE_EXPORT GtDocPage : public QObject
 {
@@ -28,8 +47,7 @@ public:
     int index();
     void size(double *width, double *height);
     QSize size(double scale = 1.0, int rotation = 0);
-    int textLength();
-    void extractText(ushort *texts, QRectF *rects);
+    QSharedDataPointer<GtDocText> text();
     void paint(QPaintDevice *device, double scale = 1.0, int rotation = 0);
 
 protected:

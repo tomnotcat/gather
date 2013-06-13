@@ -35,6 +35,7 @@ protected:
     static void closePdfStream(fz_context *ctx, void *state);
 
 private:
+    fz_context *_context;
     fz_document *document;
 };
 

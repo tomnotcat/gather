@@ -12,7 +12,6 @@ GtDocumentPrivate::GtDocumentPrivate(GtAbstractDocument *ad)
     : device(0)
     , pages(0)
     , pageCount(0)
-    , pageCacheSize(0)
     , maxWidth(0)
     , maxHeight(0)
     , minWidth(0)
@@ -48,26 +47,24 @@ void GtDocumentPrivate::setDevice(QIODevice *device)
 
 GtAbstractPage* GtDocumentPrivate::lockPage(int index)
 {
-    if (index < 0 || index >= pageCount)
-        return 0;
+    Q_ASSERT(index >= 0 && index < pageCount);
 
-    mutex.lock();
+    _mutex.lock();
 
     if (0 == pages[index]->d_ptr->abstractPage) {
         pages[index]->d_ptr->abstractPage = abstractDoc->loadPage(index);
-        if (pageCacheSize > 0) {
-            cachedPages.append(index);
+        cachedPage.append(index);
 
-            if (cachedPages.size() > pageCacheSize) {
-                GtDocPage *temp = pages[cachedPages.front()];
+        const int pageCacheSize = 16;
+        if (cachedPage.size() > pageCacheSize) {
+            GtDocPage *temp = pages[cachedPage.front()];
 
-                if (temp->d_ptr->abstractPage) {
-                    delete temp->d_ptr->abstractPage;
-                    temp->d_ptr->abstractPage = 0;
-                }
-
-                cachedPages.pop_front();
+            if (temp->d_ptr->abstractPage) {
+                delete temp->d_ptr->abstractPage;
+                temp->d_ptr->abstractPage = 0;
             }
+
+            cachedPage.pop_front();
         }
     }
 
@@ -76,8 +73,42 @@ GtAbstractPage* GtDocumentPrivate::lockPage(int index)
 
 void GtDocumentPrivate::unlockPage(int index)
 {
-    Q_UNUSED(index);
-    mutex.unlock();
+    Q_ASSERT(index >= 0 && index < pageCount);
+    _mutex.unlock();
+}
+
+void GtDocumentPrivate::cacheText(int index, const QSharedDataPointer<GtDocText> &text)
+{
+    Q_ASSERT(index >= 0 && index < pageCount);
+
+    QMutexLocker lock(&_mutex);
+    if (!pages[index]->d_ptr->text) {
+        pages[index]->d_ptr->text = text;
+        cachedText.append(index);
+
+        const int textCacheSize = 16;
+        if (cachedText.size() > textCacheSize) {
+            int removeCount = cachedText.size() - textCacheSize;
+
+            QList<int>::iterator it = cachedText.begin();
+            while (removeCount > 0 && it != cachedText.end()) {
+                if (*it != index && pages[*it]->d_ptr->text->ref.load() < 2) {
+                    pages[*it]->d_ptr->text = 0;
+                    it = cachedText.erase(it);
+                    --removeCount;
+                }
+                else {
+                    ++it;
+                }
+            }
+
+            if (removeCount > 0)
+                qWarning() << "page text cache surpass:" << removeCount;
+        }
+    }
+    else {
+        qWarning() << "page text already cached:" << index;
+    }
 }
 
 GtDocument::GtDocument(GtAbstractDocument *ad, QObject *parent)
