@@ -29,6 +29,7 @@ GtMainWindow::GtMainWindow()
     docModel = QSharedPointer<GtDocModel>(new GtDocModel());
     docModel->setMinScale(0.1);
     docModel->setMaxScale(4.0);
+    docModel->setMouseMode(GtDocModel::SelectText);
     docThread = new QThread(this);
 
     QDir dir(QCoreApplication::applicationDirPath());

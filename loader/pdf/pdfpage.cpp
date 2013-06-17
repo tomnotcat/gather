@@ -13,7 +13,6 @@ PdfPage::PdfPage(fz_context *c, fz_document *d, fz_page *p)
     , document(d)
     , page(p)
     , pageList(0)
-    , annotationsList(0)
     , pageText(0)
     , pageSheet(0)
 {
@@ -23,9 +22,6 @@ PdfPage::~PdfPage()
 {
     if (pageList)
         fz_free_display_list(context, pageList);
-
-    if (annotationsList)
-        fz_free_display_list(context, annotationsList);
 
     if (pageText)
         fz_free_text_page(context, pageText);
@@ -92,7 +88,15 @@ void PdfPage::extractText(QChar *texts, QRectF *rects)
                 }
             }
 
-            rects[p].setCoords(0, 0, 0, 0);
+            if (p > 0) {
+                int x = rects[p - 1].x() + rects[p - 1].width();
+                int y = rects[p - 1].y();
+                rects[p].setCoords(x, y, x + 1, y + rects[p - 1].height());
+            }
+            else {
+                rects[p].setCoords(0, 0, 0, 0);
+            }
+
             texts[p++] = '\n';
         }
     }
@@ -147,7 +151,6 @@ void PdfPage::loadContent()
 {
     fz_device *mdev;
     fz_device *tdev;
-    fz_annot *annot;
     fz_rect bbox;
     fz_cookie cookie = { 0, 0, 0, 0 };
 
@@ -155,19 +158,6 @@ void PdfPage::loadContent()
         pageList = fz_new_display_list(context);
         mdev = fz_new_list_device(context, pageList);
         fz_run_page_contents(document, page, mdev, &fz_identity, &cookie);
-        fz_free_device(mdev);
-    }
-
-    if (!annotationsList) {
-        annotationsList = fz_new_display_list(context);
-        mdev = fz_new_list_device(context, annotationsList);
-
-        for (annot = fz_first_annot(document, page);
-             annot; annot = fz_next_annot(document, annot))
-        {
-            fz_run_annot(document, page, annot, mdev, &fz_identity, &cookie);
-        }
-
         fz_free_device(mdev);
     }
 
@@ -179,14 +169,6 @@ void PdfPage::loadContent()
         tdev = fz_new_text_device(context, pageSheet, pageText);
         if (pageList) {
             fz_run_display_list(pageList,
-                                tdev,
-                                &fz_identity,
-                                &fz_infinite_rect,
-                                &cookie);
-        }
-
-        if (annotationsList) {
-            fz_run_display_list(annotationsList,
                                 tdev,
                                 &fz_identity,
                                 &fz_infinite_rect,

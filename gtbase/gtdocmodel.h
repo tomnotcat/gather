@@ -61,6 +61,15 @@ public:
     SizingMode sizingMode() const;
     void setSizingMode(SizingMode mode);
 
+    enum MouseMode {
+        BrowseMode,
+        SelectText,
+        SelectRect
+    };
+
+    MouseMode mouseMode() const;
+    void setMouseMode(MouseMode mode);
+
 Q_SIGNALS:
     void documentChanged(GtDocument *document);
     void pageChanged(int page);
@@ -69,6 +78,7 @@ Q_SIGNALS:
     void continuousChanged(bool continuous);
     void layoutModeChanged(int mode);
     void sizingModeChanged(int mode);
+    void mouseModeChanged(int mode);
 
 private Q_SLOTS:
     void documentDestroyed(QObject *object);

@@ -38,6 +38,7 @@ public:
     bool canZoomOut() const;
     void zoomOut();
 
+    QPoint scrollPoint() const;
     void scrollTo(int x, int y);
 
 private Q_SLOTS:
@@ -50,6 +51,7 @@ private Q_SLOTS:
     void continuousChanged(bool continuous);
     void layoutModeChanged(int mode);
     void sizingModeChanged(int mode);
+    void mouseModeChanged(int mode);
     void relayoutPages();
     void updateVisiblePages(int newValue = -1);
 
@@ -63,6 +65,12 @@ protected:
     void wheelEvent(QWheelEvent *);
 
     void paintEvent(QPaintEvent *);
+    void mouseMoveEvent(QMouseEvent *);
+    void mousePressEvent(QMouseEvent *);
+    void mouseReleaseEvent(QMouseEvent *);
+    void mouseDoubleClickEvent(QMouseEvent *);
+
+    bool viewportEvent(QEvent *e);
 
 private:
     QScopedPointer<GtDocViewPrivate> d_ptr;

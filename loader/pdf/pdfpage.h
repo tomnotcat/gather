@@ -32,7 +32,6 @@ private:
     fz_document *document;
     fz_page *page;
     fz_display_list *pageList;
-    fz_display_list *annotationsList;
     fz_text_page *pageText;
     fz_text_sheet *pageSheet;
 };

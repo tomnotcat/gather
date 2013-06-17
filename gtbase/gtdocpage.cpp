@@ -17,6 +17,13 @@ GtDocText::GtDocText(QChar *texts, QRectF *rects, int length)
 {
 }
 
+GtDocText::GtDocText(const GtDocText &o)
+    : QSharedData(o)
+{
+    // this should not happen
+    Q_ASSERT(0);
+}
+
 GtDocText::~GtDocText()
 {
     delete[] _texts;
@@ -93,7 +100,20 @@ QSize GtDocPage::size(double scale, int rotation)
     return QSize(height + 0.5, width + 0.5);
 }
 
-QSharedDataPointer<GtDocText> GtDocPage::text()
+int GtDocPage::length()
+{
+    Q_D(GtDocPage);
+
+    if (-1 == d->textLength) {
+        GtAbstractPage *abstractPage = d->document->d_ptr->lockPage(d->index);
+        d->textLength = abstractPage->textLength();
+        d->document->d_ptr->unlockPage(d->index);
+    }
+
+    return d->textLength;
+}
+
+const QSharedDataPointer<GtDocText> GtDocPage::text()
 {
     Q_D(GtDocPage);
 
@@ -102,16 +122,18 @@ QSharedDataPointer<GtDocText> GtDocPage::text()
         QChar *texts = 0;
         QRectF *rects = 0;
         GtAbstractPage *abstractPage = d->document->d_ptr->lockPage(d->index);
-        int length = abstractPage->textLength();
 
-        if (length > 0) {
-            texts = new QChar[length];
-            rects = new QRectF[length];
+        if (-1 == d->textLength)
+            d->textLength = abstractPage->textLength();
+
+        if (d->textLength > 0) {
+            texts = new QChar[d->textLength];
+            rects = new QRectF[d->textLength];
             d->abstractPage->extractText(texts, rects);
         }
 
         d->document->d_ptr->unlockPage(d->index);
-        r = new GtDocText(texts, rects, length);
+        r = new GtDocText(texts, rects, d->textLength);
         d->document->d_ptr->cacheText(d->index, r);
     }
 

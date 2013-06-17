@@ -28,6 +28,7 @@ protected:
     bool continuous;
     GtDocModel::LayoutMode layoutMode;
     GtDocModel::SizingMode sizingMode;
+    GtDocModel::MouseMode mouseMode;
 };
 
 GtDocModelPrivate::GtDocModelPrivate()
@@ -41,6 +42,7 @@ GtDocModelPrivate::GtDocModelPrivate()
     , continuous(true)
     , layoutMode(GtDocModel::SinglePage)
     , sizingMode(GtDocModel::FitWidth)
+    , mouseMode(GtDocModel::BrowseMode)
 {
 }
 
@@ -270,6 +272,24 @@ void GtDocModel::setSizingMode(SizingMode mode)
     d->sizingMode = mode;
 
     emit sizingModeChanged(d->sizingMode);
+}
+
+GtDocModel::MouseMode GtDocModel::mouseMode() const
+{
+    Q_D(const GtDocModel);
+    return d->mouseMode;
+}
+
+void GtDocModel::setMouseMode(MouseMode mode)
+{
+    Q_D(GtDocModel);
+
+    if (mode == d->mouseMode)
+        return;
+
+    d->mouseMode = mode;
+
+    emit mouseModeChanged(d->mouseMode);
 }
 
 void GtDocModel::documentDestroyed(QObject *object)
