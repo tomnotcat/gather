@@ -22,8 +22,23 @@ public:
 public:
     virtual void size(double *width, double *height) = 0;
     virtual int textLength() = 0;
-    virtual void extractText(QChar *texts, QRectF *rects) = 0;
+    virtual int extractText(QChar *texts, QRectF *rects, int length) = 0;
     virtual void paint(QPaintDevice *device, double scale, int rotation) = 0;
+};
+
+class GT_BASE_EXPORT GtAbstractOutline
+{
+public:
+    GtAbstractOutline();
+    virtual ~GtAbstractOutline();
+
+public:
+    virtual void* iterator() = 0;
+    virtual void* nextIterator(void *it) = 0;
+    virtual void* childIterator(void *it) = 0;
+    virtual void* freeIterator(void *it) = 0;
+    virtual QString title(void *it) = 0;
+    virtual int page(void *it) = 0;
 };
 
 class GT_BASE_EXPORT GtAbstractDocument
@@ -36,6 +51,7 @@ public:
     virtual bool load(QIODevice *device) = 0;
     virtual int countPages() = 0;
     virtual GtAbstractPage* loadPage(int index) = 0;
+    virtual GtAbstractOutline* loadOutline() = 0;
 };
 
 #define GT_DEFINE_DOCUMENT_LOADER(constructor) \

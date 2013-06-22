@@ -23,6 +23,7 @@ public:
     bool load(QIODevice *device);
     int countPages();
     GtAbstractPage* loadPage(int index);
+    GtAbstractOutline* loadOutline();
 
 public:
     static fz_context* context();

@@ -3,6 +3,7 @@
  */
 #include "gtdocument_p.h"
 #include "gtabstractdocument.h"
+#include "gtdocoutline.h"
 #include "gtdocpage_p.h"
 #include <QtCore/QDebug>
 
@@ -11,6 +12,7 @@ GT_BEGIN_NAMESPACE
 GtDocumentPrivate::GtDocumentPrivate(GtAbstractDocument *ad)
     : device(0)
     , pages(0)
+    , outline(0)
     , pageCount(0)
     , maxWidth(0)
     , maxHeight(0)
@@ -29,6 +31,7 @@ GtDocumentPrivate::~GtDocumentPrivate()
         delete pages[i];
 
     delete[] pages;
+    delete outline;
 
     destroyed = true;
 }
@@ -190,6 +193,12 @@ GtDocPage* GtDocument::page(int index)
     return d->pages[index];
 }
 
+GtDocOutline* GtDocument::outline()
+{
+    Q_D(GtDocument);
+    return d->outline;
+}
+
 void GtDocument::deviceDestroyed(QObject*)
 {
     Q_D(GtDocument);
@@ -255,6 +264,10 @@ void GtDocument::slotLoadDocument()
             }
         }
     }
+
+    // load outline
+    GtAbstractOutline *outline = d->abstractDoc->loadOutline();
+    d->outline = new GtDocOutline(outline);
 
     d->loaded = true;
     emit loaded(this);

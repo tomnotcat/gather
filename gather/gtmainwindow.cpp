@@ -4,6 +4,7 @@
 #include "gtmainwindow.h"
 #include "gtdocloader.h"
 #include "gtdocmodel.h"
+#include "gtdocoutline.h"
 #include "gtdocpage.h"
 #include "gtdocument.h"
 #include "gtdocview.h"
@@ -220,19 +221,26 @@ void GtMainWindow::docLoaded(GtDocument *doc)
         return;
     }
 
-    if (document->isLoaded())
+    if (document->isLoaded()) {
         docModel->setDocument(document.data());
-    else
+
+        GtDocOutline *outline = document->outline();
+        GtDocOutline::Iterator it(*outline);
+        while (it.hasNext()) {
+            qDebug() << it.next();
+        }
+    }
+    else {
         Q_ASSERT(0);
+    }
 }
 
 void GtMainWindow::open()
 {
     if (okToContinue()) {
-        QString fileName = QFileDialog::getOpenFileName(this,
-                                                        tr("Open Document"),
-                                                        lastOpenPath,
-                                                        tr("Document Files (*.pdf *.txt);;All Files (*.*)"));
+        QString fileName = QFileDialog::getOpenFileName(
+            this, tr("Open Document"), lastOpenPath,
+            tr("Document Files (*.pdf *.txt);;All Files (*.*)"));
 
         if (fileName.isEmpty())
             return;

@@ -13,6 +13,14 @@ GtAbstractPage::~GtAbstractPage()
 {
 }
 
+GtAbstractOutline::GtAbstractOutline()
+{
+}
+
+GtAbstractOutline::~GtAbstractOutline()
+{
+}
+
 GtAbstractDocument::GtAbstractDocument()
 {
 }

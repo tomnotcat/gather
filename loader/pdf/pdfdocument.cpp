@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "pdfdocument.h"
+#include "pdfoutline.h"
 #include "pdfpage.h"
 #include <QtCore/QDebug>
 #include <QtCore/QMutex>
@@ -60,6 +61,12 @@ GtAbstractPage* PdfDocument::loadPage(int index)
         return 0;
 
     return new PdfPage(_context, document, page);
+}
+
+GtAbstractOutline* PdfDocument::loadOutline()
+{
+    fz_outline *outline = fz_load_outline(document);
+    return new PdfOutline(_context, outline);
 }
 
 fz_context* PdfDocument::context()

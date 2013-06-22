@@ -63,7 +63,7 @@ int PdfPage::textLength()
     return len;
 }
 
-void PdfPage::extractText(QChar *texts, QRectF *rects)
+int PdfPage::extractText(QChar *texts, QRectF *rects, int length)
 {
     loadContent();
 
@@ -100,6 +100,9 @@ void PdfPage::extractText(QChar *texts, QRectF *rects)
             texts[p++] = '\n';
         }
     }
+
+    Q_ASSERT(p == length);
+    return p;
 }
 
 void PdfPage::paint(QPaintDevice *device, double scale, int rotation)

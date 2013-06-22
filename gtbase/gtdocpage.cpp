@@ -129,7 +129,7 @@ const QSharedDataPointer<GtDocText> GtDocPage::text()
         if (d->textLength > 0) {
             texts = new QChar[d->textLength];
             rects = new QRectF[d->textLength];
-            d->abstractPage->extractText(texts, rects);
+            d->abstractPage->extractText(texts, rects, d->textLength);
         }
 
         d->document->d_ptr->unlockPage(d->index);

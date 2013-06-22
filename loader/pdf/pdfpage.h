@@ -21,7 +21,7 @@ public:
 public:
     void size(double *width, double *height);
     int textLength();
-    void extractText(QChar *texts, QRectF *rects);
+    int extractText(QChar *texts, QRectF *rects, int length);
     void paint(QPaintDevice *device, double scale, int rotation);
 
 protected:

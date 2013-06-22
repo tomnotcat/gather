@@ -11,6 +11,7 @@
 GT_BEGIN_NAMESPACE
 
 class GtAbstractDocument;
+class GtDocOutline;
 class GtDocPage;
 class GtDocumentPrivate;
 
@@ -29,6 +30,7 @@ public:
     QSize minPageSize(double scale = 1.0, int rotation = 0);
     int pageCount();
     GtDocPage* page(int index);
+    GtDocOutline* outline();
 
 Q_SIGNALS:
     void loaded(GtDocument * = 0);
