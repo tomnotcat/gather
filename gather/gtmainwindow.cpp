@@ -12,19 +12,16 @@
 #include <QtCore/QSettings>
 #include <QtCore/QThread>
 #include <QtGui/QCloseEvent>
-#include <QtWidgets/QAction>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QFileDialog>
-#include <QtWidgets/QLabel>
-#include <QtWidgets/QMenuBar>
 #include <QtWidgets/QMessageBox>
-#include <QtWidgets/QStatusBar>
-#include <QtWidgets/QToolBar>
 
 GT_BEGIN_NAMESPACE
 
 GtMainWindow::GtMainWindow()
 {
+    setupUi(this);
+
     // document thread
     docLoader = QSharedPointer<GtDocLoader>(new GtDocLoader());
     docModel = QSharedPointer<GtDocModel>(new GtDocModel());
@@ -43,17 +40,26 @@ GtMainWindow::GtMainWindow()
     docThread->start();
 
     // GUI thread
-    docView = new GtDocView(docModel.data(), this);
+    docView->setModel(docModel.data());
     docView->setRenderThread(docThread);
     docView->setRenderCacheSize(1024 * 1024 * 20);
 
-    setCentralWidget(docView);
+    // Recent files
+    recentFileActions[0] = actionRecentFile0;
+    recentFileActions[1] = actionRecentFile1;
+    recentFileActions[2] = actionRecentFile2;
+    recentFileActions[3] = actionRecentFile3;
+    recentFileActions[4] = actionRecentFile4;
 
-    createActions();
-    createMenus();
-    createContextMenu();
-    createToolBars();
-    createStatusBar();
+    for (int i = 0; i < MaxRecentFiles; ++i) {
+        recentFileActions[i]->setVisible(false);
+        connect(recentFileActions[i], SIGNAL(triggered()),
+                this, SLOT(openRecentFile()));
+    }
+
+    recentFileSeparator = menuFile->insertSeparator(actionExit);
+
+    // Settings
     readSettings();
     setWindowIcon(QIcon(":/images/logo.bmp"));
     setCurrentFile("");
@@ -70,147 +76,47 @@ GtMainWindow::~GtMainWindow()
     docThread->wait();
 }
 
-void GtMainWindow::createActions()
+void GtMainWindow::on_actionOpen_triggered()
 {
-    // file
-    openAction = new QAction(tr("&Open"), this);
-    // openAction->setIcon(QIcon(":/images/open.png"));
-    openAction->setShortcut(QKeySequence::Open);
-    openAction->setStatusTip(tr("Open a document"));
-    connect(openAction, SIGNAL(triggered()), this, SLOT(open()));
+    if (okToContinue()) {
+        QString fileName = QFileDialog::getOpenFileName(
+            this, tr("Open Document"), lastOpenPath,
+            tr("Document Files (*.pdf *.txt);;All Files (*.*)"));
 
-    for (int i = 0; i < MaxRecentFiles; ++i) {
-        recentFileActions[i] = new QAction(this);
-        recentFileActions[i]->setVisible(false);
-        connect(recentFileActions[i], SIGNAL(triggered()),
-                this, SLOT(openRecentFile()));
+        if (fileName.isEmpty())
+            return;
+
+        lastOpenPath = QFileInfo(fileName).path();
+        loadFile(fileName);
     }
-
-    exitAction = new QAction(tr("E&xit"), this);
-    exitAction->setShortcut(tr("Ctrl+Q"));
-    exitAction->setStatusTip(tr("Exit the application"));
-    connect(exitAction, SIGNAL(triggered()), this, SLOT(close()));
-
-    // edit
-    cutAction = new QAction(tr("Cu&t"), this);
-    cutAction->setShortcut(QKeySequence::Cut);
-    cutAction->setStatusTip(tr("Cut"));
-
-    copyAction = new QAction(tr("Cop&y"), this);
-    copyAction->setShortcut(QKeySequence::Copy);
-    copyAction->setStatusTip(tr("Copy"));
-
-    pasteAction = new QAction(tr("P&aste"), this);
-    pasteAction->setShortcut(QKeySequence::Paste);
-    pasteAction->setStatusTip(tr("Paste"));
-
-    deleteAction = new QAction(tr("&Delete"), this);
-    deleteAction->setShortcut(QKeySequence::Delete);
-    deleteAction->setStatusTip(tr("Delete"));
-
-    findAction = new QAction(tr("Find"), this);
-    findAction->setShortcut(QKeySequence::Find);
-    findAction->setStatusTip(tr("Find"));
-
-    // view
-    zoomInAction = new QAction(tr("Zoom &In"), this);
-    if (1) {
-        QList<QKeySequence> shortcuts;
-        shortcuts.append(QKeySequence("Ctrl++"));
-        shortcuts.append(QKeySequence("Ctrl+="));
-        zoomInAction->setShortcuts(shortcuts);
-    }
-    else {
-        //zoomInAction->setShortcut(QKeySequence::ZoomIn);
-    }
-    zoomInAction->setStatusTip(tr("Zoom In"));
-    connect(zoomInAction, SIGNAL(triggered()), this, SLOT(zoomIn()));
-
-    zoomOutAction = new QAction(tr("Zoom &Out"), this);
-    zoomOutAction->setShortcut(QKeySequence::ZoomOut);
-    zoomOutAction->setStatusTip(tr("Zoom Out"));
-    connect(zoomOutAction, SIGNAL(triggered()), this, SLOT(zoomOut()));
-
-    rotateLeftAction = new QAction(tr("Rotate &Left"), this);
-    rotateLeftAction->setShortcut(QKeySequence("Ctrl+Left"));
-    rotateLeftAction->setStatusTip(tr("Rotate Left"));
-    connect(rotateLeftAction, SIGNAL(triggered()), this, SLOT(rotateLeft()));
-
-    rotateRightAction = new QAction(tr("Rotate &Right"), this);
-    rotateRightAction->setShortcut(QKeySequence("Ctrl+Right"));
-    rotateRightAction->setStatusTip(tr("Rotate Right"));
-    connect(rotateRightAction, SIGNAL(triggered()), this, SLOT(rotateRight()));
-
-    // help
-    aboutAction = new QAction(tr("About &Gather"), this);
-    aboutAction->setStatusTip(tr("Show the Qt library's About box"));
-    connect(aboutAction, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
 }
 
-void GtMainWindow::createMenus()
+void GtMainWindow::on_actionExit_triggered()
 {
-    fileMenu = menuBar()->addMenu(tr("&File"));
-    fileMenu->addAction(openAction);
-    separatorAction = fileMenu->addSeparator();
-
-    for (int i = 0; i < MaxRecentFiles; ++i)
-        fileMenu->addAction(recentFileActions[i]);
-
-    fileMenu->addSeparator();
-    fileMenu->addAction(exitAction);
-
-    editMenu = menuBar()->addMenu(tr("&Edit"));
-    editMenu->addAction(cutAction);
-    editMenu->addAction(copyAction);
-    editMenu->addAction(pasteAction);
-    editMenu->addAction(deleteAction);
-    editMenu->addSeparator();
-    editMenu->addAction(findAction);
-
-    viewMenu = menuBar()->addMenu(tr("&View"));
-    viewMenu->addAction(zoomInAction);
-    viewMenu->addAction(zoomOutAction);
-    viewMenu->addSeparator();
-    QMenu *menu = viewMenu->addMenu(tr("Ori&entation"));
-    menu->addAction(rotateLeftAction);
-    menu->addAction(rotateRightAction);
-
-    helpMenu = menuBar()->addMenu(tr("&Help"));
-    helpMenu->addAction(aboutAction);
+    close();
 }
 
-void GtMainWindow::createContextMenu()
+void GtMainWindow::on_actionZoomIn_triggered()
 {
+    docView->zoomIn();
 }
 
-void GtMainWindow::createToolBars()
+void GtMainWindow::on_actionZoomOut_triggered()
 {
-    fileToolBar = addToolBar(tr("&File"));
-    fileToolBar->addAction(openAction);
-
-    editToolBar = addToolBar(tr("&Edit"));
-    editToolBar->addAction(cutAction);
-    editToolBar->addAction(copyAction);
-    editToolBar->addAction(pasteAction);
-    editToolBar->addSeparator();
-    editToolBar->addAction(findAction);
+    docView->zoomOut();
 }
 
-void GtMainWindow::createStatusBar()
+void GtMainWindow::on_actionRotateLeft_triggered()
 {
-    locationLabel = new QLabel(" W999 ");
-    locationLabel->setAlignment(Qt::AlignHCenter);
-    locationLabel->setMinimumSize(locationLabel->sizeHint());
-
-    formulaLabel = new QLabel;
-    formulaLabel->setIndent(3);
-    statusBar()->addWidget(locationLabel);
-    statusBar()->addWidget(formulaLabel, 1);
-
-    updateStatusBar();
+    docModel->setRotation(docModel->rotation() - 90);
 }
 
-void GtMainWindow::updateStatusBar()
+void GtMainWindow::on_actionRotateRight_triggered()
+{
+    docModel->setRotation(docModel->rotation() + 90);
+}
+
+void GtMainWindow::on_actionAboutGather_triggered()
 {
 }
 
@@ -235,19 +141,39 @@ void GtMainWindow::docLoaded(GtDocument *doc)
     }
 }
 
-void GtMainWindow::open()
+void GtMainWindow::readSettings()
 {
-    if (okToContinue()) {
-        QString fileName = QFileDialog::getOpenFileName(
-            this, tr("Open Document"), lastOpenPath,
-            tr("Document Files (*.pdf *.txt);;All Files (*.*)"));
+    QSettings settings("Software Inc.", "Spreadsheet");
+    restoreGeometry(settings.value("geometry").toByteArray());
+    recentFiles = settings.value("recentFiles").toStringList();
+    lastOpenPath = settings.value("lastOpenPath").toString();
+    updateRecentFileActions();
+}
 
-        if (fileName.isEmpty())
-            return;
+void GtMainWindow::writeSettings()
+{
+    QSettings settings("Software Inc.", "Spreadsheet");
+    settings.setValue("geometry", saveGeometry());
+    settings.setValue("recentFiles", recentFiles);
+    settings.setValue("lastOpenPath", lastOpenPath);
+}
 
-        lastOpenPath = QFileInfo(fileName).path();
-        loadFile(fileName);
+bool GtMainWindow::okToContinue()
+{
+    if (isWindowModified()) {
+        int r = QMessageBox::warning(this, tr("hello"),
+                                     tr("The document has been modified.\n"
+                                        "Do you want to save your changes?"),
+                                     QMessageBox::Yes | QMessageBox::No
+                                     | QMessageBox::Cancel);
+        if (r == QMessageBox::Yes) {
+            return true;
+        } else if (r == QMessageBox::Cancel) {
+            return false;
+        }
     }
+
+    return true;
 }
 
 bool GtMainWindow::loadFile(const QString &fileName)
@@ -273,33 +199,6 @@ bool GtMainWindow::loadFile(const QString &fileName)
     return true;
 }
 
-bool GtMainWindow::okToContinue()
-{
-    if (isWindowModified()) {
-        int r = QMessageBox::warning(this, tr("Spreadsheet"),
-                                     tr("The document has been modified.\n"
-                                        "Do you want to save your changes?"),
-                                     QMessageBox::Yes | QMessageBox::No
-                                     | QMessageBox::Cancel);
-        if (r == QMessageBox::Yes) {
-            return true;
-        } else if (r == QMessageBox::Cancel) {
-            return false;
-        }
-    }
-    return true;
-}
-
-void GtMainWindow::closeEvent(QCloseEvent *event)
-{
-    if (okToContinue()) {
-        writeSettings();
-        event->accept();
-    } else {
-        event->ignore();
-    }
-}
-
 void GtMainWindow::setCurrentFile(const QString &fileName)
 {
     curFile = fileName;
@@ -314,11 +213,6 @@ void GtMainWindow::setCurrentFile(const QString &fileName)
     }
 
     setWindowTitle(shownName);
-}
-
-QString GtMainWindow::strippedName(const QString &fullFileName)
-{
-    return QFileInfo(fullFileName).fileName();
 }
 
 void GtMainWindow::updateRecentFileActions()
@@ -340,7 +234,13 @@ void GtMainWindow::updateRecentFileActions()
             recentFileActions[j]->setVisible(false);
         }
     }
-    separatorAction->setVisible(!recentFiles.isEmpty());
+
+    recentFileSeparator->setVisible(!recentFiles.isEmpty());
+}
+
+QString GtMainWindow::strippedName(const QString &fullFileName)
+{
+    return QFileInfo(fullFileName).fileName();
 }
 
 void GtMainWindow::openRecentFile()
@@ -352,56 +252,28 @@ void GtMainWindow::openRecentFile()
     }
 }
 
-void GtMainWindow::find()
+void GtMainWindow::changeEvent(QEvent *event)
 {
+    QWidget::changeEvent(event);
+
+    switch (event->type()) {
+    case QEvent::LanguageChange:
+        retranslateUi(this);
+        break;
+
+    default:
+        break;
+    }
 }
 
-void GtMainWindow::zoomIn()
+void GtMainWindow::closeEvent(QCloseEvent *event)
 {
-    docView->zoomIn();
-}
-
-void GtMainWindow::zoomOut()
-{
-    docView->zoomOut();
-}
-
-void GtMainWindow::rotateLeft()
-{
-    docModel->setRotation(docModel->rotation() - 90);
-}
-
-void GtMainWindow::rotateRight()
-{
-    docModel->setRotation(docModel->rotation() + 90);
-}
-
-void GtMainWindow::about()
-{
-    QMessageBox::about(this, tr("About Spreadsheet"),
-                       tr("<h2>Spreadsheet 1.1</h2>"
-                          "<p>Copyright &copy; 2008 Software Inc."
-                          "<p>Spreadsheet is a small application that "
-                          "demonstrates QAction, QMainWindow, QMenuBar, "
-                          "QStatusBar, QTableWidget, QToolBar, and many other "
-                          "Qt classes."));
-}
-
-void GtMainWindow::writeSettings()
-{
-    QSettings settings("Software Inc.", "Spreadsheet");
-    settings.setValue("geometry", saveGeometry());
-    settings.setValue("recentFiles", recentFiles);
-    settings.setValue("lastOpenPath", lastOpenPath);
-}
-
-void GtMainWindow::readSettings()
-{
-    QSettings settings("Software Inc.", "Spreadsheet");
-    restoreGeometry(settings.value("geometry").toByteArray());
-    recentFiles = settings.value("recentFiles").toStringList();
-    lastOpenPath = settings.value("lastOpenPath").toString();
-    updateRecentFileActions();
+    if (okToContinue()) {
+        writeSettings();
+        event->accept();
+    } else {
+        event->ignore();
+    }
 }
 
 GT_END_NAMESPACE

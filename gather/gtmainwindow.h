@@ -5,10 +5,7 @@
 #define __GT_MAINWINDOW_H__
 
 #include "gtcommon.h"
-#include <QtWidgets/QMainWindow>
-
-class QAction;
-class QLabel;
+#include "ui_gtmainwindow.h"
 
 GT_BEGIN_NAMESPACE
 
@@ -17,7 +14,7 @@ class GtDocument;
 class GtDocModel;
 class GtDocView;
 
-class GtMainWindow : public QMainWindow
+class GtMainWindow : public QMainWindow, private Ui::MainWindow
 {
     Q_OBJECT;
 
@@ -25,27 +22,18 @@ public:
     GtMainWindow();
     ~GtMainWindow();
 
-protected:
-    void closeEvent(QCloseEvent *event);
-
 private Q_SLOTS:
-    void open();
-    void find();
-    void zoomIn();
-    void zoomOut();
-    void rotateLeft();
-    void rotateRight();
-    void about();
+    void on_actionOpen_triggered();
+    void on_actionExit_triggered();
+    void on_actionZoomIn_triggered();
+    void on_actionZoomOut_triggered();
+    void on_actionRotateLeft_triggered();
+    void on_actionRotateRight_triggered();
+    void on_actionAboutGather_triggered();
     void openRecentFile();
-    void updateStatusBar();
     void docLoaded(GtDocument *doc);
 
 private:
-    void createActions();
-    void createMenus();
-    void createContextMenu();
-    void createToolBars();
-    void createStatusBar();
     void readSettings();
     void writeSettings();
     bool okToContinue();
@@ -55,6 +43,10 @@ private:
     QString strippedName(const QString &fullFileName);
 
 private:
+    void changeEvent(QEvent *event);
+    void closeEvent(QCloseEvent *event);
+
+private:
     // Objects in document thread
     QThread *docThread;
     QSharedPointer<GtDocLoader> docLoader;
@@ -62,43 +54,14 @@ private:
     QSharedPointer<GtDocument> document;
 
     // Objects in GUI thread
-    GtDocView *docView;
-    QLabel *locationLabel;
-    QLabel *formulaLabel;
     QStringList recentFiles;
     QString curFile;
     QString lastOpenPath;
 
-    QMenu *fileMenu;
-    QMenu *editMenu;
-    QMenu *viewMenu;
-    QMenu *helpMenu;
-
-    QToolBar *fileToolBar;
-    QToolBar *editToolBar;
-
-    // file
-    QAction *openAction;
+    // Recent opened files
     enum { MaxRecentFiles = 5 };
     QAction *recentFileActions[MaxRecentFiles];
-    QAction *separatorAction;
-    QAction *exitAction;
-
-    // edit
-    QAction *cutAction;
-    QAction *copyAction;
-    QAction *pasteAction;
-    QAction *deleteAction;
-    QAction *findAction;
-
-    // view
-    QAction *zoomInAction;
-    QAction *zoomOutAction;
-    QAction *rotateLeftAction;
-    QAction *rotateRightAction;
-
-    // help
-    QAction *aboutAction;
+    QAction *recentFileSeparator;
 };
 
 GT_END_NAMESPACE
