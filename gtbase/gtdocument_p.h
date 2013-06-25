@@ -13,6 +13,7 @@ class QIODevice;
 GT_BEGIN_NAMESPACE
 
 class GtAbstractPage;
+class GtAbstractOutline;
 class GtDocText;
 
 class GT_BASE_EXPORT GtDocumentPrivate
@@ -29,6 +30,11 @@ public:
     void unlockPage(int index);
     void cacheText(int index, const QSharedDataPointer<GtDocText> &text);
     inline QMutex* mutex() { return &_mutex; }
+
+protected:
+    void loadOutline(GtAbstractOutline *outline,
+                     GtDocOutline *parent,
+                     GtDocOutline **node, void *it);
 
 protected:
     GtDocument *q_ptr;

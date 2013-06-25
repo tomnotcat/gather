@@ -3,6 +3,9 @@
  */
 #include "gttocmodel.h"
 #include "gtdocoutline.h"
+#include "gtdocpage.h"
+#include "gtdocument.h"
+#include "gttocdelegate.h"
 #include <QtCore/QDebug>
 
 GT_BEGIN_NAMESPACE
@@ -17,11 +20,13 @@ public:
 
 protected:
     GtTocModel *q_ptr;
+    GtDocument *document;
     GtDocOutline *outline;
 };
 
 GtTocModelPrivate::GtTocModelPrivate()
-    : outline(0)
+    : document(0)
+    , outline(0)
 {
 }
 
@@ -40,32 +45,34 @@ GtTocModel::~GtTocModel()
 {
 }
 
-GtDocOutline* GtTocModel::outline() const
+GtDocument* GtTocModel::document() const
 {
     Q_D(const GtTocModel);
-    return d->outline;
+    return d->document;
 }
 
-void GtTocModel::setOutline(GtDocOutline *outline)
+void GtTocModel::setDocument(GtDocument *document)
 {
     Q_D(GtTocModel);
 
-    if (outline == d->outline)
+    if (document == d->document)
         return;
 
-    if (d->outline) {
-        disconnect(d->outline,
+    if (d->document) {
+        disconnect(d->document,
                    SIGNAL(destroyed(QObject*)),
                    this,
-                   SLOT(outlineDestroyed(QObject*)));
+                   SLOT(documentDestroyed(QObject*)));
     }
 
-    d->outline = outline;
-    if (d->outline) {
-        connect(d->outline,
+    d->document = document;
+    if (d->document) {
+        d->outline = d->document->outline();
+
+        connect(d->document,
                 SIGNAL(destroyed(QObject*)),
                 this,
-                SLOT(outlineDestroyed(QObject*)));
+                SLOT(documentDestroyed(QObject*)));
     }
 }
 
@@ -77,13 +84,13 @@ QModelIndex GtTocModel::index(int row, int column,
     if (!hasIndex(row, column, parent))
         return QModelIndex();
 
-    GtDocOutline::Node *node;
+    GtDocOutline *node;
     if (!parent.isValid())
-        node = d->outline->first();
+        node = d->outline;
     else
-        node = static_cast<GtDocOutline::Node*>(parent.internalPointer());
+        node = static_cast<GtDocOutline*>(parent.internalPointer());
 
-    GtDocOutline::Node *child = node->child(row);
+    GtDocOutline *child = node->child(row);
     if (child)
         return createIndex(row, column, child);
 
@@ -95,8 +102,8 @@ QModelIndex GtTocModel::parent(const QModelIndex &child) const
     if (!child.isValid())
         return QModelIndex();
 
-    GtDocOutline::Node *node = static_cast<GtDocOutline::Node*>(child.internalPointer());
-    GtDocOutline::Node *parent = node->parent();
+    GtDocOutline *node = static_cast<GtDocOutline*>(child.internalPointer());
+    GtDocOutline *parent = node->parent();
 
     if (0 == parent)
         return QModelIndex();
@@ -114,42 +121,65 @@ int GtTocModel::rowCount(const QModelIndex &parent) const
     if (parent.column() > 0)
         return 0;
 
-    GtDocOutline::Node *node;
+    GtDocOutline *node;
     if (!parent.isValid())
-        node = d->outline->first();
+        node = d->outline;
     else
-        node = static_cast<GtDocOutline::Node*>(parent.internalPointer());
+        node = static_cast<GtDocOutline*>(parent.internalPointer());
 
     return node->childCount();
 }
 
-int GtTocModel::columnCount(const QModelIndex &parent) const
+int GtTocModel::columnCount(const QModelIndex &) const
 {
-    if(parent.isValid())
-        return 1;
-
-    return 0;
+    return 1;
 }
 
 QVariant GtTocModel::data(const QModelIndex &index, int role) const
 {
+    Q_D(const GtTocModel);
+
     if (!index.isValid())
         return QVariant();
 
-    if (role != Qt::DisplayRole)
-        return QVariant();
+    GtDocOutline *node = static_cast<GtDocOutline*>(index.internalPointer());
+    switch (role) {
+    case Qt::DisplayRole:
+    case Qt::ToolTipRole:
+        return QVariant(node->title);
 
-    GtDocOutline::Node *node = static_cast<GtDocOutline::Node*>(index.internalPointer());
+    case GtTocDelegate::PageIndex:
+        return QVariant(node->page + 1);
 
-    return QVariant(node->title);
+    case GtTocDelegate::PageLabel:
+        return QVariant(d->document->page(node->page)->label());
+
+    default:
+        break;
+    }
+
+    return QVariant();
 }
 
-void GtTocModel::outlineDestroyed(QObject *object)
+Qt::ItemFlags GtTocModel::flags(const QModelIndex &index) const
+{
+    if (!index.isValid())
+        return 0;
+
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+}
+
+QVariant GtTocModel::headerData(int, Qt::Orientation, int) const
+{
+    return QVariant();
+}
+
+void GtTocModel::documentDestroyed(QObject *object)
 {
     Q_D(GtTocModel);
 
-    if (object == static_cast<QObject *>(d->outline))
-        setOutline(0);
+    if (object == static_cast<QObject *>(d->document))
+        setDocument(0);
 }
 
 GT_END_NAMESPACE

@@ -20,6 +20,7 @@ public:
     virtual ~GtAbstractPage();
 
 public:
+    virtual QString label() = 0;
     virtual void size(double *width, double *height) = 0;
     virtual int textLength() = 0;
     virtual int extractText(QChar *texts, QRectF *rects, int length) = 0;

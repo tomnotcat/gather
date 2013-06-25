@@ -49,6 +49,7 @@ public:
 public:
     GtDocument* document();
     int index();
+    QString label();
     void size(double *width, double *height);
     QSize size(double scale = 1.0, int rotation = 0);
     int length();

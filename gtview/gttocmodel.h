@@ -9,7 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
-class GtDocOutline;
+class GtDocument;
 class GtTocModelPrivate;
 
 class GT_BASE_EXPORT GtTocModel : public QAbstractItemModel
@@ -21,8 +21,8 @@ public:
     ~GtTocModel();
 
 public:
-    GtDocOutline* outline() const;
-    void setOutline(GtDocOutline *outline);
+    GtDocument* document() const;
+    void setDocument(GtDocument *document);
 
 public:
     QModelIndex index(int row, int column,
@@ -31,9 +31,12 @@ public:
     int rowCount(const QModelIndex &parent) const;
     int columnCount(const QModelIndex &parent) const;
     QVariant data(const QModelIndex &index, int role) const;
+    Qt::ItemFlags flags(const QModelIndex &index) const;
+    QVariant headerData(int section, Qt::Orientation orientation,
+                        int role = Qt::DisplayRole) const;
 
 private Q_SLOTS:
-    void outlineDestroyed(QObject *object);
+    void documentDestroyed(QObject *object);
 
 private:
     QScopedPointer<GtTocModelPrivate> d_ptr;

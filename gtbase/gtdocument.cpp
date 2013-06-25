@@ -114,6 +114,32 @@ void GtDocumentPrivate::cacheText(int index, const QSharedDataPointer<GtDocText>
     }
 }
 
+void GtDocumentPrivate::loadOutline(GtAbstractOutline *outline,
+                                    GtDocOutline *parent,
+                                    GtDocOutline **node, void *it)
+{
+    if (0 == node)
+        node = &parent->_child;
+
+    int row = 0;
+    while (it) {
+        *node = new GtDocOutline(outline->title(it), outline->page(it), row++);
+        (*node)->_parent = parent;
+
+        void *child = outline->childNode(it);
+        if (child) {
+            loadOutline(outline, *node, &(*node)->_child, child);
+            outline->freeNode(child);
+        }
+
+        it = outline->nextNode(it);
+        node = &(*node)->_next;
+    }
+
+    if (row > 0)
+        parent->_childCount = row;
+}
+
 GtDocument::GtDocument(GtAbstractDocument *ad, QObject *parent)
     : QObject(parent)
     , d_ptr(new GtDocumentPrivate(ad))
@@ -267,7 +293,13 @@ void GtDocument::slotLoadDocument()
 
     // load outline
     GtAbstractOutline *outline = d->abstractDoc->loadOutline();
-    d->outline = new GtDocOutline(outline);
+    d->outline = new GtDocOutline();
+
+    void *it = outline->firstNode();
+    d->loadOutline(outline, d->outline, 0, it);
+    outline->freeNode(it);
+
+    delete outline;
 
     d->loaded = true;
     emit loaded(this);

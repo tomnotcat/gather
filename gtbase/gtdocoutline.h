@@ -5,61 +5,42 @@
 #define __GT_DOC_OUTLINE_H__
 
 #include "gtcommon.h"
-#include <QtCore/QObject>
+#include <QtCore/QString>
 
 GT_BEGIN_NAMESPACE
 
-class GtAbstractOutline;
-class GtDocOutlinePrivate;
-
-class GT_BASE_EXPORT GtDocOutline : public QObject
+class GT_BASE_EXPORT GtDocOutline
 {
-    Q_OBJECT
-
 public:
-    class GT_BASE_EXPORT Node
-    {
-    public:
-        explicit Node() : page(-1), row(-1), _next(0), _parent(0), _child(0), _childCount(0) {}
-        Node(const QString &t, int p, int r) : title(t), page(p), row(r), _next(0), _parent(0), _child(0), _childCount(0) {}
-
-    public:
-        inline Node* next() const { return _next; }
-        inline Node* parent() const { return _parent; }
-        inline Node* child() const { return _child; }
-        inline int childCount() const { return _childCount; }
-        Node* child(int row) const;
-
-    public:
-        const QString title;
-        const int page;
-        const int row;
-
-    private:
-        friend class GtDocOutlinePrivate;
-        Node *_next;
-        Node *_parent;
-        Node *_child;
-        int _childCount;
-    };
-
-public:
-    explicit GtDocOutline(GtAbstractOutline *ao, QObject *parent = 0);
+    explicit GtDocOutline();
+    GtDocOutline(const QString &title, int page, int row);
     ~GtDocOutline();
 
 public:
-    Node* first() const;
+    inline GtDocOutline* next() const { return _next; }
+    inline GtDocOutline* parent() const { return _parent; }
+    inline GtDocOutline* child() const { return _child; }
+    inline int childCount() const { return _childCount; }
+    GtDocOutline* child(int row) const;
 
-protected:
-    QScopedPointer<GtDocOutlinePrivate> d_ptr;
+public:
+    const QString title;
+    const int page;
+    const int row;
+
+private:
+    friend class GtDocumentPrivate;
+    GtDocOutline *_next;
+    GtDocOutline *_parent;
+    GtDocOutline *_child;
+    int _childCount;
 
 private:
     Q_DISABLE_COPY(GtDocOutline)
-    Q_DECLARE_PRIVATE(GtDocOutline)
 };
 
 #ifndef QT_NO_DEBUG_STREAM
-GT_BASE_EXPORT QDebug operator<<(QDebug, const GtDocOutline::Node &);
+GT_BASE_EXPORT QDebug operator<<(QDebug, const GtDocOutline &);
 #endif
 
 GT_END_NAMESPACE

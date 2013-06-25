@@ -8,6 +8,7 @@
 #include "gtdocpage.h"
 #include "gtdocument.h"
 #include "gtdocview.h"
+#include "gttocdelegate.h"
 #include "gttocmodel.h"
 #include <QtCore/QtDebug>
 #include <QtCore/QSettings>
@@ -47,11 +48,12 @@ GtMainWindow::GtMainWindow()
     docThread->start();
 
     // GUI thread
-    tocModel = QSharedPointer<GtTocModel>(new GtTocModel());
     ui.docView->setModel(docModel.data());
     ui.docView->setRenderThread(docThread);
     ui.docView->setRenderCacheSize(1024 * 1024 * 20);
-    ui.tocView->setModel(tocModel.data());
+
+    tocModel = QSharedPointer<GtTocModel>(new GtTocModel());
+    ui.tocView->setItemDelegate(new GtTocDelegate(ui.tocView));
 
     // Recent files
     recentFileActions[0] = ui.actionRecentFile0;
@@ -77,6 +79,7 @@ GtMainWindow::GtMainWindow()
 GtMainWindow::~GtMainWindow()
 {
     ui.docView->setModel(0);
+    ui.tocView->setModel(0);
     document.clear();
     docModel.clear();
     docLoader.clear();
@@ -138,7 +141,8 @@ void GtMainWindow::docLoaded(GtDocument *doc)
 
     if (document->isLoaded()) {
         docModel->setDocument(document.data());
-        tocModel->setOutline(document->outline());
+        tocModel->setDocument(document.data());
+        ui.tocView->setModel(tocModel.data());
     }
     else {
         Q_ASSERT(0);
@@ -185,7 +189,8 @@ bool GtMainWindow::okToContinue()
 bool GtMainWindow::loadFile(const QString &fileName)
 {
     docModel->setDocument(0);
-    tocModel->setOutline(0);
+    tocModel->setDocument(0);
+    ui.tocView->setModel(0);
 
     GtDocument *doc = docLoader->loadDocument(fileName, docThread);
     if (NULL == doc)

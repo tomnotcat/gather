@@ -5,6 +5,7 @@
 #define __PDF_PAGE_H__
 
 #include "gtabstractdocument.h"
+#include <QtCore/QString>
 
 extern "C" {
 #include "mupdf-internal.h"
@@ -15,10 +16,11 @@ GT_BEGIN_NAMESPACE
 class PdfPage : public GtAbstractPage
 {
 public:
-    PdfPage(fz_context *c, fz_document *d, fz_page *p);
+    PdfPage(fz_context *c, fz_document *d, fz_page *p, const QString &l);
     ~PdfPage();
 
 public:
+    QString label();
     void size(double *width, double *height);
     int textLength();
     int extractText(QChar *texts, QRectF *rects, int length);
@@ -34,6 +36,7 @@ private:
     fz_display_list *pageList;
     fz_text_page *pageText;
     fz_text_sheet *pageSheet;
+    QString _label;
 };
 
 GT_END_NAMESPACE

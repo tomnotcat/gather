@@ -8,13 +8,14 @@
 
 GT_BEGIN_NAMESPACE
 
-PdfPage::PdfPage(fz_context *c, fz_document *d, fz_page *p)
+PdfPage::PdfPage(fz_context *c, fz_document *d, fz_page *p, const QString &l)
     : context(c)
     , document(d)
     , page(p)
     , pageList(0)
     , pageText(0)
     , pageSheet(0)
+    , _label(l)
 {
 }
 
@@ -30,6 +31,11 @@ PdfPage::~PdfPage()
         fz_free_text_sheet(context, pageSheet);
 
     fz_free_page(document, page);
+}
+
+QString PdfPage::label()
+{
+    return _label;
 }
 
 void PdfPage::size(double *width, double *height)

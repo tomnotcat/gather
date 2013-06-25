@@ -31,6 +31,7 @@ public:
 protected:
     GtDocPage *q_ptr;
     GtDocument *document;
+    QString label;
     int index;
     int textLength;
     double width;

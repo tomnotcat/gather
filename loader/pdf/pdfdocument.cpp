@@ -10,6 +10,59 @@
 
 GT_BEGIN_NAMESPACE
 
+class PdfDocument::LabelRange
+{
+public:
+    LabelRange(pdf_obj *d, int b);
+
+public:
+    QString prefix;
+    int base;
+    int first;
+    int length;
+
+    enum NumberStyle {
+        None,
+        Arabic,
+        LowercaseRoman,
+        UppercaseRoman,
+        UppercaseLatin,
+        LowercaseLatin
+    } style;
+};
+
+PdfDocument::LabelRange::LabelRange(pdf_obj *d, int b)
+    : base(b)
+{
+    style = None;
+
+    pdf_obj *o = pdf_dict_gets(d, "S");
+    if (pdf_is_name(o)) {
+        const char *name = pdf_to_name(o);
+
+        if (!strcmp(name, "D"))
+            style = Arabic;
+        else if (!strcmp(name, "R"))
+            style = UppercaseRoman;
+        else if (!strcmp(name, "r"))
+            style = LowercaseRoman;
+        else if (!strcmp(name, "A"))
+            style = UppercaseLatin;
+        else if (!strcmp(name, "a"))
+            style = LowercaseLatin;
+    }
+
+    o = pdf_dict_gets(d, "P");
+    if (pdf_is_string(o))
+        prefix = QString((QChar *)pdf_to_str_buf(o), pdf_to_str_len(o));
+
+    o = pdf_dict_gets(d, "St");
+    if (pdf_is_int(o))
+        first = pdf_to_int(o);
+    else
+        first = 1;
+}
+
 PdfDocument::PdfDocument()
     : _context(0)
     , document(0)
@@ -18,6 +71,8 @@ PdfDocument::PdfDocument()
 
 PdfDocument::~PdfDocument()
 {
+    qDeleteAll(labelRanges);
+
     if (document) {
         fz_close_document(document);
         document = NULL;
@@ -44,7 +99,36 @@ bool PdfDocument::load(QIODevice *device)
         }
     }
 
-    fz_close (stream);
+    fz_close(stream);
+
+    // parse page labels
+    pdf_document *xref = (pdf_document *)document;
+    pdf_obj *catalog;
+    pdf_obj *pageLabels;
+
+    catalog = pdf_dict_gets(xref->trailer, "Root");
+    pageLabels = pdf_dict_gets(catalog, "PageLabels");
+
+    if (pdf_is_dict(pageLabels)) {
+        parseLabels(pageLabels);
+
+        int numPages = fz_count_pages(document);
+        LabelRange *range;
+        for (int i = 0; i < labelRanges.size(); ++i) {
+            range = labelRanges[i];
+
+            if (i + 1 < labelRanges.size()) {
+                LabelRange *next = labelRanges[i + 1];
+                range->length = next->base - range->base;
+            }
+            else {
+                range->length = numPages - range->base;
+            }
+
+            if (range->length < 0)
+                range->length = 0;
+        }
+    }
 
     return (document != 0);
 }
@@ -60,13 +144,92 @@ GtAbstractPage* PdfDocument::loadPage(int index)
     if (0 == page)
         return 0;
 
-    return new PdfPage(_context, document, page);
+    QString label(indexToLabel(index));
+    return new PdfPage(_context, document, page, label);
 }
 
 GtAbstractOutline* PdfDocument::loadOutline()
 {
     fz_outline *outline = fz_load_outline(document);
     return new PdfOutline(_context, outline);
+}
+
+void PdfDocument::parseLabels(pdf_obj *tree)
+{
+    pdf_obj *nums = pdf_dict_gets(tree, "Nums");
+    if (pdf_is_array(nums)) {
+        int len = pdf_array_len(nums);
+        for (int i = 0; i < len; i += 2) {
+            pdf_obj *a = pdf_array_get(nums, i);
+            if (!pdf_is_int(a))
+                continue;
+
+            int b = pdf_to_int(a);
+            a = pdf_array_get(nums, i + 1);
+            if (!pdf_is_dict(a))
+                continue;
+
+            labelRanges.append(new LabelRange(a, b));
+        }
+    }
+
+    pdf_obj *kids = pdf_dict_gets(tree, "Kids");
+    if (pdf_is_array(kids)) {
+        int len = pdf_array_len(kids);
+        for (int i = 0; i < len; ++i) {
+            pdf_obj *a = pdf_array_get(kids, i);
+
+            if (pdf_is_dict(a))
+                parseLabels(a);
+        }
+    }
+}
+
+QString PdfDocument::indexToLabel(int index)
+{
+    int base = 0;
+    LabelRange *range = 0;
+
+    for (int i = 0; i < labelRanges.size(); ++i) {
+        range = labelRanges[i];
+        if (base <= index && index < base + range->length)
+            break;
+
+        base += range->length;
+    }
+
+    if (!range)
+        return QString();
+
+    int number = index - base + range->first;
+    QString numberString;
+
+    switch (range->style) {
+    case LabelRange::Arabic:
+        numberString = QString::number(number);
+        break;
+
+    case LabelRange::LowercaseRoman:
+        numberString = toRoman(number, false);
+        break;
+
+    case LabelRange::UppercaseRoman:
+        numberString = toRoman(number, true);
+        break;
+
+    case LabelRange::LowercaseLatin:
+        numberString = toLatin(number, false);
+        break;
+
+    case LabelRange::UppercaseLatin:
+        numberString = toLatin(number, true);
+        break;
+
+    case LabelRange::None:
+        break;
+    }
+
+    return range->prefix + numberString;
 }
 
 fz_context* PdfDocument::context()
@@ -186,6 +349,80 @@ void PdfDocument::closePdfStream(fz_context*, void *state)
 {
     QIODevice *device = static_cast<QIODevice*>(state);
     device->close();
+}
+
+QString PdfDocument::toRoman(int number, bool uppercase)
+{
+    static const QChar uppercaseNumerals[] = {'I', 'V', 'X', 'L', 'C', 'D', 'M'};
+    static const QChar lowercaseNumerals[] = {'i', 'v', 'x', 'l', 'c', 'd', 'm'};
+    QString str;
+    int divisor;
+    int i, j, k;
+    const QChar *wh;
+
+    if (uppercase)
+        wh = uppercaseNumerals;
+    else
+        wh = lowercaseNumerals;
+
+    divisor = 1000;
+    for (k = 3; k >= 0; k--) {
+        i = number / divisor;
+        number = number % divisor;
+
+        switch (i) {
+        case 0:
+            break;
+
+        case 5:
+            str.append(wh[2 * k + 1]);
+            break;
+
+        case 9:
+            str.append(wh[2 * k + 0]);
+            str.append(wh[ 2 * k + 2]);
+            break;
+
+        case 4:
+            str.append(wh[2 * k + 0]);
+            str.append(wh[2 * k + 1]);
+            break;
+
+        default:
+            if (i > 5) {
+                str.append(wh[2 * k + 1]);
+                i -= 5;
+            }
+
+            for (j = 0; j < i; j++)
+                str.append(wh[2 * k + 0]);
+        }
+
+        divisor = divisor / 10;
+    }
+
+    return str;
+}
+
+QString PdfDocument::toLatin(int number, bool uppercase)
+{
+    QString str;
+    QChar letter;
+    char base;
+    int i, count;
+
+    if (uppercase)
+        base = 'A';
+    else
+        base = 'a';
+
+    count = (number - 1) / 26 + 1;
+    letter = base + (number - 1) % 26;
+
+    for (i = 0; i < count; i++)
+        str.append(letter);
+
+    return str;
 }
 
 GT_DEFINE_DOCUMENT_LOADER(PdfDocument())

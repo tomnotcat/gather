@@ -75,6 +75,23 @@ int GtDocPage::index()
     return d->index;
 }
 
+QString GtDocPage::label()
+{
+    Q_D(GtDocPage);
+
+    if (d->label.isNull()) {
+        GtAbstractPage *abstractPage = d->document->d_ptr->lockPage(d->index);
+
+        d->label = abstractPage->label();
+        if (d->label.isNull())
+            d->label = QString("");
+
+        d->document->d_ptr->unlockPage(d->index);
+    }
+
+    return d->label;
+}
+
 void GtDocPage::size(double *width, double *height)
 {
     Q_D(GtDocPage);
