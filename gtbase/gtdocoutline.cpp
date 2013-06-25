@@ -16,74 +16,71 @@ public:
     ~GtDocOutlinePrivate();
 
 protected:
-    void loadOutline(GtAbstractOutline *ao, GtDocOutline::Entry **pe, void *it);
-    void freeEntry(GtDocOutline::Entry *e);
+    void loadOutline(GtAbstractOutline *ao,
+                     GtDocOutline::Node *parent,
+                     GtDocOutline::Node **pn,
+                     void *it);
+    void freeNode(GtDocOutline::Node *node);
 
 protected:
     GtDocOutline *q_ptr;
-    GtDocOutline::Entry *entry;
+    GtDocOutline::Node *first;
 };
+
+GtDocOutline::Node* GtDocOutline::Node::child(int row) const
+{
+    return 0;
+}
 
 GtDocOutlinePrivate::GtDocOutlinePrivate()
     : q_ptr(0)
-    , entry(0)
+    , first(0)
 {
 }
 
 GtDocOutlinePrivate::~GtDocOutlinePrivate()
 {
-    freeEntry(entry);
+    freeNode(first);
 }
 
 void GtDocOutlinePrivate::loadOutline(GtAbstractOutline *ao,
-                                      GtDocOutline::Entry **pe,
+                                      GtDocOutline::Node *parent,
+                                      GtDocOutline::Node **pn,
                                       void *it)
 {
-    while (it) {
-        *pe = new GtDocOutline::Entry(ao->title(it), ao->page(it));
+    int row = 0;
+    GtDocOutline::Node **cur = pn;
 
-        void *child = ao->childIterator(it);
+    while (it) {
+        *cur = new GtDocOutline::Node(ao->title(it), ao->page(it), row++);
+        (*cur)->_parent = parent;
+
+        void *child = ao->childNode(it);
         if (child) {
-            loadOutline(ao, &(*pe)->child, child);
-            ao->freeIterator(child);
+            loadOutline(ao, *cur, &(*cur)->_child, child);
+            ao->freeNode(child);
         }
 
-        it = ao->nextIterator(it);
-        pe = &(*pe)->next;
+        it = ao->nextNode(it);
+        cur = &(*cur)->_next;
     }
+
+    if (row > 0)
+        (*pn)->_childCount = row;
 }
 
-void GtDocOutlinePrivate::freeEntry(GtDocOutline::Entry *e)
+void GtDocOutlinePrivate::freeNode(GtDocOutline::Node *p)
 {
-    GtDocOutline::Entry *n;
+    GtDocOutline::Node *n;
 
-    while (e) {
-        n = e->next;
-        if (e->child)
-            freeEntry(e->child);
+    while (p) {
+        n = p->_next;
+        if (p->_child)
+            freeNode(p->_child);
 
-        delete e;
-        e = n;
+        delete p;
+        p = n;
     }
-}
-
-GtDocOutline::Iterator::Iterator(const GtDocOutline &o, const GtDocOutline::Entry *e)
-    : outline(&o)
-    , entry(e)
-{
-    if (0 == entry)
-        entry = outline->d_ptr->entry;
-}
-
-GtDocOutline::Iterator::~Iterator()
-{
-}
-
-GtDocOutline::Entry GtDocOutline::Iterator::next()
-{
-    const Entry *r = entry;
-    entry = entry->next;
-    return *r;
 }
 
 GtDocOutline::GtDocOutline(GtAbstractOutline *ao, QObject *parent)
@@ -93,18 +90,24 @@ GtDocOutline::GtDocOutline(GtAbstractOutline *ao, QObject *parent)
     d_ptr->q_ptr = this;
 
     QScopedPointer<GtAbstractOutline> guard(ao);
-    void *it = ao->iterator();
-    d_ptr->loadOutline(ao, &d_ptr->entry, it);
-    ao->freeIterator(it);
+    void *it = ao->firstNode();
+    d_ptr->loadOutline(ao, 0, &d_ptr->first, it);
+    ao->freeNode(it);
 }
 
 GtDocOutline::~GtDocOutline()
 {
 }
 
+GtDocOutline::Node* GtDocOutline::first() const
+{
+    Q_D(const GtDocOutline);
+    return d->first;
+}
+
 #ifndef QT_NO_DEBUG_STREAM
-QDebug operator<<(QDebug dbg, const GtDocOutline::Entry &r) {
-    dbg.nospace() << "GtDocOutline::Entry(" << r.title << ':' << r.page << ')';
+QDebug operator<<(QDebug dbg, const GtDocOutline::Node &r) {
+    dbg.nospace() << "GtDocOutline::Node(" << r.title << ':' << r.page << ')';
     return dbg.space();
 }
 #endif

@@ -21,6 +21,17 @@ GtAbstractOutline::~GtAbstractOutline()
 {
 }
 
+void* GtAbstractOutline::childNode(void *node)
+{
+    Q_UNUSED(node);
+    return 0;
+}
+
+void GtAbstractOutline::freeNode(void *node)
+{
+    Q_UNUSED(node);
+}
+
 GtAbstractDocument::GtAbstractDocument()
 {
 }

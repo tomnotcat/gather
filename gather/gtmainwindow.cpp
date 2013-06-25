@@ -8,6 +8,7 @@
 #include "gtdocpage.h"
 #include "gtdocument.h"
 #include "gtdocview.h"
+#include "gttocmodel.h"
 #include <QtCore/QtDebug>
 #include <QtCore/QSettings>
 #include <QtCore/QThread>
@@ -20,7 +21,13 @@ GT_BEGIN_NAMESPACE
 
 GtMainWindow::GtMainWindow()
 {
-    setupUi(this);
+    ui.setupUi(this);
+
+    // adjust layout
+    ui.verticalLayout->setMargin(0);
+    ui.splitter->setStretchFactor(0, 0);
+    ui.splitter->setStretchFactor(1, 255);
+    ui.docView->setMinimumWidth(120);
 
     // document thread
     docLoader = QSharedPointer<GtDocLoader>(new GtDocLoader());
@@ -40,16 +47,18 @@ GtMainWindow::GtMainWindow()
     docThread->start();
 
     // GUI thread
-    docView->setModel(docModel.data());
-    docView->setRenderThread(docThread);
-    docView->setRenderCacheSize(1024 * 1024 * 20);
+    tocModel = QSharedPointer<GtTocModel>(new GtTocModel());
+    ui.docView->setModel(docModel.data());
+    ui.docView->setRenderThread(docThread);
+    ui.docView->setRenderCacheSize(1024 * 1024 * 20);
+    ui.tocView->setModel(tocModel.data());
 
     // Recent files
-    recentFileActions[0] = actionRecentFile0;
-    recentFileActions[1] = actionRecentFile1;
-    recentFileActions[2] = actionRecentFile2;
-    recentFileActions[3] = actionRecentFile3;
-    recentFileActions[4] = actionRecentFile4;
+    recentFileActions[0] = ui.actionRecentFile0;
+    recentFileActions[1] = ui.actionRecentFile1;
+    recentFileActions[2] = ui.actionRecentFile2;
+    recentFileActions[3] = ui.actionRecentFile3;
+    recentFileActions[4] = ui.actionRecentFile4;
 
     for (int i = 0; i < MaxRecentFiles; ++i) {
         recentFileActions[i]->setVisible(false);
@@ -57,7 +66,7 @@ GtMainWindow::GtMainWindow()
                 this, SLOT(openRecentFile()));
     }
 
-    recentFileSeparator = menuFile->insertSeparator(actionExit);
+    recentFileSeparator = ui.menuFile->insertSeparator(ui.actionExit);
 
     // Settings
     readSettings();
@@ -67,7 +76,7 @@ GtMainWindow::GtMainWindow()
 
 GtMainWindow::~GtMainWindow()
 {
-    docView->setModel(0);
+    ui.docView->setModel(0);
     document.clear();
     docModel.clear();
     docLoader.clear();
@@ -98,12 +107,12 @@ void GtMainWindow::on_actionExit_triggered()
 
 void GtMainWindow::on_actionZoomIn_triggered()
 {
-    docView->zoomIn();
+    ui.docView->zoomIn();
 }
 
 void GtMainWindow::on_actionZoomOut_triggered()
 {
-    docView->zoomOut();
+    ui.docView->zoomOut();
 }
 
 void GtMainWindow::on_actionRotateLeft_triggered()
@@ -129,12 +138,7 @@ void GtMainWindow::docLoaded(GtDocument *doc)
 
     if (document->isLoaded()) {
         docModel->setDocument(document.data());
-
-        GtDocOutline *outline = document->outline();
-        GtDocOutline::Iterator it(*outline);
-        while (it.hasNext()) {
-            qDebug() << it.next();
-        }
+        tocModel->setOutline(document->outline());
     }
     else {
         Q_ASSERT(0);
@@ -143,8 +147,9 @@ void GtMainWindow::docLoaded(GtDocument *doc)
 
 void GtMainWindow::readSettings()
 {
-    QSettings settings("Software Inc.", "Spreadsheet");
+    QSettings settings(ORGANIZATION_NAME, APPLICATION_NAME);
     restoreGeometry(settings.value("geometry").toByteArray());
+    ui.splitter->restoreState(settings.value("splitter").toByteArray());
     recentFiles = settings.value("recentFiles").toStringList();
     lastOpenPath = settings.value("lastOpenPath").toString();
     updateRecentFileActions();
@@ -152,8 +157,9 @@ void GtMainWindow::readSettings()
 
 void GtMainWindow::writeSettings()
 {
-    QSettings settings("Software Inc.", "Spreadsheet");
+    QSettings settings(ORGANIZATION_NAME, APPLICATION_NAME);
     settings.setValue("geometry", saveGeometry());
+    settings.setValue("splitter", ui.splitter->saveState());
     settings.setValue("recentFiles", recentFiles);
     settings.setValue("lastOpenPath", lastOpenPath);
 }
@@ -179,6 +185,7 @@ bool GtMainWindow::okToContinue()
 bool GtMainWindow::loadFile(const QString &fileName)
 {
     docModel->setDocument(0);
+    tocModel->setOutline(0);
 
     GtDocument *doc = docLoader->loadDocument(fileName, docThread);
     if (NULL == doc)
@@ -258,7 +265,7 @@ void GtMainWindow::changeEvent(QEvent *event)
 
     switch (event->type()) {
     case QEvent::LanguageChange:
-        retranslateUi(this);
+        ui.retranslateUi(this);
         break;
 
     default:

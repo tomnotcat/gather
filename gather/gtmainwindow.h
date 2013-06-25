@@ -12,9 +12,13 @@ GT_BEGIN_NAMESPACE
 class GtDocLoader;
 class GtDocument;
 class GtDocModel;
+class GtTocModel;
 class GtDocView;
 
-class GtMainWindow : public QMainWindow, private Ui::MainWindow
+#define ORGANIZATION_NAME "Clue Network"
+#define APPLICATION_NAME "Gather"
+
+class GtMainWindow : public QMainWindow
 {
     Q_OBJECT;
 
@@ -47,11 +51,14 @@ private:
     void closeEvent(QCloseEvent *event);
 
 private:
+    Ui::MainWindow ui;
+
     // Objects in document thread
     QThread *docThread;
     QSharedPointer<GtDocLoader> docLoader;
     QSharedPointer<GtDocModel> docModel;
     QSharedPointer<GtDocument> document;
+    QSharedPointer<GtTocModel> tocModel;
 
     // Objects in GUI thread
     QStringList recentFiles;

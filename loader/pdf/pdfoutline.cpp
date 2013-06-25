@@ -17,26 +17,21 @@ PdfOutline::~PdfOutline()
     fz_free_outline(context, outline);
 }
 
-void* PdfOutline::iterator()
+void* PdfOutline::firstNode()
 {
     return outline;
 }
 
-void* PdfOutline::nextIterator(void *it)
+void* PdfOutline::nextNode(void *node)
 {
-    fz_outline *l = static_cast<fz_outline*>(it);
+    fz_outline *l = static_cast<fz_outline*>(node);
     return l->next;
 }
 
-void* PdfOutline::childIterator(void *it)
+void* PdfOutline::childNode(void *node)
 {
-    fz_outline *l = static_cast<fz_outline*>(it);
+    fz_outline *l = static_cast<fz_outline*>(node);
     return l->down;
-}
-
-void* PdfOutline::freeIterator(void *)
-{
-    return 0;
 }
 
 QString PdfOutline::title(void *it)

@@ -20,10 +20,8 @@
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="QTreeView" name="treeView"/>
-      <widget class="Gather::GtDocView" name="docView" native="true">
-       <zorder>treeView</zorder>
-      </widget>
+      <widget class="QTreeView" name="tocView"/>
+      <widget class="Gather::GtDocView" name="docView" native="true"/>
      </widget>
     </item>
    </layout>

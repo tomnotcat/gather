@@ -19,12 +19,11 @@ public:
     ~PdfOutline();
 
 public:
-    void* iterator();
-    void* nextIterator(void *it);
-    void* childIterator(void *it);
-    void* freeIterator(void *it);
-    QString title(void *it);
-    int page(void *it);
+    void* firstNode();
+    void* nextNode(void *node);
+    void* childNode(void *node);
+    QString title(void *node);
+    int page(void *node);
 
 private:
     fz_context *context;

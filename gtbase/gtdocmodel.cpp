@@ -32,7 +32,7 @@ protected:
 };
 
 GtDocModelPrivate::GtDocModelPrivate()
-    : document(NULL)
+    : document(0)
     , pageCount(0)
     , page(-1)
     , scale(1.)

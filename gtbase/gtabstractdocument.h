@@ -33,11 +33,11 @@ public:
     virtual ~GtAbstractOutline();
 
 public:
-    virtual void* iterator() = 0;
-    virtual void* nextIterator(void *it) = 0;
-    virtual void* childIterator(void *it) = 0;
-    virtual void* freeIterator(void *it) = 0;
-    virtual QString title(void *it) = 0;
+    virtual void* firstNode() = 0;
+    virtual void* nextNode(void *node) = 0;
+    virtual void* childNode(void *node);
+    virtual void freeNode(void *node);
+    virtual QString title(void *node) = 0;
     virtual int page(void *it) = 0;
 };
 
