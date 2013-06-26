@@ -27,6 +27,12 @@
 #define GT_VIEW_EXPORT Q_DECL_IMPORT
 #endif
 
+#if defined(GT_BUILD_SVCE_LIB)
+#define GT_SVCE_EXPORT Q_DECL_EXPORT
+#else
+#define GT_SVCE_EXPORT Q_DECL_IMPORT
+#endif
+
 #if defined(GT_BUILD_BACKEND_LIB)
 #define GT_BACKEND_EXPORT Q_DECL_EXPORT
 #else

@@ -1,5 +1,5 @@
 TEMPLATE = subdirs
-SUBDIRS += gtbase gtview gather loader
+SUBDIRS += gtbase gtview gtsvce gather loader
 gtview.depends = gtbase
-gather.depends = gtview
+gather.depends = gtview gtsvce
 backend.depends = gtbase
