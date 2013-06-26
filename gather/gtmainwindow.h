@@ -36,6 +36,7 @@ private Q_SLOTS:
     void on_actionAboutGather_triggered();
     void openRecentFile();
     void docLoaded(GtDocument *doc);
+    void tocChanged(const QModelIndex &index);
 
 private:
     void readSettings();

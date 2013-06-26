@@ -86,7 +86,7 @@ public:
         return MIN(wScale, hScale);
     }
 
-    void pageExtents(int page, QRect *rect, QRect *border);
+    QRect pageExtents(int page, QRect *border = 0);
     QSize layoutPagesContinuous();
     QSize layoutPagesContinuousDualPage();
     QSize layoutPages();
@@ -404,32 +404,33 @@ QRect GtDocViewPrivate::computeBorder(const QSize &size)
     return rect;
 }
 
-void GtDocViewPrivate::pageExtents(int page, QRect *rect, QRect *border)
+QRect GtDocViewPrivate::pageExtents(int page, QRect *border)
 {
     Q_Q(GtDocView);
 
     const QSize vs = q->viewport()->size();
     QSize pageSize;
+    QRect b, r;
     int x, y;
 
     /* Get the size of the page */
     pageSize = pageSizeOfView(page);
-    *border = computeBorder(pageSize);
-    rect->setWidth(pageSize.width() + border->left() + border->right());
-    rect->setHeight(pageSize.height() + border->top() + border->bottom());
+    b = computeBorder(pageSize);
+    r.setWidth(pageSize.width() + b.left() + b.right());
+    r.setHeight(pageSize.height() + b.top() + b.bottom());
 
     if (continuous) {
         QSize maxSize = document->maxPageSize(scale, rotation);
         int maxWidth;
 
-        maxWidth = maxSize.width() + border->left() + border->right();
+        maxWidth = maxSize.width() + b.left() + b.right();
 
         /* Get the location of the bounding box */
         if (dualPage()) {
             x = spacing + ((page % 2 == evenPageLeft()) ? 0 : 1) * (maxWidth + spacing);
             x = x + MAX(0, vs.width() - (maxWidth * 2 + spacing * 3)) / 2;
             if (page % 2 == evenPageLeft())
-                x = x + (maxWidth - pageSize.width() - border->left() - border->right());
+                x = x + (maxWidth - pageSize.width() - b.left() - b.right());
         }
         else {
             x = spacing;
@@ -486,12 +487,17 @@ void GtDocViewPrivate::pageExtents(int page, QRect *rect, QRect *border)
             y = spacing;
 
             /* Adjust for extra allocation */
-            x = x + MAX(0, vs.width() - (pageSize.width() + border->left() + border->right() + spacing * 2)) / 2;
-            y = y + MAX(0, vs.height() - (pageSize.height() + border->top() + border->bottom() + spacing * 2)) / 2;
+            x = x + MAX(0, vs.width() - (pageSize.width() + b.left() + b.right() + spacing * 2)) / 2;
+            y = y + MAX(0, vs.height() - (pageSize.height() + b.top() + b.bottom() + spacing * 2)) / 2;
         }
     }
 
-    rect->moveTo(x, y);
+    r.moveTo(x, y);
+
+    if (border)
+        *border = b;
+
+    return r;
 }
 
 QSize GtDocViewPrivate::layoutPagesContinuous()
@@ -738,9 +744,7 @@ QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end)
 
 int GtDocViewPrivate::pageDistance(int page, const QPoint &point, QPointF *ppoint)
 {
-    QRect rect, border;
-    pageExtents(page, &rect, &border);
-
+    QRect rect(pageExtents(page));
     int x = point.x();
     int y = point.y();
     int l = rect.left();
@@ -1079,6 +1083,11 @@ void GtDocView::zoomOut()
     d->model->setScale(scale);
 }
 
+QRect GtDocView::pageExtents(int page, QRect *border) const
+{
+    return d_ptr->pageExtents(page, border);
+}
+
 QPoint GtDocView::scrollPoint() const
 {
     return QPoint(horizontalScrollBar()->value(), verticalScrollBar()->value());
@@ -1096,12 +1105,10 @@ void GtDocView::renderFinished(int page)
 {
     Q_D(GtDocView);
 
-    QRect pageArea;
-    QRect border;
     int scrollX = horizontalScrollBar()->value();
     int scrollY = verticalScrollBar()->value();
+    QRect pageArea(d->pageExtents(page));
 
-    d->pageExtents(page, &pageArea, &border);
     viewport()->repaint(pageArea.translated(-scrollX, -scrollY));
 }
 
@@ -1285,7 +1292,7 @@ void GtDocView::updateVisiblePages(int newValue)
         d->currentPage = -1;
     }
     else if (d->continuous) {
-        QRect unused, pageArea, border;
+        QRect unused, pageArea;
         bool found = false;
         int areaMax = -1, area;
         int bestCurrentPage = -1;
@@ -1297,9 +1304,9 @@ void GtDocView::updateVisiblePages(int newValue)
                                  viewport()->height());
 
         for (i = 0; i < d->pageCount; ++i) {
-            d->pageExtents(i, &pageArea, &border);
-
+            pageArea = d->pageExtents(i);
             unused = viewportRect.intersected(pageArea);
+
             if (!unused.isEmpty()) {
                 area = unused.width() * unused.height();
 
@@ -1478,7 +1485,7 @@ void GtDocView::paintEvent(QPaintEvent *e)
     // draw page contents
     QRect pageArea, border, overlap;
     for (int i = d->beginPage; i < d->endPage; ++i) {
-        d->pageExtents(i, &pageArea, &border);
+        pageArea = d->pageExtents(i, &border);
         pageArea.translate(-scrollX, -scrollY);
         overlap = contentsRect.intersected(pageArea);
 

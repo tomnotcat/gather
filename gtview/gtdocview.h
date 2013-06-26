@@ -38,6 +38,8 @@ public:
     bool canZoomOut() const;
     void zoomOut();
 
+    QRect pageExtents(int page, QRect *border = 0) const;
+
     QPoint scrollPoint() const;
     void scrollTo(int x, int y);
 

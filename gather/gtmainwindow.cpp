@@ -55,6 +55,9 @@ GtMainWindow::GtMainWindow()
     tocModel = QSharedPointer<GtTocModel>(new GtTocModel());
     ui.tocView->setItemDelegate(new GtTocDelegate(ui.tocView));
 
+    connect(ui.tocView, SIGNAL(clicked(QModelIndex)), this, SLOT(tocChanged(QModelIndex)));
+    connect(ui.tocView, SIGNAL(activated(QModelIndex)), this, SLOT(tocChanged(QModelIndex)));
+
     // Recent files
     recentFileActions[0] = ui.actionRecentFile0;
     recentFileActions[1] = ui.actionRecentFile1;
@@ -146,6 +149,16 @@ void GtMainWindow::docLoaded(GtDocument *doc)
     }
     else {
         Q_ASSERT(0);
+    }
+}
+
+void GtMainWindow::tocChanged(const QModelIndex &index)
+{
+    GtDocOutline *outline = tocModel->outlineFromIndex(index);
+    if (outline) {
+        // TODO: do not scroll when the page is already in viewport
+        QRect rect(ui.docView->pageExtents(outline->page));
+        ui.docView->scrollTo(rect.x(), rect.y());
     }
 }
 

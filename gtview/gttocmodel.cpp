@@ -76,6 +76,14 @@ void GtTocModel::setDocument(GtDocument *document)
     }
 }
 
+GtDocOutline* GtTocModel::outlineFromIndex(const QModelIndex &index) const
+{
+    if (!index.isValid())
+        return 0;
+
+    return static_cast<GtDocOutline*>(index.internalPointer());
+}
+
 QModelIndex GtTocModel::index(int row, int column,
                               const QModelIndex &parent) const
 {

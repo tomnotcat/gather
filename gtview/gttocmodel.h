@@ -9,6 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtDocOutline;
 class GtDocument;
 class GtTocModelPrivate;
 
@@ -23,6 +24,7 @@ public:
 public:
     GtDocument* document() const;
     void setDocument(GtDocument *document);
+    GtDocOutline* outlineFromIndex(const QModelIndex &index) const;
 
 public:
     QModelIndex index(int row, int column,
