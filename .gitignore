@@ -2,6 +2,7 @@ Makefile
 moc_*
 qrc_*
 *.o
+*.moc
 *.so*
 build
 ui_*
