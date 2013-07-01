@@ -26,7 +26,7 @@ void test_login::testLogin()
     QHostAddress host(QHostAddress::LocalHost);
     const quint16 port = 4004;
 
-    QVERIFY(server.listen(port));
+    QVERIFY(server.listen(host, port));
     client.login(host, port, "testuser", "testpasswd");
 
     QVERIFY(app.exec() == 0);

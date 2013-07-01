@@ -11,8 +11,10 @@ CONFIG(client) {
 }
 
 CONFIG(server) {
-    HEADERS += gtserver.h
-    SOURCES += gtserver.cpp
+    HEADERS += gtserver.h gtsession.h gtsessionmanager.h \
+        gtusersession.h
+    SOURCES += gtserver.cpp gtsession.cpp gtsessionmanager.cpp \
+        gtusersession.cpp
 }
 
 CONFIG(debug, debug|release) {

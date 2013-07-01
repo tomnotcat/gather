@@ -6,13 +6,13 @@
 
 #include "gtcommon.h"
 #include <QtCore/QObject>
-#include <QtNetwork/QHostAddress>
+#include <QtNetwork/QTcpServer>
 
 GT_BEGIN_NAMESPACE
 
-class GtServerPrivate;
+class GtSessionManager;
 
-class GT_SVCE_EXPORT GtServer : public QObject
+class GT_SVCE_EXPORT GtServer : public QTcpServer
 {
     Q_OBJECT
 
@@ -20,18 +20,14 @@ public:
     explicit GtServer(QObject *parent = 0);
     ~GtServer();
 
-public:
-    bool listen(quint16 port, const QHostAddress &address = QHostAddress::Any);
-
-private Q_SLOTS:
-    void handleNewConnection();
+protected:
+    void incomingConnection(qintptr socketDescriptor);
 
 private:
-    QScopedPointer<GtServerPrivate> d_ptr;
+    GtSessionManager *sessionManager;
 
 private:
     Q_DISABLE_COPY(GtServer)
-    Q_DECLARE_PRIVATE(GtServer)
 };
 
 GT_END_NAMESPACE
