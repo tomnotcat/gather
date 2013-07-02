@@ -4,7 +4,7 @@
 #ifndef __GT_DOC_POINT_H__
 #define __GT_DOC_POINT_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 
 class QPointF;
 
@@ -12,7 +12,7 @@ GT_BEGIN_NAMESPACE
 
 class GtDocPage;
 
-class GT_BASE_EXPORT GtDocPoint
+class GT_BASE_EXPORT GtDocPoint : public GtObject
 {
 public:
     Q_DECL_CONSTEXPR GtDocPoint() : _page(0), _x(0), _y(0) {}

@@ -8,6 +8,7 @@ FORMS += gtmainwindow.ui
 RESOURCES = gather.qrc
 INCLUDEPATH += $$PWD/../gtbase
 INCLUDEPATH += $$PWD/../gtview
+INCLUDEPATH += $$PWD/../gtsvce/src
 
 CONFIG(debug, debug|release) {
     DESTDIR = ../build/debug
@@ -15,4 +16,4 @@ CONFIG(debug, debug|release) {
     DESTDIR = ../build/release
 }
 
-unix: LIBS += -L$$DESTDIR -lgtbase -lgtview
+unix: LIBS += -L$$DESTDIR -lgtbase -lgtview -lgtsvce

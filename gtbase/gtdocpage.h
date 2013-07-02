@@ -4,7 +4,7 @@
 #ifndef __GT_DOC_PAGE_H__
 #define __GT_DOC_PAGE_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include <QtCore/QObject>
 #include <QtCore/QSharedDataPointer>
 #include <QtCore/QSize>
@@ -17,7 +17,7 @@ class GtAbstractPage;
 class GtDocPagePrivate;
 class GtDocument;
 
-class GT_BASE_EXPORT GtDocText : public QSharedData
+class GT_BASE_EXPORT GtDocText : public QSharedData, public GtObject
 {
 public:
     GtDocText(QChar *texts, QRectF *rects, int length);
@@ -38,7 +38,7 @@ private:
     int _length;
 };
 
-class GT_BASE_EXPORT GtDocPage : public QObject
+class GT_BASE_EXPORT GtDocPage : public QObject, public GtObject
 {
     Q_OBJECT
 

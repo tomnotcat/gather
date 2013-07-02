@@ -4,7 +4,7 @@
 #ifndef __GT_DOCUMENT_H__
 #define __GT_DOCUMENT_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include <QtCore/QObject>
 #include <QtCore/QSize>
 
@@ -15,7 +15,7 @@ class GtDocOutline;
 class GtDocPage;
 class GtDocumentPrivate;
 
-class GT_BASE_EXPORT GtDocument : public QObject
+class GT_BASE_EXPORT GtDocument : public QObject, public GtObject
 {
     Q_OBJECT
 

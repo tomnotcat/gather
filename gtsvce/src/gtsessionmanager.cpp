@@ -58,6 +58,7 @@ GtSessionManagerPrivate::Thread* GtSessionManagerPrivate::fetchThread()
     if (threads.size() < maxThread || threads.size() == 0) {
         thread = new Thread();
         thread->thread.start();
+        threads.push_back(thread);
         return thread;
     }
 
@@ -96,10 +97,11 @@ void GtSessionManager::addSession(qintptr socketDescriptor)
     GtSession *session = new GtUserSession();
     QTcpSocket *socket = new QTcpSocket(session);
     socket->setSocketDescriptor(socketDescriptor);
-    session->d_ptr->socket = socket;
+    session->d_ptr->setSocket(socket);
 
     thread->sessions.push_back(session);
     session->moveToThread(&thread->thread);
+
 }
 
 GT_END_NAMESPACE

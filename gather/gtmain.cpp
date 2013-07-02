@@ -8,8 +8,17 @@ using namespace Gather;
 
 int main(int argc, char *argv[])
 {
-    QApplication app(argc, argv);
-    GtMainWindow mainWin;
-    mainWin.show();
-    return app.exec();
+    int result = 0;
+
+    if (1) {
+        QApplication app(argc, argv);
+        GtMainWindow mainWin;
+        mainWin.show();
+        result = app.exec();
+    }
+
+#ifdef GT_DEBUG
+    Q_ASSERT(GtObject::dumpObjects() == 0);
+#endif
+    return result;
 }

@@ -4,7 +4,7 @@
 #ifndef __GT_DOC_VIEW_H__
 #define __GT_DOC_VIEW_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include <QtWidgets/qabstractscrollarea.h>
 
 GT_BEGIN_NAMESPACE
@@ -13,7 +13,7 @@ class GtDocModel;
 class GtDocument;
 class GtDocViewPrivate;
 
-class GtDocView : public QAbstractScrollArea
+class GtDocView : public QAbstractScrollArea, public GtObject
 {
     Q_OBJECT
 

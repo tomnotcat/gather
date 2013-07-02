@@ -4,7 +4,7 @@
 #ifndef __GT_TOC_MODEL_H__
 #define __GT_TOC_MODEL_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include <QtCore/QAbstractItemModel>
 
 GT_BEGIN_NAMESPACE
@@ -13,7 +13,7 @@ class GtDocOutline;
 class GtDocument;
 class GtTocModelPrivate;
 
-class GT_BASE_EXPORT GtTocModel : public QAbstractItemModel
+class GT_BASE_EXPORT GtTocModel : public QAbstractItemModel, public GtObject
 {
     Q_OBJECT
 

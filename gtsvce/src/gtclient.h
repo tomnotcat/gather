@@ -4,7 +4,7 @@
 #ifndef __GT_CLIENT_H__
 #define __GT_CLIENT_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include <QtCore/QObject>
 #include <QtNetwork/QAbstractSocket>
 
@@ -12,7 +12,7 @@ GT_BEGIN_NAMESPACE
 
 class GtClientPrivate;
 
-class GT_SVCE_EXPORT GtClient : public QObject
+class GT_SVCE_EXPORT GtClient : public QObject, public GtObject
 {
     Q_OBJECT
 
@@ -23,16 +23,25 @@ public:
 public:
     void login(const QHostAddress &address, quint16 port,
                const QString &user, const QString &passwd);
+    void logout();
 
 public:
     enum LoginResult {
+        LoginUnknown,
         LoginSuccess,
         InvalidUser,
         InvalidPasswd
     };
 
+    enum LogoutReason {
+        LogoutUnknown,
+        LogoutNormal,
+        LogoutRelogin
+    };
+
 Q_SIGNALS:
-    void onLogin(LoginResult result);
+    void onLogin(int result);
+    void onLogout(int reason);
 
 private Q_SLOTS:
     void handleRead();

@@ -4,7 +4,7 @@
 #ifndef __GT_SERVER_H__
 #define __GT_SERVER_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include <QtCore/QObject>
 #include <QtNetwork/QTcpServer>
 
@@ -12,7 +12,7 @@ GT_BEGIN_NAMESPACE
 
 class GtSessionManager;
 
-class GT_SVCE_EXPORT GtServer : public QTcpServer
+class GT_SVCE_EXPORT GtServer : public QTcpServer, public GtObject
 {
     Q_OBJECT
 

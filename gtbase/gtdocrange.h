@@ -9,7 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
-class GT_BASE_EXPORT GtDocRange
+class GT_BASE_EXPORT GtDocRange : public GtObject
 {
 public:
     Q_DECL_CONSTEXPR GtDocRange() : _textBegin(-1), _textEnd(-1) {}

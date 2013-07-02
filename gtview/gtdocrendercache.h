@@ -4,7 +4,7 @@
 #ifndef __GT_DOC_RENDER_CACHE_H__
 #define __GT_DOC_RENDER_CACHE_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include <QtCore/QObject>
 
 GT_BEGIN_NAMESPACE
@@ -12,7 +12,7 @@ GT_BEGIN_NAMESPACE
 class GtDocModel;
 class GtDocRenderCachePrivate;
 
-class GtDocRenderCache : public QObject
+class GtDocRenderCache : public QObject, public GtObject
 {
     Q_OBJECT
 

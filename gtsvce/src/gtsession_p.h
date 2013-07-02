@@ -5,6 +5,7 @@
 #define __GT_SESSION_P_H__
 
 #include "gtsession.h"
+#include "gtrecvbuffer.h"
 
 GT_BEGIN_NAMESPACE
 
@@ -16,12 +17,13 @@ public:
     explicit GtSessionPrivate(GtSession *q);
     ~GtSessionPrivate();
 
-protected:
-    friend class GtSessionManager;
+public:
+    void setSocket(QAbstractSocket *s);
 
 protected:
     GtSession *q_ptr;
     QAbstractSocket *socket;
+    GtRecvBuffer buffer;
 };
 
 GT_END_NAMESPACE

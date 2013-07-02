@@ -4,7 +4,7 @@
 #ifndef __GT_MAINWINDOW_H__
 #define __GT_MAINWINDOW_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include "ui_gtmainwindow.h"
 
 GT_BEGIN_NAMESPACE
@@ -14,11 +14,12 @@ class GtDocument;
 class GtDocModel;
 class GtTocModel;
 class GtDocView;
+class GtClient;
 
 #define ORGANIZATION_NAME "Clue Network"
 #define APPLICATION_NAME "Gather"
 
-class GtMainWindow : public QMainWindow
+class GtMainWindow : public QMainWindow, public GtObject
 {
     Q_OBJECT;
 
@@ -60,6 +61,9 @@ private:
     QSharedPointer<GtDocModel> docModel;
     QSharedPointer<GtDocument> document;
     QSharedPointer<GtTocModel> tocModel;
+
+    // Network
+    GtClient *client;
 
     // Objects in GUI thread
     QStringList recentFiles;

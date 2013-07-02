@@ -4,8 +4,9 @@
 #ifndef __GT_SESSION_H__
 #define __GT_SESSION_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include <QtCore/QObject>
+#include <QtNetwork/QAbstractSocket>
 
 class QAbstractSocket;
 
@@ -13,7 +14,7 @@ GT_BEGIN_NAMESPACE
 
 class GtSessionPrivate;
 
-class GT_SVCE_EXPORT GtSession : public QObject
+class GT_SVCE_EXPORT GtSession : public QObject, public GtObject
 {
     Q_OBJECT
 
@@ -22,7 +23,15 @@ public:
     ~GtSession();
 
 public:
+    virtual void message(const char *data, int size);
+
+public:
     QAbstractSocket* socket() const;
+    void close();
+
+private Q_SLOTS:
+    void handleRead();
+    void handleError(QAbstractSocket::SocketError error);
 
 private:
     friend class GtSessionManager;

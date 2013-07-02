@@ -15,7 +15,21 @@ GtSessionPrivate::GtSessionPrivate(GtSession *q)
 
 GtSessionPrivate::~GtSessionPrivate()
 {
-    socket->deleteLater();
+    delete socket;
+}
+
+void GtSessionPrivate::setSocket(QAbstractSocket *s)
+{
+    Q_Q(GtSession);
+
+    if (socket)
+        socket->deleteLater();
+
+    socket = s;
+
+    s->connect(s, SIGNAL(readyRead()), q, SLOT(handleRead()));
+    s->connect(s, SIGNAL(error(QAbstractSocket::SocketError)),
+               q, SLOT(handleError(QAbstractSocket::SocketError)));
 }
 
 GtSession::GtSession(QObject *parent)
@@ -28,10 +42,57 @@ GtSession::~GtSession()
 {
 }
 
+void GtSession::message(const char *data, int size)
+{
+    Q_UNUSED(data);
+    Q_UNUSED(size);
+}
+
 QAbstractSocket* GtSession::socket() const
 {
     Q_D(const GtSession);
     return d->socket;
+}
+
+void GtSession::close()
+{
+}
+
+void GtSession::handleRead()
+{
+    Q_D(GtSession);
+
+    int result = d->buffer.read(d->socket);
+    while (GtRecvBuffer::ReadMessage == result) {
+        this->message(d->buffer.buffer(), d->buffer.size());
+        d->buffer.clear();
+        result = d->buffer.read(d->socket);
+    }
+
+    switch (result) {
+    case GtRecvBuffer::ReadError:
+        qWarning() << "GtRecvBuffer::ReadError";
+        close();
+        break;
+
+    default:
+        break;
+    }
+}
+
+void GtSession::handleError(QAbstractSocket::SocketError error)
+{
+    Q_D(GtSession);
+
+    switch (error) {
+    case QAbstractSocket::RemoteHostClosedError:
+        break;
+
+    default:
+        qWarning() << "GtSession socket error:"
+                   << error << d->socket->errorString();
+        break;
+    }
 }
 
 GT_END_NAMESPACE

@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtmainwindow.h"
+#include "gtclient.h"
 #include "gtdocloader.h"
 #include "gtdocmodel.h"
 #include "gtdocoutline.h"
@@ -57,6 +58,9 @@ GtMainWindow::GtMainWindow()
 
     connect(ui.tocView, SIGNAL(clicked(QModelIndex)), this, SLOT(tocChanged(QModelIndex)));
     connect(ui.tocView, SIGNAL(activated(QModelIndex)), this, SLOT(tocChanged(QModelIndex)));
+
+    // Network
+    client = new GtClient(this);
 
     // Recent files
     recentFileActions[0] = ui.actionRecentFile0;

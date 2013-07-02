@@ -8,4 +8,4 @@ CONFIG(debug, debug|release) {
     DESTDIR = ../../../build/release
 }
 
-unix: LIBS += -L$$DESTDIR -lgtsvce
+unix: LIBS += -L$$DESTDIR -lgtbase -lgtsvce

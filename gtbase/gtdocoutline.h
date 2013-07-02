@@ -4,12 +4,12 @@
 #ifndef __GT_DOC_OUTLINE_H__
 #define __GT_DOC_OUTLINE_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include <QtCore/QString>
 
 GT_BEGIN_NAMESPACE
 
-class GT_BASE_EXPORT GtDocOutline
+class GT_BASE_EXPORT GtDocOutline : public GtObject
 {
 public:
     explicit GtDocOutline();

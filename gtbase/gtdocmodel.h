@@ -4,7 +4,7 @@
 #ifndef __GT_DOC_MODEL_H__
 #define __GT_DOC_MODEL_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include <QtCore/qobject.h>
 
 GT_BEGIN_NAMESPACE
@@ -12,7 +12,7 @@ GT_BEGIN_NAMESPACE
 class GtDocument;
 class GtDocModelPrivate;
 
-class GT_BASE_EXPORT GtDocModel : public QObject
+class GT_BASE_EXPORT GtDocModel : public QObject, public GtObject
 {
     Q_OBJECT
 

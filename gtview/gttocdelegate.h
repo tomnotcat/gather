@@ -4,14 +4,14 @@
 #ifndef __GT_TOC_DELEGATE_H__
 #define __GT_TOC_DELEGATE_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include <QtWidgets/QItemDelegate>
 
 GT_BEGIN_NAMESPACE
 
 class GtTocDelegatePrivate;
 
-class GT_BASE_EXPORT GtTocDelegate : public QItemDelegate
+class GT_BASE_EXPORT GtTocDelegate : public QItemDelegate, public GtObject
 {
     Q_OBJECT
 

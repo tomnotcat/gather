@@ -8,6 +8,7 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtLoginRequest;
 class GtUserSessionPrivate;
 
 class GT_SVCE_EXPORT GtUserSession : public GtSession
@@ -17,6 +18,9 @@ class GT_SVCE_EXPORT GtUserSession : public GtSession
 public:
     explicit GtUserSession(QObject *parent = 0);
     ~GtUserSession();
+
+protected:
+    void message(const char *data, int size);
 
 private:
     QScopedPointer<GtUserSessionPrivate> d_ptr;

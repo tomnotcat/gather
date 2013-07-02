@@ -6,3 +6,5 @@ qrc_*
 *.so*
 build
 ui_*
+*.pb.h
+*.pb.cc

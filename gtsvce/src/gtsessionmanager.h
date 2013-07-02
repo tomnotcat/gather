@@ -4,7 +4,7 @@
 #ifndef __GT_SESSION_MANAGER_H__
 #define __GT_SESSION_MANAGER_H__
 
-#include "gtcommon.h"
+#include "gtobject.h"
 #include <QtCore/QObject>
 
 class QAbstractSocket;
@@ -13,7 +13,7 @@ GT_BEGIN_NAMESPACE
 
 class GtSessionManagerPrivate;
 
-class GT_SVCE_EXPORT GtSessionManager : public QObject
+class GT_SVCE_EXPORT GtSessionManager : public QObject, public GtObject
 {
     Q_OBJECT
 

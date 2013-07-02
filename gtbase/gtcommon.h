@@ -51,4 +51,6 @@
 #undef CLAMP
 #define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
+#define GT_DEBUG
+
 #endif  /* __GT_COMMON_H__ */
