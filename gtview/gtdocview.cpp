@@ -103,7 +103,9 @@ public:
     int pageDistance(int page, const QPoint &point, QPointF *ppoint);
     QTransform pageToViewMatrix(GtDocPage *page);
     GtDocPoint docPointFromViewPoint(const QPoint &p, bool inside);
+    QPoint viewPointFromDocPoint(const GtDocPoint &p);
     void updateCursor(const QPoint &p);
+    void relayoutPagesLater();
 
 private:
     GtDocView *q_ptr;
@@ -134,6 +136,7 @@ private:
 
     // infinite resizing loop prevention
     bool verticalScrollBarVisible;
+    bool pendingRelayoutPages;
 };
 
 GtDocViewPrivate::HeightCache::HeightCache()
@@ -299,6 +302,7 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     , lockPageUpdate(0)
     , lockPageNeedUpdate(false)
     , verticalScrollBarVisible(false)
+    , pendingRelayoutPages(false)
 
 {
     Q_Q(GtDocView);
@@ -337,11 +341,8 @@ GtDocViewPrivate::~GtDocViewPrivate()
 
 void GtDocViewPrivate::changePage(int page)
 {
-    Q_Q(GtDocView);
-
     currentPage = page;
-
-    QMetaObject::invokeMethod(q, "relayoutPages", Qt::QueuedConnection);
+    relayoutPagesLater();
 }
 
 void GtDocViewPrivate::resizeContentArea(const QSize &size)
@@ -831,6 +832,9 @@ GtDocPoint GtDocViewPrivate::docPointFromViewPoint(const QPoint &p, bool inside)
 {
     Q_Q(GtDocView);
 
+    if (!document)
+        return GtDocPoint();
+
     QPoint point(p + q->scrollPoint());
     QPointF ppoint;
     int bestPage = -1;
@@ -858,17 +862,41 @@ GtDocPoint GtDocViewPrivate::docPointFromViewPoint(const QPoint &p, bool inside)
     return GtDocPoint(page, m.map(ppoint));
 }
 
+QPoint GtDocViewPrivate::viewPointFromDocPoint(const GtDocPoint &p)
+{
+    Q_Q(GtDocView);
+
+    QRect rect(pageExtents(p.page()->index()));
+    QPoint point(q->scrollPoint());
+    int x = rect.x() + p.x() * scale;
+    int y = rect.y() + p.y() * scale;
+
+    x -= point.x();
+    y -= point.y();
+    return QPoint(x, y);
+}
+
 void GtDocViewPrivate::updateCursor(const QPoint &p)
 {
     Q_Q(GtDocView);
 
     if (GtDocModel::SelectText == mouseMode) {
-        GtDocPoint docPoint = docPointFromViewPoint(p, true);
+        GtDocPoint docPoint(docPointFromViewPoint(p, true));
 
         if (docPoint.offset(true) != -1)
             q->setCursor(Qt::IBeamCursor);
         else
             q->setCursor(Qt::ArrowCursor);
+    }
+}
+
+void GtDocViewPrivate::relayoutPagesLater()
+{
+    Q_Q(GtDocView);
+
+    if (!pendingRelayoutPages) {
+        pendingRelayoutPages = true;
+        QMetaObject::invokeMethod(q, "relayoutPages", Qt::QueuedConnection);
     }
 }
 
@@ -1138,13 +1166,9 @@ void GtDocView::documentChanged(GtDocument *document)
         if (d->currentPage != currentPage) {
             d->changePage(currentPage);
         }
-        else {
-            QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
-        }
     }
-    else {
-        QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
-    }
+
+    d->relayoutPagesLater();
 }
 
 void GtDocView::pageChanged(int page)
@@ -1158,7 +1182,7 @@ void GtDocView::pageChanged(int page)
         d->changePage(page);
     }
     else {
-        QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
+        d->relayoutPagesLater();
     }
 }
 
@@ -1172,7 +1196,7 @@ void GtDocView::scaleChanged(double scale)
     d->scale = scale;
 
     if (d->sizingMode == GtDocModel::FreeSize)
-        QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
+        d->relayoutPagesLater();
 }
 
 void GtDocView::rotationChanged(int rotation)
@@ -1181,8 +1205,7 @@ void GtDocView::rotationChanged(int rotation)
 
     d->rotation = rotation;
     d->renderCache->clear();
-
-    QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
+    d->relayoutPagesLater();
 }
 
 void GtDocView::continuousChanged(bool continuous)
@@ -1190,8 +1213,7 @@ void GtDocView::continuousChanged(bool continuous)
     Q_D(GtDocView);
 
     d->continuous = continuous;
-
-    QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
+    d->relayoutPagesLater();
 }
 
 void GtDocView::layoutModeChanged(int mode)
@@ -1203,7 +1225,7 @@ void GtDocView::layoutModeChanged(int mode)
     /* FIXME: if we're keeping the pixbuf cache around, we should
      * extend the preload_cache_size to be 2 if dual_page is set.
      */
-    QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
+    d->relayoutPagesLater();
 }
 
 void GtDocView::sizingModeChanged(int mode)
@@ -1213,7 +1235,7 @@ void GtDocView::sizingModeChanged(int mode)
     d->sizingMode = static_cast<GtDocModel::SizingMode>(mode);
 
     if (mode != GtDocModel::FreeSize)
-        QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
+        d->relayoutPagesLater();
 }
 
 void GtDocView::mouseModeChanged(int mode)
@@ -1232,6 +1254,11 @@ void GtDocView::mouseModeChanged(int mode)
 void GtDocView::relayoutPages()
 {
     Q_D(GtDocView);
+
+    if (!d->pendingRelayoutPages)
+        return;
+
+    d->pendingRelayoutPages = false;
 
     QSize size;
     if (NULL == d->document) {
@@ -1397,7 +1424,7 @@ void GtDocView::resizeEvent(QResizeEvent *e)
     }
 
     d->verticalScrollBarVisible = verticalScrollBar()->isVisible();
-    QMetaObject::invokeMethod(this, "relayoutPages", Qt::QueuedConnection);
+    d->relayoutPagesLater();
 }
 
 void GtDocView::keyPressEvent(QKeyEvent *)
@@ -1427,6 +1454,8 @@ void GtDocView::wheelEvent(QWheelEvent *e)
 
     e->accept();
     if ((modifiers & Qt::ControlModifier) == Qt::ControlModifier) {
+        GtDocPoint docPoint = d->docPointFromViewPoint(e->pos(), false);
+
         if (delta < 0) {
             if (canZoomOut())
                 zoomOut();
@@ -1434,6 +1463,15 @@ void GtDocView::wheelEvent(QWheelEvent *e)
         else {
             if (canZoomIn())
                 zoomIn();
+        }
+
+        if (docPoint.isValid()) {
+            relayoutPages();
+
+            QPoint point(d->viewPointFromDocPoint(docPoint));
+            point += scrollPoint();
+            point -= e->pos();
+            scrollTo(point.x(), point.y());
         }
     }
     else if ((modifiers & Qt::ShiftModifier) == Qt::ShiftModifier) {
@@ -1472,43 +1510,46 @@ void GtDocView::paintEvent(QPaintEvent *e)
     int scrollY = verticalScrollBar()->value();
     QRegion remainingArea(contentsRect);
     QColor backColor = viewport()->palette().color(QPalette::Dark);
-    QColor selBgColor = QColor(30, 76, 100, 120);
-    GtDocRange selectRange;
-
-    if (d->selectEnd > d->selectBegin) {
-        selectRange.setPoints(d->selectBegin, d->selectEnd);
-    }
-    else {
-        selectRange.setPoints(d->selectEnd, d->selectBegin);
-    }
 
     // draw page contents
-    QRect pageArea, border, overlap;
-    for (int i = d->beginPage; i < d->endPage; ++i) {
-        pageArea = d->pageExtents(i, &border);
-        pageArea.translate(-scrollX, -scrollY);
-        overlap = contentsRect.intersected(pageArea);
+    if (d->document) {
+        GtDocRange selectRange;
+        QColor selBgColor = QColor(30, 76, 100, 120);
 
-        if (!overlap.isValid())
-            continue;
-
-        d->drawPage(p, i, pageArea, border, backColor);
-        remainingArea -= pageArea;
-
-        // highlight selected text
-        if (GtDocModel::SelectText == d->mouseMode) {
-            GtDocPage *page = d->document->page(i);
-            QPoint selText(selectRange.intersectedText(page));
-            QRegion textRgn = d->textRegion(page, selText.x(), selText.y());
-
-            textRgn.translate(pageArea.x() + border.left(),
-                              pageArea.y() + border.top());
-
-            d->fillRegion(p, textRgn, selBgColor);
+        if (d->selectEnd > d->selectBegin) {
+            selectRange.setPoints(d->selectBegin, d->selectEnd);
         }
-    }
+        else {
+            selectRange.setPoints(d->selectEnd, d->selectBegin);
+        }
 
-    if (d->selectBegin.isValid() && d->selectEnd.isValid()) {
+        QRect pageArea, border, overlap;
+        for (int i = d->beginPage; i < d->endPage; ++i) {
+            pageArea = d->pageExtents(i, &border);
+            pageArea.translate(-scrollX, -scrollY);
+            overlap = contentsRect.intersected(pageArea);
+
+            if (!overlap.isValid())
+                continue;
+
+            d->drawPage(p, i, pageArea, border, backColor);
+            remainingArea -= pageArea;
+
+            // highlight selected text
+            if (GtDocModel::SelectText == d->mouseMode) {
+                GtDocPage *page = d->document->page(i);
+                QPoint selText(selectRange.intersectedText(page));
+                QRegion textRgn = d->textRegion(page, selText.x(), selText.y());
+
+                textRgn.translate(pageArea.x() + border.left(),
+                                  pageArea.y() + border.top());
+
+                d->fillRegion(p, textRgn, selBgColor);
+            }
+        }
+
+        if (d->selectBegin.isValid() && d->selectEnd.isValid()) {
+        }
     }
 
     // fill with background color the unpainted area
@@ -1541,6 +1582,8 @@ void GtDocView::mousePressEvent(QMouseEvent *e)
     if (d->document && d->mouseMode != GtDocModel::BrowseMode) {
         d->selectBegin = d->docPointFromViewPoint(e->pos(), true);
         d->selectEnd = GtDocPoint();
+        // TODO: update invalid region only
+        viewport()->update();
     }
 }
 

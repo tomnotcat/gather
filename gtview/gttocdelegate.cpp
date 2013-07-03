@@ -42,7 +42,7 @@ GtTocDelegate::~GtTocDelegate()
 {
 }
 
-void GtTocDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index ) const
+void GtTocDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
     d_ptr->index = index;
     QItemDelegate::paint(painter, option, index);

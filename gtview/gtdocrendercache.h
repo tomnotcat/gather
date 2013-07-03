@@ -25,7 +25,7 @@ public:
     void setMaxSize(int maxSize);
     void setPageRange(int beginPage, int endPage);
     QImage image(int index);
-    void clear(void);
+    void clear();
 
 Q_SIGNALS:
     void finished(int index);

@@ -29,7 +29,9 @@ public:
     ~GtDocLoaderPrivate();
 
 public:
-    GtDocument* loadDocument(LoaderInfo &info, const QString &fileName, QThread *thread);
+    GtDocument* loadDocument(LoaderInfo &info,
+                             const QString &fileName,
+                             QThread *thread);
 
 public:
     GtDocLoader *q_ptr;

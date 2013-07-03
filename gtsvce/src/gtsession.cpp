@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtsession_p.h"
+#include "gtserver_p.h"
 #include <QtCore/QDebug>
 #include <QtNetwork/QAbstractSocket>
 
@@ -10,6 +11,8 @@ GT_BEGIN_NAMESPACE
 GtSessionPrivate::GtSessionPrivate(GtSession *q)
     : q_ptr(q)
     , socket(0)
+    , server(0)
+    , thread(0)
 {
 }
 
@@ -18,14 +21,13 @@ GtSessionPrivate::~GtSessionPrivate()
     delete socket;
 }
 
-void GtSessionPrivate::setSocket(QAbstractSocket *s)
+void GtSessionPrivate::init(QAbstractSocket *s, GtServer *m, GtServerThread *t)
 {
     Q_Q(GtSession);
 
-    if (socket)
-        socket->deleteLater();
-
     socket = s;
+    server = m;
+    thread = t;
 
     s->connect(s, SIGNAL(readyRead()), q, SLOT(handleRead()));
     s->connect(s, SIGNAL(error(QAbstractSocket::SocketError)),
@@ -48,6 +50,12 @@ void GtSession::message(const char *data, int size)
     Q_UNUSED(size);
 }
 
+GtServer* GtSession::server() const
+{
+    Q_D(const GtSession);
+    return d->server;
+}
+
 QAbstractSocket* GtSession::socket() const
 {
     Q_D(const GtSession);
@@ -56,6 +64,11 @@ QAbstractSocket* GtSession::socket() const
 
 void GtSession::close()
 {
+    Q_D(GtSession);
+
+    d->socket->close();
+    d->server->d_ptr->removeSession(this);
+    deleteLater();
 }
 
 void GtSession::handleRead()
@@ -93,6 +106,8 @@ void GtSession::handleError(QAbstractSocket::SocketError error)
                    << error << d->socket->errorString();
         break;
     }
+
+    this->close();
 }
 
 GT_END_NAMESPACE

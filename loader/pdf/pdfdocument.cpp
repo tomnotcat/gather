@@ -77,13 +77,18 @@ PdfDocument::~PdfDocument()
         fz_close_document(document);
         document = NULL;
     }
+
+    if (_context) {
+        fz_free_context(_context);
+        _context = 0;
+    }
 }
 
 bool PdfDocument::load(QIODevice *device)
 {
     fz_stream *stream;
 
-    _context = PdfDocument::context();
+    _context = fz_new_context(NULL, NULL, FZ_STORE_DEFAULT);
     stream = fz_new_stream(_context, device,
                            PdfDocument::readPdfStream,
                            PdfDocument::closePdfStream);
@@ -230,80 +235,6 @@ QString PdfDocument::indexToLabel(int index)
     }
 
     return range->prefix + numberString;
-}
-
-fz_context* PdfDocument::context()
-{
-    // Thread ID to context
-    static QHash<Qt::HANDLE, fz_context*> contexts;
-    static QMutex mutex;
-    Qt::HANDLE threadId = QThread::currentThreadId();
-    fz_context *context = 0;
-    bool done = false;
-
-    mutex.lock();
-
-    if (contexts.contains(threadId)) {
-        context = contexts[threadId];
-        done = true;
-    }
-    else if (contexts.size() > 0) {
-        context = *contexts.begin();
-    }
-
-    mutex.unlock();
-
-    if (done)
-        return context;
-
-    if (context) {
-        context = fz_clone_context(context);
-    }
-    else {
-        static fz_locks_context locks;
-        static QMutex *mutexs[FZ_LOCK_MAX];
-
-        mutex.lock();
-        if (0 == mutexs[0]) {
-            for (int i = 0; i < FZ_LOCK_MAX; ++i)
-                mutexs[i] = new QMutex();
-        }
-
-        locks.user = mutexs;
-        locks.lock = lockContext;
-        locks.unlock = unlockContext;
-        mutex.unlock();
-
-        context = fz_new_context(NULL, &locks, FZ_STORE_DEFAULT);
-    }
-
-    qDebug() << "Create fz_context for thread:" << threadId;
-
-    mutex.lock();
-
-    if (contexts.contains(threadId)) {
-        fz_free_context(context);
-        context = contexts[threadId];
-    }
-    else {
-        contexts.insert(threadId, context);
-    }
-
-    mutex.unlock();
-
-    return context;
-}
-
-void PdfDocument::lockContext(void *user, int lock)
-{
-    QMutex **mutexs = static_cast<QMutex**>(user);
-    mutexs[lock]->lock();
-}
-
-void PdfDocument::unlockContext(void *user, int lock)
-{
-    QMutex **mutexs = static_cast<QMutex**>(user);
-    mutexs[lock]->unlock();
 }
 
 int PdfDocument::readPdfStream(fz_stream *stm, unsigned char *buf, int len)

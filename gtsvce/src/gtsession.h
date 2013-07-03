@@ -12,6 +12,7 @@ class QAbstractSocket;
 
 GT_BEGIN_NAMESPACE
 
+class GtServer;
 class GtSessionPrivate;
 
 class GT_SVCE_EXPORT GtSession : public QObject, public GtObject
@@ -26,6 +27,7 @@ public:
     virtual void message(const char *data, int size);
 
 public:
+    GtServer* server() const;
     QAbstractSocket* socket() const;
     void close();
 
@@ -34,7 +36,7 @@ private Q_SLOTS:
     void handleError(QAbstractSocket::SocketError error);
 
 private:
-    friend class GtSessionManager;
+    friend class GtServerPrivate;
     QScopedPointer<GtSessionPrivate> d_ptr;
 
 private:

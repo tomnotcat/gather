@@ -14,9 +14,9 @@ CONFIG(client) {
 }
 
 CONFIG(server) {
-    HEADERS += gtserver.h gtsession.h gtsessionmanager.h \
-        gtusersession.h gtrecvbuffer.h gtsvcutil.h
-    SOURCES += gtserver.cpp gtsession.cpp gtsessionmanager.cpp \
+    HEADERS += gtserver.h gtserver_p.h gtsession.h gtsession_p.h \
+        gtuserserver.h gtusersession.h gtrecvbuffer.h gtsvcutil.h
+    SOURCES += gtserver.cpp gtsession.cpp gtuserserver.cpp \
         gtusersession.cpp gtrecvbuffer.cpp gtsvcutil.cpp
 }
 

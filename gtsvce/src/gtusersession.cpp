@@ -4,6 +4,7 @@
 #include "gtusersession.h"
 #include "gtclient.h"
 #include "gtmessage.pb.h"
+#include "gtuserserver.h"
 #include "gtsvcutil.h"
 #include <QtCore/QDebug>
 
@@ -22,6 +23,7 @@ public:
 
 protected:
     GtUserSession *q_ptr;
+    QString name;
 };
 
 GtUserSessionPrivate::GtUserSessionPrivate(GtUserSession *q)
@@ -39,19 +41,27 @@ void GtUserSessionPrivate::handleLogin(GtLoginRequest &msg)
 
     QString user = QString::fromUtf8(msg.user().c_str());
     QString passwd = QString::fromUtf8(msg.passwd().c_str());
-    GtSimpleMessage response;
+    GtClient::LoginResult result = GtClient::LoginUnknown;
 
     if (user.isEmpty()) {
-        response.set_data1(GtClient::InvalidUser);
+        result = GtClient::InvalidUser;
     }
     else if (passwd.isEmpty()) {
-        response.set_data1(GtClient::InvalidPasswd);
+        result = GtClient::InvalidPasswd;
     }
     else {
-        response.set_data1(GtClient::LoginSuccess);
+        result = GtClient::LoginSuccess;
     }
 
+    GtSimpleMessage response;
+    response.set_data1(result);
     GtSvcUtil::sendMessage(q->socket(), GT_LOGIN_RESPONSE, response);
+
+    if (GtClient::LoginSuccess == result) {
+        GtUserServer *server = qobject_cast<GtUserServer*>(q->server());
+        this->name = user;
+        server->addLogin(q);
+    }
 }
 
 GtUserSession::GtUserSession(QObject *parent)
@@ -62,6 +72,12 @@ GtUserSession::GtUserSession(QObject *parent)
 
 GtUserSession::~GtUserSession()
 {
+}
+
+QString GtUserSession::name() const
+{
+    Q_D(const GtUserSession);
+    return d->name;
 }
 
 void GtUserSession::message(const char *data, int size)
@@ -94,6 +110,13 @@ void GtUserSession::message(const char *data, int size)
         qWarning() << "Invalid message type:" << type;
         break;
     }
+}
+
+void GtUserSession::reloginLogout()
+{
+    GtSimpleMessage msg;
+    msg.set_data1(GtClient::LogoutRelogin);
+    GtSvcUtil::sendMessage(socket(), GT_LOGOUT_MESSAGE, msg);
 }
 
 GT_END_NAMESPACE

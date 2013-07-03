@@ -10,7 +10,8 @@
 
 GT_BEGIN_NAMESPACE
 
-class GtSessionManager;
+class GtSession;
+class GtServerPrivate;
 
 class GT_SVCE_EXPORT GtServer : public QTcpServer, public GtObject
 {
@@ -20,14 +21,27 @@ public:
     explicit GtServer(QObject *parent = 0);
     ~GtServer();
 
+public:
+    void setMaxThread(int count);
+    int maxThread() const;
+
+protected:
+    virtual GtSession* createSession() = 0;
+    virtual void addSession(GtSession *session);
+    virtual void removeSession(GtSession *session) = 0;
+
 protected:
     void incomingConnection(qintptr socketDescriptor);
 
 private:
-    GtSessionManager *sessionManager;
+    friend class GtSession;
+
+private:
+    QScopedPointer<GtServerPrivate> d_ptr;
 
 private:
     Q_DISABLE_COPY(GtServer)
+    Q_DECLARE_PRIVATE(GtServer)
 };
 
 GT_END_NAMESPACE

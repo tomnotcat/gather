@@ -67,6 +67,8 @@ void GtClientPrivate::sendLogin() const
 
 void GtClientPrivate::handleMessage(const char *data, int size)
 {
+    Q_Q(GtClient);
+
     if (size < (int)sizeof(quint16)) {
         qWarning() << "Invalid message size:" << size;
         return;
@@ -85,6 +87,18 @@ void GtClientPrivate::handleMessage(const char *data, int size)
             }
             else {
                 qWarning() << "Invalid login response";
+            }
+        }
+        break;
+
+    case GT_LOGOUT_MESSAGE:
+        {
+            GtSimpleMessage msg;
+            if (msg.ParseFromArray(data, size)) {
+                emit q->onLogout(msg.data1());
+            }
+            else {
+                qWarning() << "Invalid logout response";
             }
         }
         break;

@@ -7,6 +7,7 @@
 #include "gtdocument.h"
 #include <QtCore/QDebug>
 #include <QtCore/QMutex>
+#include <QtCore/QThread>
 #include <QtGui/QColor>
 #include <QtGui/QImage>
 
@@ -269,7 +270,7 @@ QImage GtDocRenderCache::image(int index)
     return image;
 }
 
-void GtDocRenderCache::clear(void)
+void GtDocRenderCache::clear()
 {
     Q_D(GtDocRenderCache);
 

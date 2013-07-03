@@ -4,7 +4,7 @@
 #include <QtNetwork/QHostAddress>
 #include <QtTest/QtTest>
 #include "gtclient.h"
-#include "gtserver.h"
+#include "gtuserserver.h"
 
 using namespace Gather;
 
@@ -12,11 +12,11 @@ class test_login: public QObject
 {
     Q_OBJECT
 
-private slots:
+private Q_SLOTS:
     void onLogin(int r);
     void onLogout(int r);
 
-private slots:
+private Q_SLOTS:
     void testLogin();
     void testLogout();
     void cleanupTestCase();
@@ -26,9 +26,14 @@ private:
         TEST_PORT = 4004
     };
 
+public:
+    inline int exec(int count = 1) { eventCount = count; return app->exec(); }
+    inline void exit() { if (--eventCount == 0) app->exit(); }
+
 private:
     int loginResult;
     int logoutReason;
+    int eventCount;
     QCoreApplication *app;
     QObject *loginSender;
     QObject *logoutSender;
@@ -38,21 +43,21 @@ void test_login::onLogin(int r)
 {
     loginSender = sender();
     loginResult = r;
-    app->exit();
+    exit();
 }
 
 void test_login::onLogout(int r)
 {
     logoutSender = sender();
     logoutReason = r;
-    app->exit();
+    exit();
 }
 
 void test_login::testLogin()
 {
     int argc = 0;
     QCoreApplication app(argc, 0);
-    GtServer server;
+    GtUserServer server;
     GtClient client;
     QHostAddress host(QHostAddress::LocalHost);
 
@@ -63,17 +68,17 @@ void test_login::testLogin()
 
     loginResult = GtClient::LoginUnknown;
     client.login(host, TEST_PORT, "testuser", "testpasswd");
-    QVERIFY(app.exec() == 0);
+    QVERIFY(exec() == 0);
     QVERIFY(loginResult == GtClient::LoginSuccess);
 
     loginResult = GtClient::LoginUnknown;
     client.login(host, TEST_PORT, "", "testpasswd");
-    QVERIFY(app.exec() == 0);
+    QVERIFY(exec() == 0);
     QVERIFY(loginResult == GtClient::InvalidUser);
 
     loginResult = GtClient::LoginUnknown;
     client.login(host, TEST_PORT, "testuser", "");
-    QVERIFY(app.exec() == 0);
+    QVERIFY(exec() == 0);
     QVERIFY(loginResult == GtClient::InvalidPasswd);
 }
 
@@ -83,7 +88,7 @@ void test_login::testLogout()
     QCoreApplication app(argc, 0);
     GtClient client1;
     GtClient client2;
-    GtServer server;
+    GtUserServer server;
     QHostAddress host(QHostAddress::LocalHost);
 
     this->app = &app;
@@ -98,13 +103,13 @@ void test_login::testLogout()
     logoutReason = GtClient::LogoutUnknown;
     logoutSender = 0;
     client1.login(host, TEST_PORT, "testuser", "testpasswd");
-    QVERIFY(app.exec() == 0);
+    QVERIFY(exec() == 0);
     QVERIFY(loginResult == GtClient::LoginSuccess);
     QVERIFY(loginSender == &client1);
 
     loginResult = GtClient::LoginUnknown;
     client2.login(host, TEST_PORT, "testuser", "");
-    QVERIFY(app.exec() == 0);
+    QVERIFY(exec() == 0);
     QVERIFY(loginResult == GtClient::InvalidPasswd);
     QVERIFY(logoutReason == GtClient::LogoutUnknown);
     QVERIFY(loginSender == &client2);
@@ -112,7 +117,7 @@ void test_login::testLogout()
 
     loginResult = GtClient::LoginUnknown;
     client2.login(host, TEST_PORT, "testuser", "testpasswd");
-    QVERIFY(app.exec() == 0);
+    QVERIFY(exec(2) == 0);
     QVERIFY(loginResult == GtClient::LoginSuccess);
     QVERIFY(logoutReason == GtClient::LogoutRelogin);
     QVERIFY(loginSender == &client2);

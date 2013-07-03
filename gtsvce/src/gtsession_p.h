@@ -9,6 +9,9 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtServer;
+class GtServerThread;
+
 class GtSessionPrivate
 {
     Q_DECLARE_PUBLIC(GtSession)
@@ -18,11 +21,16 @@ public:
     ~GtSessionPrivate();
 
 public:
-    void setSocket(QAbstractSocket *s);
+    void init(QAbstractSocket *s, GtServer *m, GtServerThread *t);
+
+protected:
+    friend class GtServerPrivate;
 
 protected:
     GtSession *q_ptr;
     QAbstractSocket *socket;
+    GtServer *server;
+    GtServerThread *thread;
     GtRecvBuffer buffer;
 };
 

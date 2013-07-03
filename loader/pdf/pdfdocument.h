@@ -25,16 +25,11 @@ public:
     GtAbstractPage* loadPage(int index);
     GtAbstractOutline* loadOutline();
 
-public:
-    static fz_context* context();
-
 protected:
     void parseLabels(pdf_obj *tree);
     QString indexToLabel(int index);
 
 protected:
-    static void lockContext(void *user, int lock);
-    static void unlockContext(void *user, int lock);
     static int readPdfStream(fz_stream *stm, unsigned char *buf, int len);
     static void seekPdfStream(fz_stream *stm, int offset, int whence);
     static void closePdfStream(fz_context *ctx, void *state);
