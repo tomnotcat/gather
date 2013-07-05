@@ -5,6 +5,7 @@
 #define __GT_DOC_VIEW_H__
 
 #include "gtobject.h"
+#include "gtdocrange.h"
 #include <QtWidgets/qabstractscrollarea.h>
 
 GT_BEGIN_NAMESPACE
@@ -42,6 +43,10 @@ public:
 
     QPoint scrollPoint() const;
     void scrollTo(int x, int y);
+
+    GtDocRange selectRange() const;
+    GtDocPoint docPointFromViewPoint(const QPoint &p, bool inside);
+    QPoint viewPointFromDocPoint(const GtDocPoint &p);
 
 private Q_SLOTS:
     void renderFinished(int page);

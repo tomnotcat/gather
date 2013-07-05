@@ -36,8 +36,10 @@ private Q_SLOTS:
     void on_actionRotateRight_triggered();
     void on_actionAboutGather_triggered();
     void openRecentFile();
+    void showDocViewContextMenu(const QPoint &pos);
     void docLoaded(GtDocument *doc);
     void tocChanged(const QModelIndex &index);
+    void searchSelectedText();
 
 private:
     void readSettings();

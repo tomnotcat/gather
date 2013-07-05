@@ -52,6 +52,12 @@ GtMainWindow::GtMainWindow()
     ui.docView->setModel(docModel.data());
     ui.docView->setRenderThread(docThread);
     ui.docView->setRenderCacheSize(1024 * 1024 * 20);
+    ui.docView->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    connect(ui.docView,
+            SIGNAL(customContextMenuRequested(const QPoint&)),
+            this,
+            SLOT(showDocViewContextMenu(const QPoint&)));
 
     tocModel = QSharedPointer<GtTocModel>(new GtTocModel());
     ui.tocView->setItemDelegate(new GtTocDelegate(ui.tocView));
@@ -139,6 +145,26 @@ void GtMainWindow::on_actionAboutGather_triggered()
 {
 }
 
+void GtMainWindow::showDocViewContextMenu(const QPoint &pos)
+{
+    GtDocRange selRange(ui.docView->selectRange());
+
+    if (selRange.isEmpty())
+        return;
+
+    QMenu *menu = new QMenu(ui.docView);
+
+    QAction *searchAction = new QAction("&Search", menu);
+    connect(searchAction, SIGNAL(triggered()),
+            this, SLOT(searchSelectedText()));
+
+    menu->addAction(ui.actionCopy);
+    menu->addSeparator();
+    menu->addAction(searchAction);
+
+    menu->exec(QCursor::pos());
+}
+
 void GtMainWindow::docLoaded(GtDocument *doc)
 {
     if (doc != document.data()) {
@@ -164,6 +190,10 @@ void GtMainWindow::tocChanged(const QModelIndex &index)
         QRect rect(ui.docView->pageExtents(outline->page));
         ui.docView->scrollTo(rect.x(), rect.y());
     }
+}
+
+void GtMainWindow::searchSelectedText()
+{
 }
 
 void GtMainWindow::readSettings()

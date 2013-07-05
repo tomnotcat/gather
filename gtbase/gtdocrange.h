@@ -14,11 +14,12 @@ class GT_BASE_EXPORT GtDocRange : public GtObject
 public:
     Q_DECL_CONSTEXPR GtDocRange() : _textBegin(-1), _textEnd(-1) {}
     inline GtDocRange(const GtDocPoint &begin, const GtDocPoint &end);
-    inline GtDocRange(const GtDocRange &other);
-
+    inline GtDocPoint begin() const { return _begin; }
+    inline GtDocPoint end() const { return _end; }
     inline bool isEmpty() const;
 
     inline void setPoints(const GtDocPoint &begin, const GtDocPoint &end);
+    inline bool contains(const GtDocPoint &point) const;
     QPoint intersectedText(GtDocPage *page);
 
 private:
@@ -32,10 +33,13 @@ inline GtDocRange::GtDocRange(const GtDocPoint &begin, const GtDocPoint &end)
     : _begin(begin), _end(end), _textBegin(-1), _textEnd(-1) {}
 
 inline bool GtDocRange::isEmpty() const
-{ return _begin <= _end; }
+{ return _begin.isNull() || _end.isNull() || _end <= _begin; }
 
 inline void GtDocRange::setPoints(const GtDocPoint &begin, const GtDocPoint &end)
 { _begin = begin; _end = end; _textBegin = -1; _textEnd = -1; }
+
+inline bool GtDocRange::contains(const GtDocPoint &p) const
+{ return !isEmpty() && !p.isNull() && p >= _begin && p <= _end; }
 
 GT_END_NAMESPACE
 
