@@ -1,8 +1,8 @@
 /*
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
-#ifndef __GT_CLIENT_H__
-#define __GT_CLIENT_H__
+#ifndef __GT_USER_CLIENT_H__
+#define __GT_USER_CLIENT_H__
 
 #include "gtobject.h"
 #include <QtCore/QObject>
@@ -10,15 +10,15 @@
 
 GT_BEGIN_NAMESPACE
 
-class GtClientPrivate;
+class GtUserClientPrivate;
 
-class GT_SVCE_EXPORT GtClient : public QObject, public GtObject
+class GT_SVCE_EXPORT GtUserClient : public QObject, public GtObject
 {
     Q_OBJECT
 
 public:
-    explicit GtClient(QObject *parent = 0);
-    ~GtClient();
+    explicit GtUserClient(QObject *parent = 0);
+    ~GtUserClient();
 
 public:
     void login(const QHostAddress &address, quint16 port,
@@ -50,13 +50,13 @@ private Q_SLOTS:
     void handleError(QAbstractSocket::SocketError error);
 
 private:
-    QScopedPointer<GtClientPrivate> d_ptr;
+    QScopedPointer<GtUserClientPrivate> d_ptr;
 
 private:
-    Q_DISABLE_COPY(GtClient)
-    Q_DECLARE_PRIVATE(GtClient)
+    Q_DISABLE_COPY(GtUserClient)
+    Q_DECLARE_PRIVATE(GtUserClient)
 };
 
 GT_END_NAMESPACE
 
-#endif  /* __GT_CLIENT_H__ */
+#endif  /* __GT_USER_CLIENT_H__ */

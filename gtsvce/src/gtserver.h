@@ -28,7 +28,7 @@ public:
 protected:
     virtual GtSession* createSession() = 0;
     virtual void addSession(GtSession *session);
-    virtual void removeSession(GtSession *session) = 0;
+    virtual void removeSession(GtSession *session);
 
 protected:
     void incomingConnection(qintptr socketDescriptor);

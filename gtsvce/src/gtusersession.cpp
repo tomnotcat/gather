@@ -2,8 +2,8 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtusersession.h"
-#include "gtclient.h"
 #include "gtmessage.pb.h"
+#include "gtuserclient.h"
 #include "gtuserserver.h"
 #include "gtsvcutil.h"
 #include <QtCore/QDebug>
@@ -41,23 +41,23 @@ void GtUserSessionPrivate::handleLogin(GtLoginRequest &msg)
 
     QString user = QString::fromUtf8(msg.user().c_str());
     QString passwd = QString::fromUtf8(msg.passwd().c_str());
-    GtClient::LoginResult result = GtClient::LoginUnknown;
+    GtUserClient::LoginResult result;
 
     if (user.isEmpty()) {
-        result = GtClient::InvalidUser;
+        result = GtUserClient::InvalidUser;
     }
     else if (passwd.isEmpty()) {
-        result = GtClient::InvalidPasswd;
+        result = GtUserClient::InvalidPasswd;
     }
     else {
-        result = GtClient::LoginSuccess;
+        result = GtUserClient::LoginSuccess;
     }
 
     GtSimpleMessage response;
     response.set_data1(result);
     GtSvcUtil::sendMessage(q->socket(), GT_LOGIN_RESPONSE, response);
 
-    if (GtClient::LoginSuccess == result) {
+    if (GtUserClient::LoginSuccess == result) {
         GtUserServer *server = qobject_cast<GtUserServer*>(q->server());
         this->name = user;
         server->addLogin(q);
@@ -115,7 +115,7 @@ void GtUserSession::message(const char *data, int size)
 void GtUserSession::reloginLogout()
 {
     GtSimpleMessage msg;
-    msg.set_data1(GtClient::LogoutRelogin);
+    msg.set_data1(GtUserClient::LogoutRelogin);
     GtSvcUtil::sendMessage(socket(), GT_LOGOUT_MESSAGE, msg);
 }
 

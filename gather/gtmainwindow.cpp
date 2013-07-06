@@ -2,7 +2,6 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtmainwindow.h"
-#include "gtclient.h"
 #include "gtdocloader.h"
 #include "gtdocmodel.h"
 #include "gtdocoutline.h"
@@ -11,6 +10,7 @@
 #include "gtdocview.h"
 #include "gttocdelegate.h"
 #include "gttocmodel.h"
+#include "gtuserclient.h"
 #include <QtCore/QtDebug>
 #include <QtCore/QSettings>
 #include <QtCore/QThread>
@@ -66,7 +66,7 @@ GtMainWindow::GtMainWindow()
     connect(ui.tocView, SIGNAL(activated(QModelIndex)), this, SLOT(tocChanged(QModelIndex)));
 
     // Network
-    client = new GtClient(this);
+    client = new GtUserClient(this);
 
     // Recent files
     recentFileActions[0] = ui.actionRecentFile0;

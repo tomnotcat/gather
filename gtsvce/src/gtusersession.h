@@ -8,7 +8,6 @@
 
 GT_BEGIN_NAMESPACE
 
-class GtLoginRequest;
 class GtUserSessionPrivate;
 
 class GT_SVCE_EXPORT GtUserSession : public GtSession

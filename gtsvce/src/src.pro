@@ -7,17 +7,19 @@ QT += network
 CONFIG += qt debug client server
 INCLUDEPATH += ../../gtbase
 PROTOS += gtmessage.proto
+HEADERS += gtrecvbuffer.h gtsvcutil.h
+SOURCES += gtrecvbuffer.cpp gtsvcutil.cpp
 
 CONFIG(client) {
-    HEADERS += gtclient.h
-    SOURCES += gtclient.cpp
+    HEADERS += gtuserclient.h gtftclient.h
+    SOURCES += gtuserclient.cpp gtftclient.cpp
 }
 
 CONFIG(server) {
     HEADERS += gtserver.h gtserver_p.h gtsession.h gtsession_p.h \
-        gtuserserver.h gtusersession.h gtrecvbuffer.h gtsvcutil.h
+        gtuserserver.h gtusersession.h gtftserver.h gtftsession.h
     SOURCES += gtserver.cpp gtsession.cpp gtuserserver.cpp \
-        gtusersession.cpp gtrecvbuffer.cpp gtsvcutil.cpp
+        gtusersession.cpp gtftserver.cpp gtftsession.cpp
 }
 
 CONFIG(debug, debug|release) {

@@ -1,2 +1,2 @@
 TEMPLATE = subdirs
-SUBDIRS = login
+SUBDIRS = login upload

@@ -108,6 +108,11 @@ void GtServer::addSession(GtSession *session)
     Q_UNUSED(session);
 }
 
+void GtServer::removeSession(GtSession *session)
+{
+    Q_UNUSED(session);
+}
+
 void GtServer::incomingConnection(qintptr socketDescriptor)
 {
     Q_D(GtServer);

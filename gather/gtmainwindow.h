@@ -14,7 +14,7 @@ class GtDocument;
 class GtDocModel;
 class GtTocModel;
 class GtDocView;
-class GtClient;
+class GtUserClient;
 
 #define ORGANIZATION_NAME "Clue Network"
 #define APPLICATION_NAME "Gather"
@@ -65,7 +65,7 @@ private:
     QSharedPointer<GtTocModel> tocModel;
 
     // Network
-    GtClient *client;
+    GtUserClient *client;
 
     // Objects in GUI thread
     QStringList recentFiles;
