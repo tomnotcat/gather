@@ -3,7 +3,8 @@
  */
 #include <QtNetwork/QHostAddress>
 #include <QtTest/QtTest>
-#include "gtftclient.h"
+#include "gtftupload.h"
+#include "gtftdownload.h"
 #include "gtftserver.h"
 
 using namespace Gather;
@@ -36,13 +37,25 @@ void test_upload::testNormal()
     int argc = 0;
     QCoreApplication app(argc, 0);
     GtFTServer server;
-    GtFTClient client;
+    GtFTUpload *upload;
     QHostAddress host(QHostAddress::LocalHost);
 
     this->app = &app;
 
     QVERIFY(server.listen(host, TEST_PORT));
-    client.upload();
+
+    QThreadPool *threadPool = QThreadPool::globalInstance();
+#ifdef Q_WS_WIN
+    QFile file("test_upload.exe");
+#else
+    QFile file("test_upload");
+#endif
+
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    upload = new GtFTUpload(host, TEST_PORT, "", "", &file);
+    threadPool->start(upload);
+
+    exec();
 }
 
 void test_upload::testBlocked()
@@ -50,7 +63,6 @@ void test_upload::testBlocked()
     int argc = 0;
     QCoreApplication app(argc, 0);
     GtFTServer server;
-    GtFTClient client;
     QHostAddress host(QHostAddress::LocalHost);
 
     this->app = &app;

@@ -41,6 +41,7 @@ protected:
     QIODevice *device;
     GtDocPage **pages;
     GtDocOutline *outline;
+    QByteArray docId;
     int pageCount;
     double maxWidth;
     double maxHeight;

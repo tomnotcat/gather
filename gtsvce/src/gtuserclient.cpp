@@ -2,10 +2,11 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtuserclient.h"
-#include "gtmessage.pb.h"
 #include "gtrecvbuffer.h"
 #include "gtsvcutil.h"
+#include "gtusermessage.pb.h"
 #include <QtCore/QDebug>
+#include <QtCore/qendian.h>
 #include <QtNetwork/QTcpSocket>
 
 GT_BEGIN_NAMESPACE
@@ -23,7 +24,7 @@ public:
 
 public:
     void handleMessage(const char *data, int size);
-    void handleLogin(GtSimpleMessage &msg);
+    void handleLogin(GtLoginResponse &msg);
 
 protected:
     GtUserClient *q_ptr;
@@ -62,7 +63,7 @@ void GtUserClientPrivate::sendLogin() const
     msg.set_user(user.toUtf8().constData());
     msg.set_passwd(passwd.toUtf8().constData());
 
-    GtSvcUtil::sendMessage(tcpSocket, GT_LOGIN_REQUEST, msg);
+    GtSvcUtil::sendMessage(tcpSocket, GT_LOGIN_REQUEST, &msg);
 }
 
 void GtUserClientPrivate::handleMessage(const char *data, int size)
@@ -74,14 +75,14 @@ void GtUserClientPrivate::handleMessage(const char *data, int size)
         return;
     }
 
-    quint16 type = ntohs(*(quint16*)data);
+    quint16 type = qFromBigEndian<quint16>(*(quint16*)data);
     data += sizeof(quint16);
     size -= sizeof(quint16);
 
     switch (type) {
     case GT_LOGIN_RESPONSE:
         {
-            GtSimpleMessage msg;
+            GtLoginResponse msg;
             if (msg.ParseFromArray(data, size)) {
                 handleLogin(msg);
             }
@@ -109,11 +110,11 @@ void GtUserClientPrivate::handleMessage(const char *data, int size)
     }
 }
 
-void GtUserClientPrivate::handleLogin(GtSimpleMessage &msg)
+void GtUserClientPrivate::handleLogin(GtLoginResponse &msg)
 {
     Q_Q(GtUserClient);
 
-    emit q->onLogin(msg.data1());
+    emit q->onLogin(msg.result());
 }
 
 GtUserClient::GtUserClient(QObject *parent)

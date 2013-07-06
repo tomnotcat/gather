@@ -7,12 +7,6 @@
 #include "gtcommon.h"
 #include <google/protobuf/message.h>
 
-#ifdef Q_WS_WIN
-#include <Winsock2.h>
-#else
-#include <arpa/inet.h>
-#endif
-
 class QAbstractSocket;
 
 GT_BEGIN_NAMESPACE
@@ -22,7 +16,9 @@ class GT_SVCE_EXPORT GtSvcUtil
 public:
     static void sendMessage(QAbstractSocket *socket,
                             int type,
-                            const ::google::protobuf::Message &msg);
+                            const ::google::protobuf::Message *msg);
+    static bool readData(QAbstractSocket *socket, char *buffer, int size);
+    static int readMessage(QAbstractSocket *socket, char *buffer, int size);
 };
 
 GT_END_NAMESPACE

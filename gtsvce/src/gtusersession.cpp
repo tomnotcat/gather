@@ -2,11 +2,12 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtusersession.h"
-#include "gtmessage.pb.h"
 #include "gtuserclient.h"
+#include "gtusermessage.pb.h"
 #include "gtuserserver.h"
 #include "gtsvcutil.h"
 #include <QtCore/QDebug>
+#include <QtCore/qendian.h>
 
 GT_BEGIN_NAMESPACE
 
@@ -53,9 +54,9 @@ void GtUserSessionPrivate::handleLogin(GtLoginRequest &msg)
         result = GtUserClient::LoginSuccess;
     }
 
-    GtSimpleMessage response;
-    response.set_data1(result);
-    GtSvcUtil::sendMessage(q->socket(), GT_LOGIN_RESPONSE, response);
+    GtLoginResponse response;
+    response.set_result(result);
+    GtSvcUtil::sendMessage(q->socket(), GT_LOGIN_RESPONSE, &response);
 
     if (GtUserClient::LoginSuccess == result) {
         GtUserServer *server = qobject_cast<GtUserServer*>(q->server());
@@ -89,7 +90,7 @@ void GtUserSession::message(const char *data, int size)
         return;
     }
 
-    quint16 type = ntohs(*(quint16*)data);
+    quint16 type = qFromBigEndian<quint16>(*(quint16*)data);
     data += sizeof(quint16);
     size -= sizeof(quint16);
 
@@ -116,7 +117,7 @@ void GtUserSession::reloginLogout()
 {
     GtSimpleMessage msg;
     msg.set_data1(GtUserClient::LogoutRelogin);
-    GtSvcUtil::sendMessage(socket(), GT_LOGOUT_MESSAGE, msg);
+    GtSvcUtil::sendMessage(socket(), GT_LOGOUT_MESSAGE, &msg);
 }
 
 GT_END_NAMESPACE

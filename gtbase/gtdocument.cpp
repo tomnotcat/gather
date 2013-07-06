@@ -5,6 +5,7 @@
 #include "gtabstractdocument.h"
 #include "gtdocoutline.h"
 #include "gtdocpage_p.h"
+#include <QtCore/QCryptographicHash>
 #include <QtCore/QDebug>
 
 GT_BEGIN_NAMESPACE
@@ -140,40 +141,38 @@ void GtDocumentPrivate::loadOutline(GtAbstractOutline *outline,
         parent->_childCount = row;
 }
 
-GtDocument::GtDocument(GtAbstractDocument *ad, QObject *parent)
+GtDocument::GtDocument(GtAbstractDocument *ad,
+                       const QByteArray *docId,
+                       QObject *parent)
     : QObject(parent)
     , d_ptr(new GtDocumentPrivate(ad))
 {
     d_ptr->q_ptr = this;
-}
 
-GtDocument::GtDocument(GtDocumentPrivate &dd, QObject *parent)
-    : QObject(parent)
-    , d_ptr(&dd)
-{
-    d_ptr->q_ptr = this;
+    if (docId)
+        d_ptr->docId = *docId;
 }
 
 GtDocument::~GtDocument()
 {
 }
 
-bool GtDocument::isLoaded()
+bool GtDocument::isLoaded() const
 {
-    Q_D(GtDocument);
+    Q_D(const GtDocument);
     return d->loaded;
 }
 
-bool GtDocument::isPageSizeUniform()
+bool GtDocument::isPageSizeUniform() const
 {
-    Q_D(GtDocument);
+    Q_D(const GtDocument);
     Q_ASSERT(d->loaded);
     return d->uniform;
 }
 
-QSize GtDocument::maxPageSize(double scale, int rotation)
+QSize GtDocument::maxPageSize(double scale, int rotation) const
 {
-    Q_D(GtDocument);
+    Q_D(const GtDocument);
 
     Q_ASSERT(d->loaded);
 
@@ -187,9 +186,9 @@ QSize GtDocument::maxPageSize(double scale, int rotation)
     return QSize(height + 0.5, width + 0.5);
 }
 
-QSize GtDocument::minPageSize(double scale, int rotation)
+QSize GtDocument::minPageSize(double scale, int rotation) const
 {
-    Q_D(GtDocument);
+    Q_D(const GtDocument);
 
     Q_ASSERT(d->loaded);
 
@@ -203,15 +202,15 @@ QSize GtDocument::minPageSize(double scale, int rotation)
     return QSize(height + 0.5, width + 0.5);
 }
 
-int GtDocument::pageCount()
+int GtDocument::pageCount() const
 {
-    Q_D(GtDocument);
+    Q_D(const GtDocument);
     return d->pageCount;
 }
 
-GtDocPage* GtDocument::page(int index)
+GtDocPage* GtDocument::page(int index) const
 {
-    Q_D(GtDocument);
+    Q_D(const GtDocument);
 
     if (index < 0 || index >= d->pageCount)
         return 0;
@@ -219,10 +218,20 @@ GtDocPage* GtDocument::page(int index)
     return d->pages[index];
 }
 
-GtDocOutline* GtDocument::outline()
+GtDocOutline* GtDocument::outline() const
 {
-    Q_D(GtDocument);
+    Q_D(const GtDocument);
     return d->outline;
+}
+
+QByteArray GtDocument::makeDocId(QIODevice *device)
+{
+    QCryptographicHash hash(QCryptographicHash::Sha1);
+
+    if (device->reset())
+        hash.addData(device);
+
+    return hash.result();
 }
 
 void GtDocument::deviceDestroyed(QObject*)
@@ -300,6 +309,10 @@ void GtDocument::slotLoadDocument()
     outline->freeNode(it);
 
     delete outline;
+
+    // make document ID
+    if (d->docId.isNull())
+        d->docId = makeDocId(d->device);
 
     d->loaded = true;
     emit loaded(this);

@@ -4,6 +4,7 @@
 #include "gtrecvbuffer.h"
 #include "gtsvcutil.h"
 #include <QtCore/QDebug>
+#include <QtCore/qendian.h>
 #include <QtNetwork/QAbstractSocket>
 
 GT_BEGIN_NAMESPACE
@@ -36,7 +37,7 @@ int GtRecvBuffer::read(QAbstractSocket *socket)
         if (_received < sizeof(_remain))
             return 0;
 
-        _remain = ntohs(_remain);
+        _remain = qFromBigEndian<quint16>((const uchar*)&_remain);
         if (_bufferSize < _remain) {
             if (_maxSize > 0 && _remain > _maxSize)
                 return ReadError;
