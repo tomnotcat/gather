@@ -1,24 +1,21 @@
 package Gather;
 
 enum GtUserMessageType {
-    GT_LOGIN_REQUEST = 1;
-    GT_LOGIN_RESPONSE = 2;
-    GT_LOGOUT_MESSAGE = 3;
+    GT_USER_LOGIN_REQUEST = 1;
+    GT_USER_LOGIN_RESPONSE = 2;
+    GT_USER_LOGOUT_RESPONSE = 3;
 }
 
-message GtSimpleMessage {
-    optional int32 data1 = 1;
-    optional int32 data2 = 2;
-    optional string data3 = 3;
-    optional string data4 = 4;
-}
-
-message GtLoginRequest {
+message GtUserLoginRequest {
     optional string user = 1;
     optional string passwd = 2;
 }
 
-message GtLoginResponse {
+message GtUserLoginResponse {
     optional int32 result = 1;
     optional string secret = 2;
+}
+
+message GtUserLogoutResponse {
+    optional int32 reason = 1;
 }

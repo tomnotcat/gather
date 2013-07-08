@@ -23,12 +23,11 @@ class GT_BASE_EXPORT GtDocument : public QObject, public GtObject
 
 public:
     explicit GtDocument(GtAbstractDocument *ad,
-                        const QByteArray *docId = 0,
                         QObject *parent = 0);
     ~GtDocument();
 
 public:
-    QByteArray docId() const;
+    QString fileId() const;
     bool isLoaded() const;
     bool isPageSizeUniform() const;
     QSize maxPageSize(double scale = 1.0, int rotation = 0) const;
@@ -38,7 +37,7 @@ public:
     GtDocOutline* outline() const;
 
 public:
-    static QByteArray makeDocId(QIODevice *device);
+    static QString makeFileId(QIODevice *device);
 
 Q_SIGNALS:
     void loaded(GtDocument * = 0);

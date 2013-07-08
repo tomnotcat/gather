@@ -142,15 +142,11 @@ void GtDocumentPrivate::loadOutline(GtAbstractOutline *outline,
 }
 
 GtDocument::GtDocument(GtAbstractDocument *ad,
-                       const QByteArray *docId,
                        QObject *parent)
     : QObject(parent)
     , d_ptr(new GtDocumentPrivate(ad))
 {
     d_ptr->q_ptr = this;
-
-    if (docId)
-        d_ptr->docId = *docId;
 }
 
 GtDocument::~GtDocument()
@@ -224,14 +220,19 @@ GtDocOutline* GtDocument::outline() const
     return d->outline;
 }
 
-QByteArray GtDocument::makeDocId(QIODevice *device)
+QString GtDocument::makeFileId(QIODevice *device)
 {
+    if (!device->isOpen() || !device->isReadable())
+        return QString();
+
     QCryptographicHash hash(QCryptographicHash::Sha1);
+    char buffer[1024];
+    int length;
 
-    if (device->reset())
-        hash.addData(device);
+    while ((length = device->read(buffer, sizeof(buffer))) > 0)
+        hash.addData(buffer, length);
 
-    return hash.result();
+    return QString(hash.result().toHex());
 }
 
 void GtDocument::deviceDestroyed(QObject*)
@@ -310,9 +311,9 @@ void GtDocument::slotLoadDocument()
 
     delete outline;
 
-    // make document ID
-    if (d->docId.isNull())
-        d->docId = makeDocId(d->device);
+    // make file ID
+    d->device->reset();
+    d->fileId = makeFileId(d->device);
 
     d->loaded = true;
     emit loaded(this);

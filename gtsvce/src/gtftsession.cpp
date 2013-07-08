@@ -2,7 +2,9 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtftsession.h"
+#include "gtftclient.h"
 #include "gtftmessage.pb.h"
+#include "gtsvcutil.h"
 #include <QtCore/QDebug>
 #include <QtCore/qendian.h>
 
@@ -17,14 +19,16 @@ public:
     ~GtFTSessionPrivate();
 
 public:
-    void handleUploadRequest(GtFTUploadRequest &msg);
+    void handleLoginRequest(GtFTLoginRequest &msg);
 
 protected:
     GtFTSession *q_ptr;
+    bool logined;
 };
 
 GtFTSessionPrivate::GtFTSessionPrivate(GtFTSession *q)
     : q_ptr(q)
+    , logined(false)
 {
 }
 
@@ -32,9 +36,25 @@ GtFTSessionPrivate::~GtFTSessionPrivate()
 {
 }
 
-void GtFTSessionPrivate::handleUploadRequest(GtFTUploadRequest &msg)
+void GtFTSessionPrivate::handleLoginRequest(GtFTLoginRequest &msg)
 {
-    qDebug() << "++++++++++++++++++++++++++++++++++";
+    Q_Q(GtFTSession);
+
+    QString session = QString::fromUtf8(msg.session().c_str());
+    GtFTClient::LoginResult result;
+
+    if (session.isEmpty()) {
+        result = GtFTClient::InvalidSession;
+    }
+    else {
+        result = GtFTClient::LoginSuccess;
+    }
+
+    GtFTLoginResponse response;
+    response.set_result(result);
+    GtSvcUtil::sendMessage(q->socket(), GT_FT_LOGIN_RESPONSE, &response);
+
+    logined = (GtFTClient::LoginSuccess == result);
 }
 
 GtFTSession::GtFTSession(QObject *parent)
@@ -61,14 +81,14 @@ void GtFTSession::message(const char *data, int size)
     size -= sizeof(quint16);
 
     switch (type) {
-    case GT_UPLOAD_REQUEST:
+    case GT_FT_LOGIN_REQUEST:
         {
-            GtFTUploadRequest msg;
+            GtFTLoginRequest msg;
             if (msg.ParseFromArray(data, size)) {
-                d->handleUploadRequest(msg);
+                d->handleLoginRequest(msg);
             }
             else {
-                qWarning() << "Invalid upload request";
+                qWarning() << "Invalid FT login request";
             }
         }
         break;

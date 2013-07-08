@@ -20,15 +20,17 @@ public:
     ~GtUserSessionPrivate();
 
 public:
-    void handleLogin(GtLoginRequest &msg);
+    void handleLogin(GtUserLoginRequest &msg);
 
 protected:
     GtUserSession *q_ptr;
     QString name;
+    bool logined;
 };
 
 GtUserSessionPrivate::GtUserSessionPrivate(GtUserSession *q)
     : q_ptr(q)
+    , logined(false)
 {
 }
 
@@ -36,7 +38,7 @@ GtUserSessionPrivate::~GtUserSessionPrivate()
 {
 }
 
-void GtUserSessionPrivate::handleLogin(GtLoginRequest &msg)
+void GtUserSessionPrivate::handleLogin(GtUserLoginRequest &msg)
 {
     Q_Q(GtUserSession);
 
@@ -54,15 +56,17 @@ void GtUserSessionPrivate::handleLogin(GtLoginRequest &msg)
         result = GtUserClient::LoginSuccess;
     }
 
-    GtLoginResponse response;
+    GtUserLoginResponse response;
     response.set_result(result);
-    GtSvcUtil::sendMessage(q->socket(), GT_LOGIN_RESPONSE, &response);
+    GtSvcUtil::sendMessage(q->socket(), GT_USER_LOGIN_RESPONSE, &response);
 
     if (GtUserClient::LoginSuccess == result) {
         GtUserServer *server = qobject_cast<GtUserServer*>(q->server());
         this->name = user;
         server->addLogin(q);
     }
+
+    logined = (GtUserClient::LoginSuccess == result);
 }
 
 GtUserSession::GtUserSession(QObject *parent)
@@ -95,29 +99,29 @@ void GtUserSession::message(const char *data, int size)
     size -= sizeof(quint16);
 
     switch (type) {
-    case GT_LOGIN_REQUEST:
+    case GT_USER_LOGIN_REQUEST:
         {
-            GtLoginRequest msg;
+            GtUserLoginRequest msg;
             if (msg.ParseFromArray(data, size)) {
                 d->handleLogin(msg);
             }
             else {
-                qWarning() << "Invalid login request";
+                qWarning() << "Invalid user login request";
             }
         }
         break;
 
     default:
-        qWarning() << "Invalid message type:" << type;
+        qWarning() << "Invalid user message type:" << type;
         break;
     }
 }
 
 void GtUserSession::reloginLogout()
 {
-    GtSimpleMessage msg;
-    msg.set_data1(GtUserClient::LogoutRelogin);
-    GtSvcUtil::sendMessage(socket(), GT_LOGOUT_MESSAGE, &msg);
+    GtUserLogoutResponse msg;
+    msg.set_reason(GtUserClient::LogoutRelogin);
+    GtSvcUtil::sendMessage(socket(), GT_USER_LOGOUT_RESPONSE, &msg);
 }
 
 GT_END_NAMESPACE

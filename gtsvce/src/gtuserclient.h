@@ -27,21 +27,21 @@ public:
 
 public:
     enum LoginResult {
-        LoginUnknown,
         LoginSuccess,
         InvalidUser,
-        InvalidPasswd
+        InvalidPasswd,
+        LoginUnknown = -1
     };
 
     enum LogoutReason {
-        LogoutUnknown,
         LogoutNormal,
-        LogoutRelogin
+        LogoutRelogin,
+        LogoutUnknown = -1
     };
 
 Q_SIGNALS:
-    void onLogin(int result);
-    void onLogout(int reason);
+    void login(int result);
+    void logout(int reason);
 
 private Q_SLOTS:
     void handleRead();

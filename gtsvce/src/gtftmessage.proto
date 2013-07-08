@@ -1,37 +1,14 @@
 package Gather;
 
 enum GtFTMessageType {
-    GT_UPLOAD_REQUEST = 1;
-    GT_UPLOAD_RESPONSE = 2;
-    GT_DOWNLOAD_REQUEST = 3;
-    GT_DOWNLOAD_RESPONSE = 4;
-    GT_REQUEST_BLOCK = 5;
-    GT_TRANSFER_DATA = 6;
+    GT_FT_LOGIN_REQUEST = 1;
+    GT_FT_LOGIN_RESPONSE = 1;
 }
 
-message GtFTUploadRequest {
+message GtFTLoginRequest {
     optional string session = 1;
-    optional string signature = 2;
-    optional string fileid = 3;
-    optional int64 filesize = 4;
 }
 
-message GtFTUploadResponse {
+message GtFTLoginResponse {
     optional int32 result = 1;
-}
-
-message GtFTDownloadRequest {
-    optional string session = 1;
-    optional string signature = 2;
-    optional string fileid = 3;
-}
-
-message GtFTDownloadResponse {
-    optional int32 result = 1;
-    optional int64 filesize = 2;
-}
-
-message GtFTRequestBlock {
-    optional int64 offset = 1;
-    optional int64 length = 2;
 }

@@ -15,14 +15,6 @@ class GT_SVCE_EXPORT GtFTSession : public GtSession
     Q_OBJECT
 
 public:
-    enum AuthResult {
-        AuthSuccess,
-        InvalidSession,
-        InvalidSignature,
-        AuthUnknown = -1
-    };
-
-public:
     explicit GtFTSession(QObject *parent = 0);
     ~GtFTSession();
 

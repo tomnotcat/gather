@@ -1,10 +1,10 @@
 /*
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
-#include <QtNetwork/QHostAddress>
-#include <QtTest/QtTest>
 #include "gtuserclient.h"
 #include "gtuserserver.h"
+#include <QtNetwork/QHostAddress>
+#include <QtTest/QtTest>
 
 using namespace Gather;
 
@@ -62,7 +62,7 @@ void test_login::testLogin()
     QHostAddress host(QHostAddress::LocalHost);
 
     this->app = &app;
-    connect(&client, SIGNAL(onLogin(int)), this, SLOT(onLogin(int)));
+    connect(&client, SIGNAL(login(int)), this, SLOT(onLogin(int)));
 
     QVERIFY(server.listen(host, TEST_PORT));
 
@@ -92,10 +92,10 @@ void test_login::testLogout()
     QHostAddress host(QHostAddress::LocalHost);
 
     this->app = &app;
-    connect(&client1, SIGNAL(onLogin(int)), this, SLOT(onLogin(int)));
-    connect(&client1, SIGNAL(onLogout(int)), this, SLOT(onLogout(int)));
-    connect(&client2, SIGNAL(onLogin(int)), this, SLOT(onLogin(int)));
-    connect(&client2, SIGNAL(onLogout(int)), this, SLOT(onLogout(int)));
+    connect(&client1, SIGNAL(login(int)), this, SLOT(onLogin(int)));
+    connect(&client1, SIGNAL(logout(int)), this, SLOT(onLogout(int)));
+    connect(&client2, SIGNAL(login(int)), this, SLOT(onLogin(int)));
+    connect(&client2, SIGNAL(logout(int)), this, SLOT(onLogout(int)));
 
     QVERIFY(server.listen(host, TEST_PORT));
 
