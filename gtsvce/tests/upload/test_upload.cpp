@@ -3,7 +3,6 @@
  */
 #include "gtdocument.h"
 #include "gtftclient.h"
-#include "gtftfile.h"
 #include "gtftserver.h"
 #include <QtNetwork/QHostAddress>
 #include <QtTest/QtTest>
@@ -15,8 +14,7 @@ class test_upload: public QObject
     Q_OBJECT
 
 private Q_SLOTS:
-    void onLogin(int r);
-    void onLogout(int r);
+    void onConnection(int r);
 
 private Q_SLOTS:
     void testNormal();
@@ -33,21 +31,14 @@ public:
     inline void exit() { if (--eventCount == 0) app->exit(); }
 
 private:
-    int loginResult;
-    int logoutReason;
+    int connectionCode;
     int eventCount;
     QCoreApplication *app;
 };
 
-void test_upload::onLogin(int r)
+void test_upload::onConnection(int r)
 {
-    loginResult = r;
-    exit();
-}
-
-void test_upload::onLogout(int r)
-{
-    logoutReason = r;
+    connectionCode = r;
     exit();
 }
 
@@ -60,8 +51,7 @@ void test_upload::testNormal()
     QHostAddress host(QHostAddress::LocalHost);
 
     this->app = &app;
-    connect(&client, SIGNAL(login(int)), this, SLOT(onLogin(int)));
-    connect(&client, SIGNAL(logout(int)), this, SLOT(onLogout(int)));
+    connect(&client, SIGNAL(connection(int)), this, SLOT(onConnection(int)));
 
     QVERIFY(server.listen(host, TEST_PORT));
 
@@ -72,30 +62,25 @@ void test_upload::testNormal()
 #endif
 
     QVERIFY(localFile.open(QIODevice::ReadOnly));
-
-    loginResult = GtFTClient::LoginUnknown;
-    logoutReason = GtFTClient::LogoutUnknown;
-    client.login(host, TEST_PORT, "", "");
-    exec();
-    QVERIFY(GtFTClient::InvalidSession == loginResult);
-    QVERIFY(GtFTClient::LogoutUnknown == logoutReason);
-
-    client.logout();
-    QVERIFY(GtFTClient::InvalidSession == loginResult);
-    QVERIFY(GtFTClient::LogoutNormal == logoutReason);
-
     QString fileId(GtDocument::makeFileId(&localFile));
-    QVERIFY(client.openFile(fileId) == 0);
 
-    client.login(host, TEST_PORT, "testsession", "testsecret");
+    connectionCode = GtFTClient::UnknownError;
+    client.setFileInfo(fileId, host, TEST_PORT, "");
+    QVERIFY(client.open(QIODevice::WriteOnly));
+
     exec();
-    QVERIFY(GtFTClient::LoginSuccess == loginResult);
+    QVERIFY(GtFTClient::InvalidSession == connectionCode);
 
-    GtFTFile *file = client.openFile(fileId);
-    QVERIFY(file->fileId() == fileId);
-    QVERIFY(client.openFile(fileId) != file);
+    QVERIFY(client.fileId() == fileId);
+    QVERIFY(client.size() == 0);
 
-    file->close();
+    client.setFileInfo(fileId, host, TEST_PORT, "testsession");
+    QVERIFY(client.open(QIODevice::WriteOnly));
+
+    exec();
+    QVERIFY(GtFTClient::OpenSuccess == connectionCode);
+
+    client.close();
     localFile.close();
 }
 

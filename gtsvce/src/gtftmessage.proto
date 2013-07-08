@@ -1,14 +1,17 @@
 package Gather;
 
 enum GtFTMessageType {
-    GT_FT_LOGIN_REQUEST = 1;
-    GT_FT_LOGIN_RESPONSE = 1;
+    GT_FT_OPEN_REQUEST = 1;
+    GT_FT_OPEN_RESPONSE = 2;
 }
 
-message GtFTLoginRequest {
+message GtFTOpenRequest {
     optional string session = 1;
+    optional string file = 2;
+    optional int32 mode = 3;
 }
 
-message GtFTLoginResponse {
+message GtFTOpenResponse {
     optional int32 result = 1;
+    optional int64 size = 2;
 }

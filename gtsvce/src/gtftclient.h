@@ -5,47 +5,53 @@
 #define __GT_FT_CLIENT_H__
 
 #include "gtobject.h"
-#include <QtCore/QObject>
+#include <QtCore/QIODevice>
 #include <QtNetwork/QAbstractSocket>
 
 GT_BEGIN_NAMESPACE
 
-class GtFTFile;
 class GtFTClientPrivate;
 
-class GT_SVCE_EXPORT GtFTClient : public QObject, public GtObject
+class GT_SVCE_EXPORT GtFTClient : public QIODevice, public GtObject
 {
     Q_OBJECT
 
 public:
-    enum LoginResult {
-        LoginSuccess,
+    enum ConnectionCode {
+        OpenSuccess,
         InvalidSession,
-        LoginUnknown = -1
-    };
-
-    enum LogoutReason {
-        LogoutNormal,
-        LogoutUnknown = -1
+        UnknownError = -1
     };
 
 public:
     explicit GtFTClient(QObject *parent = 0);
+    GtFTClient(const QString &fileId,
+               const QHostAddress &address,
+               quint16 port,
+               const QString &session,
+               QObject *parent = 0);
     ~GtFTClient();
 
 public:
-    void login(const QHostAddress &address, quint16 port,
-               const QString &session, const QString &secret);
-    void logout();
-    GtFTFile* openFile(const QString &fileId);
+    QString fileId() const;
+    void setFileInfo(const QString &fileId,
+                     const QHostAddress &address,
+                     quint16 port,
+                     const QString &session);
+
+    bool open(OpenMode mode);
+    void close();
+
+    bool flush();
+    qint64 size() const;
+
+    qint64 readData(char *data, qint64 maxlen);
+    qint64 writeData(const char *data, qint64 len);
 
 Q_SIGNALS:
-    void login(int result);
-    void logout(int reason);
+    void connection(int result);
 
 private Q_SLOTS:
-    void realLogin();
-    void realLogout();
     void handleRead();
     void handleConnected();
     void handleDisconnected();

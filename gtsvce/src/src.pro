@@ -11,8 +11,8 @@ HEADERS += gtrecvbuffer.h gtsvcutil.h
 SOURCES += gtrecvbuffer.cpp gtsvcutil.cpp
 
 CONFIG(client) {
-    HEADERS += gtuserclient.h gtftclient.h gtftfile.h
-    SOURCES += gtuserclient.cpp gtftclient.cpp gtftfile.cpp
+    HEADERS += gtuserclient.h gtftclient.h
+    SOURCES += gtuserclient.cpp gtftclient.cpp
 }
 
 CONFIG(server) {

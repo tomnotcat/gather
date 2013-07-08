@@ -19,16 +19,16 @@ public:
     ~GtFTSessionPrivate();
 
 public:
-    void handleLoginRequest(GtFTLoginRequest &msg);
+    void handleOpenRequest(GtFTOpenRequest &msg);
 
 protected:
     GtFTSession *q_ptr;
-    bool logined;
+    bool opened;
 };
 
 GtFTSessionPrivate::GtFTSessionPrivate(GtFTSession *q)
     : q_ptr(q)
-    , logined(false)
+    , opened(false)
 {
 }
 
@@ -36,25 +36,26 @@ GtFTSessionPrivate::~GtFTSessionPrivate()
 {
 }
 
-void GtFTSessionPrivate::handleLoginRequest(GtFTLoginRequest &msg)
+void GtFTSessionPrivate::handleOpenRequest(GtFTOpenRequest &msg)
 {
     Q_Q(GtFTSession);
 
     QString session = QString::fromUtf8(msg.session().c_str());
-    GtFTClient::LoginResult result;
+    GtFTClient::ConnectionCode result;
 
     if (session.isEmpty()) {
         result = GtFTClient::InvalidSession;
     }
     else {
-        result = GtFTClient::LoginSuccess;
+        result = GtFTClient::OpenSuccess;
     }
 
-    GtFTLoginResponse response;
+    GtFTOpenResponse response;
     response.set_result(result);
-    GtSvcUtil::sendMessage(q->socket(), GT_FT_LOGIN_RESPONSE, &response);
+    response.set_size(0);
+    GtSvcUtil::sendMessage(q->socket(), GT_FT_OPEN_RESPONSE, &response);
 
-    logined = (GtFTClient::LoginSuccess == result);
+    opened = (GtFTClient::OpenSuccess == result);
 }
 
 GtFTSession::GtFTSession(QObject *parent)
@@ -81,14 +82,14 @@ void GtFTSession::message(const char *data, int size)
     size -= sizeof(quint16);
 
     switch (type) {
-    case GT_FT_LOGIN_REQUEST:
+    case GT_FT_OPEN_REQUEST:
         {
-            GtFTLoginRequest msg;
+            GtFTOpenRequest msg;
             if (msg.ParseFromArray(data, size)) {
-                d->handleLoginRequest(msg);
+                d->handleOpenRequest(msg);
             }
             else {
-                qWarning() << "Invalid FT login request";
+                qWarning() << "Invalid FT open request";
             }
         }
         break;
