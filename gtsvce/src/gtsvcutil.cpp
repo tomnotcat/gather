@@ -38,16 +38,13 @@ bool GtSvcUtil::readData(QAbstractSocket *socket, char *buffer, int size)
     int curRead;
 
     while (bytesRead < size) {
-        if (socket->waitForReadyRead()) {
-            curRead = socket->read(buffer + bytesRead, size - bytesRead);
-            if (curRead < 0)
-                return false;
-
-            bytesRead += curRead;
-        }
-        else {
+        curRead = socket->read(buffer + bytesRead, size - bytesRead);
+        if (curRead < 0)
             return false;
-        }
+
+        bytesRead += curRead;
+        if (bytesRead < size && !socket->waitForReadyRead())
+            return false;
     }
 
     return true;
@@ -60,6 +57,7 @@ int GtSvcUtil::readMessage(QAbstractSocket *socket, char *buffer, int size)
     if (!readData(socket, (char*)&length, sizeof(length)))
         return -1;
 
+    length = qFromBigEndian<quint16>(length);
     if (length > size) {
         qWarning() << "message bigger than buffer:" << size << length;
         return -1;

@@ -4,6 +4,7 @@
 #include "gtdocument.h"
 #include "gtftclient.h"
 #include "gtftserver.h"
+#include "gtfttemp.h"
 #include <QtNetwork/QHostAddress>
 #include <QtTest/QtTest>
 
@@ -14,9 +15,7 @@ class test_upload: public QObject
     Q_OBJECT
 
 private Q_SLOTS:
-    void onConnection(int r);
-
-private Q_SLOTS:
+    void testTempFile();
     void testNormal();
     void testBlocked();
     void cleanupTestCase();
@@ -25,35 +24,17 @@ private:
     enum {
         TEST_PORT = 4004
     };
-
-public:
-    inline int exec(int count = 1) { eventCount = count; return app->exec(); }
-    inline void exit() { if (--eventCount == 0) app->exit(); }
-
-private:
-    int connectionCode;
-    int eventCount;
-    QCoreApplication *app;
 };
 
-void test_upload::onConnection(int r)
+void test_upload::testTempFile()
 {
-    connectionCode = r;
-    exit();
-}
 
-void test_upload::testNormal()
-{
-    int argc = 0;
-    QCoreApplication app(argc, 0);
-    GtFTServer server;
-    GtFTClient client;
-    QHostAddress host(QHostAddress::LocalHost);
+    QDir tempDir(QDir::temp());
+    GtFTTemp temp(QDir::tempPath(), "test0415");
 
-    this->app = &app;
-    connect(&client, SIGNAL(connection(int)), this, SLOT(onConnection(int)));
-
-    QVERIFY(server.listen(host, TEST_PORT));
+    QVERIFY(temp.metaPath() == tempDir.filePath("test0415.meta"));
+    QVERIFY(temp.dataPath() == tempDir.filePath("test0415.data"));
+    QVERIFY(!temp.check());
 
 #ifdef Q_WS_WIN
     QFile localFile("test_upload.exe");
@@ -64,34 +45,58 @@ void test_upload::testNormal()
     QVERIFY(localFile.open(QIODevice::ReadOnly));
     QString fileId(GtDocument::makeFileId(&localFile));
 
-    connectionCode = GtFTClient::UnknownError;
-    client.setFileInfo(fileId, host, TEST_PORT, "");
-    QVERIFY(client.open(QIODevice::WriteOnly));
+    temp.setPath(QDir::tempPath(), fileId);
 
-    exec();
-    QVERIFY(GtFTClient::InvalidSession == connectionCode);
+    QVERIFY(temp.metaPath() == tempDir.filePath(fileId + ".meta"));
+    QVERIFY(temp.dataPath() == tempDir.filePath(fileId + ".data"));
+    QVERIFY(!temp.check());
+
+    localFile.close();
+}
+
+void test_upload::testNormal()
+{
+    GtFTServer server;
+    GtFTClient client;
+    QHostAddress host(QHostAddress::LocalHost);
+    QThread thread;
+
+    QVERIFY(server.listen(host, TEST_PORT));
+    server.moveToThread(&thread);
+
+    thread.start();
+
+#ifdef Q_WS_WIN
+    QFile localFile("test_upload.exe");
+#else
+    QFile localFile("test_upload");
+#endif
+
+    QVERIFY(localFile.open(QIODevice::ReadOnly));
+    QString fileId(GtDocument::makeFileId(&localFile));
+
+    client.setFileInfo(fileId, host, TEST_PORT, "");
+    QVERIFY(!client.open(QIODevice::WriteOnly));
+    QVERIFY(client.error() == GtFTClient::InvalidSession);
 
     QVERIFY(client.fileId() == fileId);
     QVERIFY(client.size() == 0);
 
     client.setFileInfo(fileId, host, TEST_PORT, "testsession");
     QVERIFY(client.open(QIODevice::WriteOnly));
-
-    exec();
-    QVERIFY(GtFTClient::OpenSuccess == connectionCode);
+    QVERIFY(!client.open(QIODevice::WriteOnly));
 
     client.close();
     localFile.close();
+
+    thread.quit();
+    thread.wait();
 }
 
 void test_upload::testBlocked()
 {
-    int argc = 0;
-    QCoreApplication app(argc, 0);
     GtFTServer server;
     QHostAddress host(QHostAddress::LocalHost);
-
-    this->app = &app;
 
     QVERIFY(server.listen(host, TEST_PORT));
 }

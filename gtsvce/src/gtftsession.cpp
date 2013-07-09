@@ -41,13 +41,13 @@ void GtFTSessionPrivate::handleOpenRequest(GtFTOpenRequest &msg)
     Q_Q(GtFTSession);
 
     QString session = QString::fromUtf8(msg.session().c_str());
-    GtFTClient::ConnectionCode result;
+    GtFTClient::ErrorCode result;
 
     if (session.isEmpty()) {
         result = GtFTClient::InvalidSession;
     }
     else {
-        result = GtFTClient::OpenSuccess;
+        result = GtFTClient::NoError;
     }
 
     GtFTOpenResponse response;
@@ -55,7 +55,7 @@ void GtFTSessionPrivate::handleOpenRequest(GtFTOpenRequest &msg)
     response.set_size(0);
     GtSvcUtil::sendMessage(q->socket(), GT_FT_OPEN_RESPONSE, &response);
 
-    opened = (GtFTClient::OpenSuccess == result);
+    opened = (GtFTClient::NoError == result);
 }
 
 GtFTSession::GtFTSession(QObject *parent)

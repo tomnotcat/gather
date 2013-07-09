@@ -3,7 +3,6 @@
  */
 #include "gtftclient.h"
 #include "gtftmessage.pb.h"
-#include "gtrecvbuffer.h"
 #include "gtsvcutil.h"
 #include <QtCore/QDebug>
 #include <QtCore/qendian.h>
@@ -22,34 +21,29 @@ public:
 
 public:
     bool open(QIODevice::OpenMode mode);
-    void close(bool wait);
-
-public:
-    void handleMessage(const char *data, int size);
-    void handleOpen(GtFTOpenResponse &msg);
+    void close();
+    void disconnect();
 
 protected:
     GtFTClient *q_ptr;
     QTcpSocket *socket;
-    GtRecvBuffer buffer;
     QHostAddress address;
     QString session;
     QString fileId;
-    qint64 size;
+    qint64 fileSize;
+    int error;
     quint16 port;
-    bool connected;
     bool opened;
 };
 
 GtFTClientPrivate::GtFTClientPrivate(GtFTClient *q)
     : q_ptr(q)
-    , size(0)
+    , fileSize(0)
+    , error(GtFTClient::NoError)
     , port(0)
-    , connected(false)
     , opened(false)
 {
     socket = new QTcpSocket(q);
-    q->connect(socket, SIGNAL(readyRead()), q, SLOT(handleRead()));
     q->connect(socket, SIGNAL(error(QAbstractSocket::SocketError)),
                q, SLOT(handleError(QAbstractSocket::SocketError)));
     q->connect(socket, SIGNAL(connected()), q, SLOT(handleConnected()));
@@ -58,76 +52,70 @@ GtFTClientPrivate::GtFTClientPrivate(GtFTClient *q)
 
 GtFTClientPrivate::~GtFTClientPrivate()
 {
-    close(true);
+    close();
 }
 
 bool GtFTClientPrivate::open(QIODevice::OpenMode mode)
 {
-    Q_UNUSED(mode);
-
-    if (connected) {
-        socket->disconnectFromHost();
-        if (socket->state() != QAbstractSocket::UnconnectedState)
-            socket->waitForDisconnected();
-    }
+    if (opened)
+        return false;
 
     socket->connectToHost(address, port);
-    return true;
-}
+    if (!socket->waitForConnected())
+        return false;
 
-void GtFTClientPrivate::close(bool wait)
-{
-    if (!connected)
-        return;
+    GtFTOpenRequest request;
+    request.set_session(session.toUtf8().constData());
+    request.set_file(fileId.toUtf8().constData());
+    request.set_mode(mode);
+    GtSvcUtil::sendMessage(socket, GT_FT_OPEN_REQUEST, &request);
 
-    socket->disconnectFromHost();
-    if (wait) {
-        if (socket->state() != QAbstractSocket::UnconnectedState)
-            socket->waitForDisconnected();
+    if (!socket->waitForBytesWritten()) {
+        error = GtFTClient::WriteFailed;
+        return false;
     }
 
-    connected = false;
+    char buffer[1024];
+    int length;
+
+    length = GtSvcUtil::readMessage(socket, buffer, sizeof(buffer));
+    if (length < (int)sizeof(quint16)) {
+        error = GtFTClient::InvalidData;
+        return false;
+    }
+
+    if (qFromBigEndian<quint16>(*(quint16*)buffer) != GT_FT_OPEN_RESPONSE) {
+        error = GtFTClient::InvalidData;
+        return false;
+    }
+
+    GtFTOpenResponse response;
+    if (!response.ParseFromArray(buffer + 2, length - 2)) {
+        error = GtFTClient::InvalidData;
+        return false;
+    }
+
+    error = response.result();
+    opened = (GtFTClient::NoError == error);
+    fileSize = response.size();
+
+    return opened;
+}
+
+void GtFTClientPrivate::close()
+{
+    if (!opened)
+        return;
+
+    disconnect();
     opened = false;
 }
 
-void GtFTClientPrivate::handleMessage(const char *data, int size)
+void GtFTClientPrivate::disconnect()
 {
-    if (size < (int)sizeof(quint16)) {
-        qWarning() << "Invalid FT message size:" << size;
-        return;
-    }
-
-    quint16 type = qFromBigEndian<quint16>(*(quint16*)data);
-    data += sizeof(quint16);
-    size -= sizeof(quint16);
-
-    switch (type) {
-    case GT_FT_OPEN_RESPONSE:
-        {
-            GtFTOpenResponse msg;
-            if (msg.ParseFromArray(data, size)) {
-                handleOpen(msg);
-            }
-            else {
-                qWarning() << "Invalid FT open response";
-            }
-        }
-        break;
-
-    default:
-        qWarning() << "Invalid FT message type:" << type;
-        break;
-    }
-}
-
-void GtFTClientPrivate::handleOpen(GtFTOpenResponse &msg)
-{
-    Q_Q(GtFTClient);
-
-    opened = (GtFTClient::OpenSuccess == msg.result());
-    size = msg.size();
-
-    emit q->connection(msg.result());
+    socket->disconnectFromHost();
+    if (socket->state() != QAbstractSocket::UnconnectedState)
+        socket->waitForDisconnected();
 }
 
 GtFTClient::GtFTClient(QObject *parent)
@@ -180,13 +168,28 @@ bool GtFTClient::open(OpenMode mode)
     if (d->open(mode))
         return QIODevice::open(mode);
 
+    if (!d->opened)
+        d->disconnect();
+
     return false;
 }
 
 void GtFTClient::close()
 {
     Q_D(GtFTClient);
-    d->close(false);
+    d->close();
+}
+
+int GtFTClient::error() const
+{
+    Q_D(const GtFTClient);
+    return d->error;
+}
+
+void GtFTClient::unsetError()
+{
+    Q_D(GtFTClient);
+    d->error = GtFTClient::NoError;
 }
 
 bool GtFTClient::flush()
@@ -198,7 +201,7 @@ bool GtFTClient::flush()
 qint64 GtFTClient::size() const
 {
     Q_D(const GtFTClient);
-    return d->size;
+    return d->fileSize;
 }
 
 qint64 GtFTClient::readData(char *data, qint64 maxlen)
@@ -211,44 +214,13 @@ qint64 GtFTClient::writeData(const char *data, qint64 len)
     return 0;
 }
 
-void GtFTClient::handleRead()
-{
-    Q_D(GtFTClient);
-
-    int result = d->buffer.read(d->socket);
-    while (GtRecvBuffer::ReadMessage == result) {
-        d->handleMessage(d->buffer.buffer(), d->buffer.size());
-        d->buffer.clear();
-        result = d->buffer.read(d->socket);
-    }
-
-    switch (result) {
-    case GtRecvBuffer::ReadError:
-        qWarning() << "GtFTClient GtRecvBuffer::ReadError";
-        break;
-
-    default:
-        break;
-    }
-}
-
 void GtFTClient::handleConnected()
 {
-    Q_D(GtFTClient);
-
-    d->connected = true;
-
-    GtFTOpenRequest msg;
-    msg.set_session(d->session.toUtf8().constData());
-    msg.set_file(d->fileId.toUtf8().constData());
-    msg.set_mode(openMode());
-    GtSvcUtil::sendMessage(d->socket, GT_FT_OPEN_REQUEST, &msg);
 }
 
 void GtFTClient::handleDisconnected()
 {
     Q_D(GtFTClient);
-    d->connected = false;
     d->opened = false;
 }
 
@@ -256,11 +228,11 @@ void GtFTClient::handleError(QAbstractSocket::SocketError error)
 {
     Q_D(GtFTClient);
 
-    d->connected = false;
     d->opened = false;
 
     switch (error) {
     case QAbstractSocket::RemoteHostClosedError:
+        d->error = GtFTClient::RemoteClosed;
         break;
 
     default:

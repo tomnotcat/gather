@@ -17,9 +17,12 @@ class GT_SVCE_EXPORT GtFTClient : public QIODevice, public GtObject
     Q_OBJECT
 
 public:
-    enum ConnectionCode {
-        OpenSuccess,
+    enum ErrorCode {
+        NoError,
         InvalidSession,
+        InvalidData,
+        WriteFailed,
+        RemoteClosed,
         UnknownError = -1
     };
 
@@ -42,17 +45,16 @@ public:
     bool open(OpenMode mode);
     void close();
 
+    int error() const;
+    void unsetError();
+
     bool flush();
     qint64 size() const;
 
     qint64 readData(char *data, qint64 maxlen);
     qint64 writeData(const char *data, qint64 len);
 
-Q_SIGNALS:
-    void connection(int result);
-
 private Q_SLOTS:
-    void handleRead();
     void handleConnected();
     void handleDisconnected();
     void handleError(QAbstractSocket::SocketError error);

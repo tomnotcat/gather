@@ -7,8 +7,8 @@ QT += network
 CONFIG += qt debug client server
 INCLUDEPATH += ../../gtbase
 PROTOS += gtusermessage.proto gtftmessage.proto
-HEADERS += gtrecvbuffer.h gtsvcutil.h
-SOURCES += gtrecvbuffer.cpp gtsvcutil.cpp
+HEADERS += gtrecvbuffer.h gtsvcutil.h gtfttemp.h
+SOURCES += gtrecvbuffer.cpp gtsvcutil.cpp gtfttemp.cpp
 
 CONFIG(client) {
     HEADERS += gtuserclient.h gtftclient.h

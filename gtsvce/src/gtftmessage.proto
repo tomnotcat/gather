@@ -3,6 +3,9 @@ package Gather;
 enum GtFTMessageType {
     GT_FT_OPEN_REQUEST = 1;
     GT_FT_OPEN_RESPONSE = 2;
+    GT_FT_READ_DATA = 3;
+    GT_FT_WRITE_DATA = 4;
+    GT_FT_DATA_EXISTS = 5;
 }
 
 message GtFTOpenRequest {
@@ -13,5 +16,10 @@ message GtFTOpenRequest {
 
 message GtFTOpenResponse {
     optional int32 result = 1;
+    optional int64 size = 2;
+}
+
+message GtFTDataExists {
+    optional int64 offset = 1;
     optional int64 size = 2;
 }
