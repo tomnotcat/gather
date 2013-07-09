@@ -5,13 +5,13 @@
 #define __GT_FT_TEMP_H__
 
 #include "gtobject.h"
-#include <QtCore/QObject>
+#include <QtCore/QIODevice>
 
 GT_BEGIN_NAMESPACE
 
 class GtFTTempPrivate;
 
-class GT_SVCE_EXPORT GtFTTemp : public QObject, public GtObject
+class GT_SVCE_EXPORT GtFTTemp : public QIODevice, public GtObject
 {
     Q_OBJECT
 
@@ -24,10 +24,23 @@ public:
 
 public:
     void setPath(const QString &dir, const QString &fileId);
+    QString fileId() const;
     QString metaPath() const;
     QString dataPath() const;
 
-    bool check();
+    bool open(OpenMode mode);
+    void close();
+
+    bool flush();
+    qint64 size() const;
+    bool seek(qint64 offset);
+
+    qint64 complete() const;
+    bool remove();
+
+protected:
+    qint64 readData(char *data, qint64 maxlen);
+    qint64 writeData(const char *data, qint64 len);
 
 private:
     QScopedPointer<GtFTTempPrivate> d_ptr;

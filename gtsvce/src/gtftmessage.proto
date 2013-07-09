@@ -10,7 +10,7 @@ enum GtFTMessageType {
 
 message GtFTOpenRequest {
     optional string session = 1;
-    optional string file = 2;
+    optional string fileId = 2;
     optional int32 mode = 3;
 }
 
@@ -22,4 +22,14 @@ message GtFTOpenResponse {
 message GtFTDataExists {
     optional int64 offset = 1;
     optional int64 size = 2;
+}
+
+message GtFTTempData {
+    required int64 offset = 1;
+    required int64 size = 2;
+}
+
+message GtFTTempMeta {
+    required string fileId = 1;
+    repeated GtFTTempData datas = 2;
 }

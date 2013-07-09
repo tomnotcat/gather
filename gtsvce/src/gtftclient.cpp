@@ -66,7 +66,7 @@ bool GtFTClientPrivate::open(QIODevice::OpenMode mode)
 
     GtFTOpenRequest request;
     request.set_session(session.toUtf8().constData());
-    request.set_file(fileId.toUtf8().constData());
+    request.set_fileid(fileId.toUtf8().constData());
     request.set_mode(mode);
     GtSvcUtil::sendMessage(socket, GT_FT_OPEN_REQUEST, &request);
 
