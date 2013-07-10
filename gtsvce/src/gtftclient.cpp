@@ -8,6 +8,7 @@
 #include <QtCore/qendian.h>
 #include <QtNetwork/QHostAddress>
 #include <QtNetwork/QTcpSocket>
+#include <limits>
 
 GT_BEGIN_NAMESPACE
 
@@ -30,7 +31,6 @@ protected:
     QHostAddress address;
     QString session;
     QString fileId;
-    qint64 fileSize;
     int error;
     quint16 port;
     bool opened;
@@ -38,7 +38,6 @@ protected:
 
 GtFTClientPrivate::GtFTClientPrivate(GtFTClient *q)
     : q_ptr(q)
-    , fileSize(0)
     , error(GtFTClient::NoError)
     , port(0)
     , opened(false)
@@ -61,43 +60,29 @@ bool GtFTClientPrivate::open(QIODevice::OpenMode mode)
         return false;
 
     socket->connectToHost(address, port);
-    if (!socket->waitForConnected())
+    if (!socket->waitForConnected()) {
+        error = GtFTClient::ConnectFailed;
         return false;
+    }
 
     GtFTOpenRequest request;
     request.set_session(session.toUtf8().constData());
     request.set_fileid(fileId.toUtf8().constData());
     request.set_mode(mode);
-    GtSvcUtil::sendMessage(socket, GT_FT_OPEN_REQUEST, &request);
-
-    if (!socket->waitForBytesWritten()) {
-        error = GtFTClient::WriteFailed;
-        return false;
-    }
-
-    char buffer[1024];
-    int length;
-
-    length = GtSvcUtil::readMessage(socket, buffer, sizeof(buffer));
-    if (length < (int)sizeof(quint16)) {
-        error = GtFTClient::InvalidData;
-        return false;
-    }
-
-    if (qFromBigEndian<quint16>(*(quint16*)buffer) != GT_FT_OPEN_RESPONSE) {
-        error = GtFTClient::InvalidData;
-        return false;
-    }
 
     GtFTOpenResponse response;
-    if (!response.ParseFromArray(buffer + 2, length - 2)) {
-        error = GtFTClient::InvalidData;
+    if (!GtSvcUtil::syncRequest<GtFTOpenResponse>(socket,
+                                                  GT_FT_OPEN_REQUEST,
+                                                  &request,
+                                                  GT_FT_OPEN_RESPONSE,
+                                                  &response))
+    {
+        error = GtFTClient::RequestFailed;
         return false;
     }
 
-    error = response.result();
+    error = response.error();
     opened = (GtFTClient::NoError == error);
-    fileSize = response.size();
 
     return opened;
 }
@@ -177,7 +162,9 @@ bool GtFTClient::open(OpenMode mode)
 void GtFTClient::close()
 {
     Q_D(GtFTClient);
+
     d->close();
+    QIODevice::close();
 }
 
 int GtFTClient::error() const
@@ -192,26 +179,65 @@ void GtFTClient::unsetError()
     d->error = GtFTClient::NoError;
 }
 
-bool GtFTClient::flush()
+qint64 GtFTClient::size()
 {
-    Q_D(GtFTClient);
-    return d->socket->flush();
-}
-
-qint64 GtFTClient::size() const
-{
-    Q_D(const GtFTClient);
-    return d->fileSize;
+    return 0;
 }
 
 qint64 GtFTClient::readData(char *data, qint64 maxlen)
 {
+    Q_D(GtFTClient);
+
+    if (!d->opened)
+        return -1;
+
     return 0;
 }
 
 qint64 GtFTClient::writeData(const char *data, qint64 len)
 {
-    return 0;
+    Q_D(GtFTClient);
+
+    if (!d->opened) {
+        d->error = GtFTClient::InvalidState;
+        return -1;
+    }
+
+    Q_ASSERT(len + sizeof(quint16) <= std::numeric_limits<quint16>::max());
+
+    QByteArray bytes(sizeof(quint32) + len, -1);
+    char *buffer = bytes.data();
+
+    *(quint16*)buffer = qToBigEndian<quint16>(static_cast<quint16>(len + sizeof(quint16)));
+    *(quint16*)(buffer + sizeof(quint16)) = qToBigEndian<quint16>(GT_FT_WRITE_REQUEST);
+
+    memcpy(buffer + sizeof(quint32), data, len);
+    if (!GtSvcUtil::syncWrite(d->socket, buffer, sizeof(quint32) + len)) {
+        d->error = GtFTClient::RequestFailed;
+        return -1;
+    }
+
+    char rbuf[1024];
+    int rlen;
+
+    rlen = GtSvcUtil::readMessage(d->socket, rbuf, sizeof(rbuf));
+    if (rlen < (int)sizeof(quint16)) {
+        d->error = GtFTClient::RequestFailed;
+        return -1;
+    }
+
+    if (qFromBigEndian<quint16>(*(quint16*)rbuf) != GT_FT_WRITE_RESPONSE) {
+        d->error = GtFTClient::RequestFailed;
+        return -1;
+    }
+
+    GtFTWriteResponse response;
+    if (response.ParseFromArray(rbuf + 2, rlen - 2)) {
+        d->error = GtFTClient::RequestFailed;
+        return -1;
+    }
+
+    return response.size();
 }
 
 void GtFTClient::handleConnected()

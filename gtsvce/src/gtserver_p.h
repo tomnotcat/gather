@@ -29,13 +29,14 @@ public:
     GtServerThread* fetchThread();
     void addSession(GtSession *session, qintptr socketDescriptor);
     void removeSession(GtSession *session);
+    void close();
 
 protected:
     GtServer *q_ptr;
     QList<GtServerThread*> threads;
     QMutex mutex;
     int maxThread;
-    bool destructing;
+    bool closing;
 };
 
 GT_END_NAMESPACE

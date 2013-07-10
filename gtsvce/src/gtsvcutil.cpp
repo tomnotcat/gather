@@ -9,11 +9,29 @@
 
 GT_BEGIN_NAMESPACE
 
-void GtSvcUtil::sendMessage(QAbstractSocket *socket,
+bool GtSvcUtil::syncWrite(QAbstractSocket *socket, const char *buffer, int size)
+{
+    int bytesWrite = 0;
+    int curWrite;
+
+    while (bytesWrite < size) {
+        curWrite = socket->write(buffer + bytesWrite, size - bytesWrite);
+        if (curWrite < 0)
+            return false;
+
+        bytesWrite += curWrite;
+        if (bytesWrite < size && !socket->waitForBytesWritten())
+            return false;
+    }
+
+    return true;
+}
+
+bool GtSvcUtil::sendMessage(QAbstractSocket *socket,
                             int type,
                             const ::google::protobuf::Message *msg)
 {
-    int size = msg->ByteSize();
+    int size = msg ? msg->ByteSize() : 0;
 
     Q_ASSERT(type <= std::numeric_limits<quint16>::max());
     Q_ASSERT(size + sizeof(quint16) <= std::numeric_limits<quint16>::max());
@@ -24,12 +42,12 @@ void GtSvcUtil::sendMessage(QAbstractSocket *socket,
     *(quint16*)data = qToBigEndian<quint16>(static_cast<quint16>(size + sizeof(quint16)));
     *(quint16*)(data + sizeof(quint16)) = qToBigEndian<quint16>(static_cast<quint16>(type));
 
-    if (msg->SerializeToArray(data + sizeof(quint32), size)) {
-        socket->write(bytes);
+    if (msg && !msg->SerializeToArray(data + sizeof(quint32), size)) {
+        qWarning() << "GtSvcUtil::sendMessage SerializeToArray failed";
+        return false;
     }
-    else {
-        qWarning() << "SerializeToArray failed";
-    }
+
+    return syncWrite(socket, data, sizeof(quint32) + size);
 }
 
 bool GtSvcUtil::readData(QAbstractSocket *socket, char *buffer, int size)

@@ -3,9 +3,15 @@ package Gather;
 enum GtFTMessageType {
     GT_FT_OPEN_REQUEST = 1;
     GT_FT_OPEN_RESPONSE = 2;
-    GT_FT_READ_DATA = 3;
-    GT_FT_WRITE_DATA = 4;
-    GT_FT_DATA_EXISTS = 5;
+    GT_FT_SEEK_REQUEST = 3;
+    GT_FT_SEEK_RESPONSE = 4;
+    GT_FT_SIZE_REQUEST = 5;
+    GT_FT_SIZE_RESPONSE = 6;
+    GT_FT_READ_REQUEST = 7;
+    GT_FT_READ_RESPONSE = 8;
+    GT_FT_WRITE_REQUEST = 9;
+    GT_FT_WRITE_RESPONSE = 10;
+    GT_FT_DATA_COMPLETE = 11;
 }
 
 message GtFTOpenRequest {
@@ -15,13 +21,32 @@ message GtFTOpenRequest {
 }
 
 message GtFTOpenResponse {
-    optional int32 result = 1;
-    optional int64 size = 2;
+    optional int32 error = 1;
 }
 
-message GtFTDataExists {
-    optional int64 offset = 1;
-    optional int64 size = 2;
+message GtFTSeekRequest {
+    optional int64 pos = 1;
+}
+
+message GtFTSeekResponse {
+    optional int32 error = 1;
+}
+
+message GtFTSizeResponse {
+    optional int64 size = 1;
+}
+
+message GtFTReadRequest {
+    optional int64 size = 1;
+}
+
+message GtFTWriteResponse {
+    optional int64 size = 1;
+}
+
+message GtFTDataComplate {
+    optional int64 begin = 1;
+    optional int64 end = 2;
 }
 
 message GtFTTempData {

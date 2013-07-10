@@ -16,6 +16,9 @@ class test_upload: public QObject
     Q_OBJECT
 
 private Q_SLOTS:
+    void onUpload(const QString &fileId);
+
+private Q_SLOTS:
     void testTempFile();
     void testNormal();
     void testBlocked();
@@ -25,7 +28,16 @@ private:
     enum {
         TEST_PORT = 4004
     };
+
+private:
+    QString uploaded;
 };
+
+void test_upload::onUpload(const QString &fileId)
+{
+    QVERIFY(uploaded.isNull());
+    uploaded = fileId;
+}
 
 void test_upload::testTempFile()
 {
@@ -115,23 +127,29 @@ void test_upload::testTempFile()
     QVERIFY(temp.read(buffer, 10) == 10);
     QVERIFY(strncmp(buffer, "9876543210", 10) == 0);
     QVERIFY(temp.complete() == 10);
+    QVERIFY(temp.complete(50) == 60);
+    QVERIFY(temp.complete(80) == 114);
+    QVERIFY(temp.complete(100) == 114);
 
     metaFile.close();
-    QVERIFY(temp.remove());
+    temp.close();
 
     QVERIFY(localFile.seek(0));
-    QVERIFY(temp.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    QVERIFY(temp.open(QIODevice::ReadWrite | QIODevice::Truncate));
     qint64 length;
     do {
         length = localFile.read(buffer, sizeof(buffer));
-        if (length > 0) {
-            temp.write(buffer, length);
-        }
+        QVERIFY(temp.write(buffer, length) == length);
     } while (length > 0);
 
     QVERIFY(temp.flush());
     QVERIFY(temp.complete() == localFile.size());
+    QVERIFY(temp.complete(10) == localFile.size());
 
+    QVERIFY(temp.seek(0));
+    QVERIFY(GtDocument::makeFileId(&temp) == temp.fileId());
+
+    QVERIFY(temp.remove());
     temp.close();
     localFile.close();
 }
@@ -143,8 +161,14 @@ void test_upload::testNormal()
     QHostAddress host(QHostAddress::LocalHost);
     QThread thread;
 
+    uploaded = QString();
     QVERIFY(server.listen(host, TEST_PORT));
     server.moveToThread(&thread);
+    connect(&server,
+            SIGNAL(uploaded(const QString&)),
+            this,
+            SLOT(onUpload(const QString&)),
+            Qt::DirectConnection);
 
     thread.start();
 
@@ -168,11 +192,31 @@ void test_upload::testNormal()
     QVERIFY(client.open(QIODevice::WriteOnly));
     QVERIFY(!client.open(QIODevice::WriteOnly));
 
+    char buffer[1024];
+    qint64 length;
+    qint64 size = 0;
+    QVERIFY(localFile.seek(0));
+
+    do {
+        length = localFile.read(buffer, sizeof(buffer));
+        client.write(buffer, length);
+        //QVERIFY(client.write(buffer, length) == length);
+        size += length;
+        //QVERIFY(client.size() == size);
+    } while (length > 0);
+
+    QVERIFY(localFile.size() == size);
+
     client.close();
+    server.close();
     localFile.close();
 
     thread.quit();
     thread.wait();
+
+    QVERIFY(uploaded == fileId);
+    GtFTTemp temp(QDir::tempPath(), fileId);
+    QVERIFY(temp.remove());
 }
 
 void test_upload::testBlocked()

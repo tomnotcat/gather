@@ -19,9 +19,11 @@ class GT_SVCE_EXPORT GtFTClient : public QIODevice, public GtObject
 public:
     enum ErrorCode {
         NoError,
+        ConnectFailed,
         InvalidSession,
-        InvalidData,
-        WriteFailed,
+        InvalidState,
+        OpenFailed,
+        RequestFailed,
         RemoteClosed,
         UnknownError = -1
     };
@@ -48,9 +50,9 @@ public:
     int error() const;
     void unsetError();
 
-    bool flush();
-    qint64 size() const;
+    qint64 size();
 
+protected:
     qint64 readData(char *data, qint64 maxlen);
     qint64 writeData(const char *data, qint64 len);
 

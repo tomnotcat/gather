@@ -19,6 +19,12 @@ public:
     explicit GtFTServer(QObject *parent = 0);
     ~GtFTServer();
 
+public:
+    QString tempPath() const;
+
+Q_SIGNALS:
+    void uploaded(const QString &fileId);
+
 protected:
     GtSession* createSession();
 

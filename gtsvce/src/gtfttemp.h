@@ -33,9 +33,9 @@ public:
 
     bool flush();
     qint64 size() const;
-    bool seek(qint64 offset);
+    bool seek(qint64 pos);
 
-    qint64 complete() const;
+    qint64 complete(qint64 begin = 0) const;
     bool remove();
 
 protected:

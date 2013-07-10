@@ -11,21 +11,13 @@ GT_BEGIN_NAMESPACE
 GtServerPrivate::GtServerPrivate(GtServer *q)
     : q_ptr(q)
     , maxThread(0)
-    , destructing(false)
+    , closing(false)
 {
 }
 
 GtServerPrivate::~GtServerPrivate()
 {
-    destructing = true;
-
-    foreach(GtServerThread *t, threads) {
-        t->quit();
-        t->wait();
-        qDeleteAll(t->sessions);
-    }
-
-    qDeleteAll(threads);
+    close();
 }
 
 GtServerThread* GtServerPrivate::fetchThread()
@@ -77,8 +69,23 @@ void GtServerPrivate::removeSession(GtSession *session)
     QMutexLocker locker(&mutex);
     thread->sessions.removeOne(session);
 
-    if (!destructing)
+    if (!closing)
         q->removeSession(session);
+}
+
+void GtServerPrivate::close()
+{
+    closing = true;
+
+    foreach(GtServerThread *t, threads) {
+        t->quit();
+        t->wait();
+        qDeleteAll(t->sessions);
+    }
+
+    qDeleteAll(threads);
+    threads.clear();
+    closing = false;
 }
 
 GtServer::GtServer(QObject *parent)
@@ -101,6 +108,13 @@ int GtServer::maxThread() const
 {
     Q_D(const GtServer);
     return d->maxThread;
+}
+
+void GtServer::close()
+{
+    Q_D(GtServer);
+    d->close();
+    QTcpServer::close();
 }
 
 void GtServer::addSession(GtSession *session)

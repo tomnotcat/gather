@@ -24,6 +24,7 @@ public:
 public:
     void setMaxThread(int count);
     int maxThread() const;
+    void close();
 
 protected:
     virtual GtSession* createSession() = 0;

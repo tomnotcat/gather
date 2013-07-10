@@ -4,6 +4,7 @@
 #include "gtftserver.h"
 #include "gtftsession.h"
 #include <QtCore/QDebug>
+#include <QtCore/QDir>
 
 GT_BEGIN_NAMESPACE
 
@@ -36,6 +37,11 @@ GtFTServer::GtFTServer(QObject *parent)
 
 GtFTServer::~GtFTServer()
 {
+}
+
+QString GtFTServer::tempPath() const
+{
+    return QDir::tempPath();
 }
 
 GtSession* GtFTServer::createSession()

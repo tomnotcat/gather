@@ -178,30 +178,33 @@ qint64 GtFTTemp::size() const
     return d->dataFile.size();
 }
 
-bool GtFTTemp::seek(qint64 offset)
+bool GtFTTemp::seek(qint64 pos)
 {
     Q_D(GtFTTemp);
 
-    if (!d->dataFile.seek(offset))
+    if (!d->dataFile.seek(pos))
         return false;
 
-    return QIODevice::seek(offset);
+    return QIODevice::seek(pos);
 }
 
-qint64 GtFTTemp::complete() const
+qint64 GtFTTemp::complete(qint64 begin) const
 {
     Q_D(const GtFTTemp);
 
     if (d->tempDatas.size() == 0)
-        return 0;
+        return begin;
 
     GtFTTempData *p = d->tempDatas[0];
-    if (p->offset() != 0)
-        return 0;
+    if (p->offset() > begin)
+        return begin;
 
-    qint64 maxPos = 0;
-    qint64 curPos = 0;
+    qint64 curPos;
+    qint64 maxPos = p->size();
     foreach(GtFTTempData *it, d->tempDatas) {
+        if (it->offset() > maxPos && it->offset() > begin)
+            break;
+
         curPos = it->offset() + it->size();
         maxPos = MAX(curPos, maxPos);
     }
