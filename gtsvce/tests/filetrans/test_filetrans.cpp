@@ -11,7 +11,7 @@
 
 using namespace Gather;
 
-class test_upload: public QObject
+class test_filetrans: public QObject
 {
     Q_OBJECT
 
@@ -20,8 +20,8 @@ private Q_SLOTS:
 
 private Q_SLOTS:
     void testTempFile();
-    void testNormal();
-    void testBlocked();
+    void testNormalUpload();
+    void testDamageUpload();
     void cleanupTestCase();
 
 private:
@@ -33,13 +33,13 @@ private:
     QString uploaded;
 };
 
-void test_upload::onUpload(const QString &fileId)
+void test_filetrans::onUpload(const QString &fileId)
 {
     QVERIFY(uploaded.isNull());
     uploaded = fileId;
 }
 
-void test_upload::testTempFile()
+void test_filetrans::testTempFile()
 {
 
     QDir tempDir(QDir::temp());
@@ -62,9 +62,9 @@ void test_upload::testTempFile()
     QVERIFY(!file.exists());
 
 #ifdef Q_WS_WIN
-    QFile localFile("test_upload.exe");
+    QFile localFile("test_filetrans.exe");
 #else
-    QFile localFile("test_upload");
+    QFile localFile("test_filetrans");
 #endif
 
     QVERIFY(localFile.open(QIODevice::ReadOnly));
@@ -72,6 +72,7 @@ void test_upload::testTempFile()
 
     temp.setPath(QDir::tempPath(), fileId);
     QVERIFY(temp.open(QIODevice::WriteOnly));
+    QVERIFY(temp.temps_size() == 0);
 
     QFile metaFile(temp.metaPath());
     QVERIFY(metaFile.open(QIODevice::ReadOnly));
@@ -85,25 +86,51 @@ void test_upload::testTempFile()
     QVERIFY(metaFile.size() == 0);
     QVERIFY(temp.write("hello") == 5);
     QVERIFY(temp.size() == 5);
+    QVERIFY(temp.temps_size() == 1);
+    QVERIFY(temp.temps(0).offset() == 0);
+    QVERIFY(temp.temps(0).size() == 5);
 
     QVERIFY(temp.seek(100));
     QVERIFY(temp.write("hello") == 5);
     QVERIFY(temp.size() == 105);
     QVERIFY(temp.flush());
     QVERIFY(metaFile.size() > 0);
+    QVERIFY(temp.temps_size() == 2);
+    QVERIFY(temp.temps(0).offset() == 0);
+    QVERIFY(temp.temps(0).size() == 5);
+    QVERIFY(temp.temps(1).offset() == 100);
+    QVERIFY(temp.temps(1).size() == 5);
 
     QVERIFY(temp.seek(5));
     QVERIFY(temp.write("world") == 5);
+    QVERIFY(temp.temps_size() == 2);
+    QVERIFY(temp.temps(0).offset() == 0);
+    QVERIFY(temp.temps(0).size() == 10);
+    QVERIFY(temp.temps(1).offset() == 100);
+    QVERIFY(temp.temps(1).size() == 5);
+
     QVERIFY(temp.seek(90));
     QVERIFY(temp.write("hello world, hello world") == 24);
     QVERIFY(temp.size() == 114);
     QVERIFY(temp.seek(80));
     QVERIFY(temp.write("0123456789") == 10);
+    QVERIFY(temp.temps_size() == 2);
+    QVERIFY(temp.temps(0).offset() == 0);
+    QVERIFY(temp.temps(0).size() == 10);
+    QVERIFY(temp.temps(1).offset() == 80);
+    QVERIFY(temp.temps(1).size() == 34);
 
     QVERIFY(temp.seek(50));
     QVERIFY(temp.write("9876543210") == 10);
     QVERIFY(temp.flush());
     QVERIFY(temp.complete() == 10);
+    QVERIFY(temp.temps_size() == 3);
+    QVERIFY(temp.temps(0).offset() == 0);
+    QVERIFY(temp.temps(0).size() == 10);
+    QVERIFY(temp.temps(1).offset() == 50);
+    QVERIFY(temp.temps(1).size() == 10);
+    QVERIFY(temp.temps(2).offset() == 80);
+    QVERIFY(temp.temps(2).size() == 34);
 
     GtFTTempMeta tempMeta;
     QByteArray metaData(metaFile.readAll());
@@ -119,6 +146,13 @@ void test_upload::testTempFile()
 
     temp.close();
     QVERIFY(temp.open(QIODevice::ReadOnly));
+    QVERIFY(temp.temps_size() == 3);
+    QVERIFY(temp.temps(0).offset() == 0);
+    QVERIFY(temp.temps(0).size() == 10);
+    QVERIFY(temp.temps(1).offset() == 50);
+    QVERIFY(temp.temps(1).size() == 10);
+    QVERIFY(temp.temps(2).offset() == 80);
+    QVERIFY(temp.temps(2).size() == 34);
 
     char buffer[1024];
     QVERIFY(temp.read(buffer, 10) == 10);
@@ -136,6 +170,8 @@ void test_upload::testTempFile()
 
     QVERIFY(localFile.seek(0));
     QVERIFY(temp.open(QIODevice::ReadWrite | QIODevice::Truncate));
+    QVERIFY(temp.temps_size() == 0);
+
     qint64 length;
     do {
         length = localFile.read(buffer, sizeof(buffer));
@@ -154,7 +190,7 @@ void test_upload::testTempFile()
     localFile.close();
 }
 
-void test_upload::testNormal()
+void test_filetrans::testNormalUpload()
 {
     GtFTServer server;
     GtFTClient client;
@@ -173,9 +209,9 @@ void test_upload::testNormal()
     thread.start();
 
 #ifdef Q_WS_WIN
-    QFile localFile("test_upload.exe");
+    QFile localFile("test_filetrans.exe");
 #else
-    QFile localFile("test_upload");
+    QFile localFile("test_filetrans");
 #endif
 
     QVERIFY(localFile.open(QIODevice::ReadOnly));
@@ -186,23 +222,28 @@ void test_upload::testNormal()
     QVERIFY(client.error() == GtFTClient::InvalidSession);
 
     QVERIFY(client.fileId() == fileId);
-    QVERIFY(client.size() == 0);
 
     client.setFileInfo(fileId, host, TEST_PORT, "testsession");
     QVERIFY(client.open(QIODevice::WriteOnly));
     QVERIFY(!client.open(QIODevice::WriteOnly));
+    QVERIFY(client.size() == 0);
 
     char buffer[1024];
     qint64 length;
     qint64 size = 0;
-    QVERIFY(localFile.seek(0));
 
+    QVERIFY(localFile.seek(0));
     do {
         length = localFile.read(buffer, sizeof(buffer));
-        client.write(buffer, length);
-        //QVERIFY(client.write(buffer, length) == length);
+        QVERIFY(client.write(buffer, length) == length);
         size += length;
-        //QVERIFY(client.size() == size);
+        QVERIFY(client.size() == size);
+        QVERIFY(client.uploaded() == size);
+
+        if (size < localFile.size())
+            QVERIFY(!client.complete());
+        else
+            QVERIFY(client.complete());
     } while (length > 0);
 
     QVERIFY(localFile.size() == size);
@@ -219,20 +260,95 @@ void test_upload::testNormal()
     QVERIFY(temp.remove());
 }
 
-void test_upload::testBlocked()
+void test_filetrans::testDamageUpload()
 {
     GtFTServer server;
+    GtFTClient client;
     QHostAddress host(QHostAddress::LocalHost);
+    QThread thread;
 
+    uploaded = QString();
     QVERIFY(server.listen(host, TEST_PORT));
+    server.moveToThread(&thread);
+    connect(&server,
+            SIGNAL(uploaded(const QString&)),
+            this,
+            SLOT(onUpload(const QString&)),
+            Qt::DirectConnection);
+
+    thread.start();
+
+#ifdef Q_WS_WIN
+    QFile localFile("test_filetrans.exe");
+#else
+    QFile localFile("test_filetrans");
+#endif
+
+    QVERIFY(localFile.open(QIODevice::ReadOnly));
+    QString fileId(GtDocument::makeFileId(&localFile));
+
+    client.setFileInfo(fileId, host, TEST_PORT, "testsession");
+    QVERIFY(client.open(QIODevice::WriteOnly));
+
+    char buffer[1024];
+    qint64 length;
+    qint64 size = 0;
+    qint64 half = localFile.size() / 2;
+    qint64 cutOffset = 0;
+    qint64 cutLength = 0;
+
+    QVERIFY(localFile.seek(0));
+    do {
+        length = localFile.read(buffer, sizeof(buffer));
+
+        if (size < half) {
+            QVERIFY(client.write(buffer, length) == length);
+            size += length;
+        }
+        else {
+            cutOffset = size;
+            cutLength = length;
+            QVERIFY(client.seek(size + length));
+            size = 0;
+        }
+    } while (length > 0);
+
+    QVERIFY(client.size() == localFile.size());
+    QVERIFY(client.uploaded() == localFile.size() - cutLength);
+    QVERIFY(cutOffset > 0 && cutLength > 0);
+    QVERIFY(!client.complete());
+
+    client.close();
+    QVERIFY(client.open(QIODevice::WriteOnly));
+    QVERIFY(client.size() == localFile.size());
+    QVERIFY(client.uploaded() == localFile.size() - cutLength);
+    QVERIFY(!client.complete());
+
+    QVERIFY(localFile.seek(cutOffset));
+    QVERIFY(localFile.read(buffer, sizeof(buffer)) == cutLength);
+    QVERIFY(client.seek(cutOffset));
+    QVERIFY(client.write(buffer, cutLength) == cutLength);
+    QVERIFY(client.uploaded() == localFile.size());
+    QVERIFY(client.complete());
+
+    client.close();
+    server.close();
+    localFile.close();
+
+    thread.quit();
+    thread.wait();
+
+    QVERIFY(uploaded == fileId);
+    GtFTTemp temp(QDir::tempPath(), fileId);
+    QVERIFY(temp.remove());
 }
 
-void test_upload::cleanupTestCase()
+void test_filetrans::cleanupTestCase()
 {
 #ifdef GT_DEBUG
     QVERIFY(GtObject::dumpObjects() == 0);
 #endif
 }
 
-QTEST_MAIN(test_upload)
-#include "test_upload.moc"
+QTEST_MAIN(test_filetrans)
+#include "test_filetrans.moc"

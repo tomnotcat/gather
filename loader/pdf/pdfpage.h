@@ -34,6 +34,7 @@ private:
     fz_document *document;
     fz_page *page;
     fz_display_list *pageList;
+    fz_display_list *annotationList;
     fz_text_page *pageText;
     fz_text_sheet *pageSheet;
     QString _label;

@@ -1,6 +1,6 @@
 CONFIG += testcase
-TARGET = test_upload
+TARGET = test_filetrans
 QT = core testlib
-SOURCES = test_upload.cpp
+SOURCES = test_filetrans.cpp
 
 include(../tests.pri)

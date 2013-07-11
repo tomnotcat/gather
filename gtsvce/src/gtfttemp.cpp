@@ -37,7 +37,6 @@ GtFTTempPrivate::GtFTTempPrivate(GtFTTemp *q)
 
 GtFTTempPrivate::~GtFTTempPrivate()
 {
-    qDeleteAll(tempDatas);
 }
 
 bool GtFTTempPrivate::saveMeta()
@@ -116,7 +115,12 @@ bool GtFTTemp::open(OpenMode mode)
 {
     Q_D(GtFTTemp);
 
-    if (!d->metaFile.open(QIODevice::ReadWrite))
+    OpenMode metaMode = QIODevice::ReadWrite;
+
+    if (mode & QIODevice::Truncate)
+        metaMode |= QIODevice::Truncate;
+
+    if (!d->metaFile.open(metaMode))
         return false;
 
     if (d->metaFile.size() > 0) {
@@ -125,9 +129,6 @@ bool GtFTTemp::open(OpenMode mode)
         if (d->tempMeta.ParseFromArray(data.constData(), data.size()) &&
             QString::fromUtf8(d->tempMeta.fileid().c_str()) == d->fileId)
         {
-            qDeleteAll(d->tempDatas);
-            d->tempDatas.clear();
-
             int count = d->tempMeta.datas_size();
             for (int i = 0; i < count; ++i) {
                 GtFTTempData *p = new GtFTTempData(d->tempMeta.datas(i));
@@ -160,6 +161,9 @@ void GtFTTemp::close()
     QIODevice::close();
     d->metaFile.close();
     d->dataFile.close();
+
+    qDeleteAll(d->tempDatas);
+    d->tempDatas.clear();
 }
 
 bool GtFTTemp::flush()
@@ -186,6 +190,18 @@ bool GtFTTemp::seek(qint64 pos)
         return false;
 
     return QIODevice::seek(pos);
+}
+
+int GtFTTemp::temps_size() const
+{
+    Q_D(const GtFTTemp);
+    return d->tempDatas.size();
+}
+
+const GtFTTempData& GtFTTemp::temps(int index) const
+{
+    Q_D(const GtFTTemp);
+    return *d->tempDatas[index];
 }
 
 qint64 GtFTTemp::complete(qint64 begin) const

@@ -9,6 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtFTTempData;
 class GtFTTempPrivate;
 
 class GT_SVCE_EXPORT GtFTTemp : public QIODevice, public GtObject
@@ -34,6 +35,9 @@ public:
     bool flush();
     qint64 size() const;
     bool seek(qint64 pos);
+
+    int temps_size() const;
+    const GtFTTempData& temps(int index) const;
 
     qint64 complete(qint64 begin = 0) const;
     bool remove();

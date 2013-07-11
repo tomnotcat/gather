@@ -22,15 +22,17 @@ public:
 
 public:
     bool open(QIODevice::OpenMode mode);
-    void close();
+    void close(bool disconnect);
     void disconnect();
 
 protected:
     GtFTClient *q_ptr;
     QTcpSocket *socket;
+    QList<GtFTTempData> temps;
     QHostAddress address;
     QString session;
     QString fileId;
+    qint64 uploaded;
     int error;
     quint16 port;
     bool opened;
@@ -38,6 +40,7 @@ protected:
 
 GtFTClientPrivate::GtFTClientPrivate(GtFTClient *q)
     : q_ptr(q)
+    , uploaded(0)
     , error(GtFTClient::NoError)
     , port(0)
     , opened(false)
@@ -51,7 +54,7 @@ GtFTClientPrivate::GtFTClientPrivate(GtFTClient *q)
 
 GtFTClientPrivate::~GtFTClientPrivate()
 {
-    close();
+    close(true);
 }
 
 bool GtFTClientPrivate::open(QIODevice::OpenMode mode)
@@ -84,16 +87,26 @@ bool GtFTClientPrivate::open(QIODevice::OpenMode mode)
     error = response.error();
     opened = (GtFTClient::NoError == error);
 
+    for (int i = 0; i < response.temps_size(); ++i) {
+        const GtFTTempData &temp = response.temps(i);
+        uploaded += temp.size();
+        temps.push_back(temp);
+    }
+
     return opened;
 }
 
-void GtFTClientPrivate::close()
+void GtFTClientPrivate::close(bool disconnect)
 {
     if (!opened)
         return;
 
-    disconnect();
+    if (disconnect)
+        this->disconnect();
+
     opened = false;
+    uploaded = 0;
+    temps.clear();
 }
 
 void GtFTClientPrivate::disconnect()
@@ -163,7 +176,7 @@ void GtFTClient::close()
 {
     Q_D(GtFTClient);
 
-    d->close();
+    d->close(true);
     QIODevice::close();
 }
 
@@ -181,7 +194,85 @@ void GtFTClient::unsetError()
 
 qint64 GtFTClient::size()
 {
-    return 0;
+    Q_D(GtFTClient);
+
+    if (!d->opened) {
+        d->error = GtFTClient::InvalidState;
+        return -1;
+    }
+
+    GtFTSizeResponse response;
+    if (!GtSvcUtil::syncRequest<GtFTSizeResponse>(d->socket,
+                                                  GT_FT_SIZE_REQUEST,
+                                                  0,
+                                                  GT_FT_SIZE_RESPONSE,
+                                                  &response))
+    {
+        d->error = GtFTClient::RequestFailed;
+        return -1;
+    }
+
+    return response.size();
+}
+
+bool GtFTClient::seek(qint64 pos)
+{
+    Q_D(GtFTClient);
+
+    if (!d->opened) {
+        d->error = GtFTClient::InvalidState;
+        return false;
+    }
+
+    GtFTSeekRequest request;
+    request.set_pos(pos);
+
+    GtFTSeekResponse response;
+    if (!GtSvcUtil::syncRequest<GtFTSeekResponse>(d->socket,
+                                                  GT_FT_SEEK_REQUEST,
+                                                  &request,
+                                                  GT_FT_SEEK_RESPONSE,
+                                                  &response))
+    {
+        d->error = GtFTClient::RequestFailed;
+        return -1;
+    }
+
+    d->error = response.error();
+    if (d->error != GtFTClient::NoError)
+        return false;
+
+    return QIODevice::seek(pos);
+}
+
+qint64 GtFTClient::uploaded() const
+{
+    Q_D(const GtFTClient);
+    return d->uploaded;
+}
+
+bool GtFTClient::complete()
+{
+    Q_D(GtFTClient);
+
+    if (!d->opened) {
+        d->error = GtFTClient::InvalidState;
+        return false;
+    }
+
+    GtFTCompleteResponse response;
+    if (!GtSvcUtil::syncRequest<GtFTCompleteResponse>(d->socket,
+                                                      GT_FT_COMPLETE_REQUEST,
+                                                      0,
+                                                      GT_FT_COMPLETE_RESPONSE,
+                                                      &response))
+    {
+        d->error = GtFTClient::RequestFailed;
+        return -1;
+    }
+
+    d->error = response.error();
+    return (GtFTClient::NoError == d->error);
 }
 
 qint64 GtFTClient::readData(char *data, qint64 maxlen)
@@ -232,12 +323,16 @@ qint64 GtFTClient::writeData(const char *data, qint64 len)
     }
 
     GtFTWriteResponse response;
-    if (response.ParseFromArray(rbuf + 2, rlen - 2)) {
+    if (!response.ParseFromArray(rbuf + 2, rlen - 2)) {
         d->error = GtFTClient::RequestFailed;
         return -1;
     }
 
-    return response.size();
+    qint64 size = response.size();
+    if (size > 0)
+        d->uploaded += size;
+
+    return size;
 }
 
 void GtFTClient::handleConnected()
@@ -247,14 +342,14 @@ void GtFTClient::handleConnected()
 void GtFTClient::handleDisconnected()
 {
     Q_D(GtFTClient);
-    d->opened = false;
+    d->close(false);
 }
 
 void GtFTClient::handleError(QAbstractSocket::SocketError error)
 {
     Q_D(GtFTClient);
 
-    d->opened = false;
+    d->close(false);
 
     switch (error) {
     case QAbstractSocket::RemoteHostClosedError:

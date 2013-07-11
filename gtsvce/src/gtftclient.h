@@ -23,6 +23,7 @@ public:
         InvalidSession,
         InvalidState,
         OpenFailed,
+        SeekFailed,
         RequestFailed,
         RemoteClosed,
         UnknownError = -1
@@ -51,6 +52,10 @@ public:
     void unsetError();
 
     qint64 size();
+    bool seek(qint64 pos);
+
+    qint64 uploaded() const;
+    bool complete();
 
 protected:
     qint64 readData(char *data, qint64 maxlen);

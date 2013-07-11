@@ -13,6 +13,7 @@ PdfPage::PdfPage(fz_context *c, fz_document *d, fz_page *p, const QString &l)
     , document(d)
     , page(p)
     , pageList(0)
+    , annotationList(0)
     , pageText(0)
     , pageSheet(0)
     , _label(l)
@@ -23,6 +24,9 @@ PdfPage::~PdfPage()
 {
     if (pageList)
         fz_free_display_list(context, pageList);
+
+    if (annotationList)
+        fz_free_display_list(context, annotationList);
 
     if (pageText)
         fz_free_text_page(context, pageText);
@@ -113,22 +117,16 @@ int PdfPage::extractText(QChar *texts, QRectF *rects, int length)
 
 void PdfPage::paint(QPaintDevice *device, double scale, int rotation)
 {
-    fz_colorspace *colorspace;
     fz_pixmap *pixmap;
     fz_device *idev;
     QImage *image;
     fz_matrix matrix;
     fz_rect bounds;
     fz_irect ibounds;
+    fz_colorspace *colorspace = fz_device_bgr;
     fz_cookie cookie = { 0, 0, 0, 0 };
 
     loadContent();
-
-#ifdef _WIN32
-    colorspace = fz_device_bgr;
-#else
-    colorspace = fz_device_rgb;
-#endif
 
     if (device->devType() == QInternal::Image)
         image = static_cast<QImage*>(device);
@@ -151,6 +149,7 @@ void PdfPage::paint(QPaintDevice *device, double scale, int rotation)
 
     // FIZME: mupdf has memory leaks when render image pages
     fz_run_display_list(pageList, idev, &matrix, &bounds, &cookie);
+    fz_run_display_list(annotationList, idev, &matrix, &bounds, &cookie);
 
     fz_free_device(idev);
     fz_drop_pixmap(context, pixmap);
@@ -167,6 +166,21 @@ void PdfPage::loadContent()
         pageList = fz_new_display_list(context);
         mdev = fz_new_list_device(context, pageList);
         fz_run_page_contents(document, page, mdev, &fz_identity, &cookie);
+        fz_free_device(mdev);
+    }
+
+    if (!annotationList) {
+        annotationList = fz_new_display_list(context);
+        mdev = fz_new_list_device(context, annotationList);
+
+        fz_annot *annot;
+        for (annot = fz_first_annot(document, page);
+             annot;
+             annot = fz_next_annot(document, annot))
+        {
+            fz_run_annot(document, page, annot, mdev, &fz_identity, &cookie);
+        }
+
         fz_free_device(mdev);
     }
 
