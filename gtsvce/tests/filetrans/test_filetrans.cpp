@@ -11,33 +11,47 @@
 
 using namespace Gather;
 
+class TestServer : public GtFTServer
+{
+public:
+    void upload(const QString &fileId, QIODevice *device)
+    {
+        Q_UNUSED(device);
+        QVERIFY(uploaded.isNull());
+        uploaded = fileId;
+    }
+
+    QIODevice* download(const QString &fileId)
+    {
+        GtFTTemp *file = new GtFTTemp(tempPath(), fileId);
+        if (file->exists())
+            return file;
+
+        delete file;
+        return 0;
+    }
+
+public:
+    QString uploaded;
+};
+
 class test_filetrans: public QObject
 {
     Q_OBJECT
 
 private Q_SLOTS:
-    void onUpload(const QString &fileId);
-
-private Q_SLOTS:
     void testTempFile();
     void testNormalUpload();
-    void testDamageUpload();
+    void testBrokenUpload();
+    void testNormalDownload();
+    void testBrokenDownload();
     void cleanupTestCase();
 
 private:
     enum {
         TEST_PORT = 4004
     };
-
-private:
-    QString uploaded;
 };
-
-void test_filetrans::onUpload(const QString &fileId)
-{
-    QVERIFY(uploaded.isNull());
-    uploaded = fileId;
-}
 
 void test_filetrans::testTempFile()
 {
@@ -192,19 +206,13 @@ void test_filetrans::testTempFile()
 
 void test_filetrans::testNormalUpload()
 {
-    GtFTServer server;
+    TestServer server;
     GtFTClient client;
     QHostAddress host(QHostAddress::LocalHost);
     QThread thread;
 
-    uploaded = QString();
     QVERIFY(server.listen(host, TEST_PORT));
     server.moveToThread(&thread);
-    connect(&server,
-            SIGNAL(uploaded(const QString&)),
-            this,
-            SLOT(onUpload(const QString&)),
-            Qt::DirectConnection);
 
     thread.start();
 
@@ -238,12 +246,12 @@ void test_filetrans::testNormalUpload()
         QVERIFY(client.write(buffer, length) == length);
         size += length;
         QVERIFY(client.size() == size);
-        QVERIFY(client.uploaded() == size);
+        QVERIFY(client.complete() == size);
 
         if (size < localFile.size())
-            QVERIFY(!client.complete());
+            QVERIFY(!client.finish());
         else
-            QVERIFY(client.complete());
+            QVERIFY(client.finish());
     } while (length > 0);
 
     QVERIFY(localFile.size() == size);
@@ -255,26 +263,20 @@ void test_filetrans::testNormalUpload()
     thread.quit();
     thread.wait();
 
-    QVERIFY(uploaded == fileId);
+    QVERIFY(server.uploaded == fileId);
     GtFTTemp temp(QDir::tempPath(), fileId);
     QVERIFY(temp.remove());
 }
 
-void test_filetrans::testDamageUpload()
+void test_filetrans::testBrokenUpload()
 {
-    GtFTServer server;
+    TestServer server;
     GtFTClient client;
     QHostAddress host(QHostAddress::LocalHost);
     QThread thread;
 
-    uploaded = QString();
     QVERIFY(server.listen(host, TEST_PORT));
     server.moveToThread(&thread);
-    connect(&server,
-            SIGNAL(uploaded(const QString&)),
-            this,
-            SLOT(onUpload(const QString&)),
-            Qt::DirectConnection);
 
     thread.start();
 
@@ -314,22 +316,26 @@ void test_filetrans::testDamageUpload()
     } while (length > 0);
 
     QVERIFY(client.size() == localFile.size());
-    QVERIFY(client.uploaded() == localFile.size() - cutLength);
+    QVERIFY(client.complete() == cutOffset);
+    QVERIFY(client.complete(cutOffset) == cutOffset);
+    QVERIFY(client.complete(cutOffset + cutLength) == localFile.size());
     QVERIFY(cutOffset > 0 && cutLength > 0);
-    QVERIFY(!client.complete());
+    QVERIFY(!client.finish());
 
     client.close();
     QVERIFY(client.open(QIODevice::WriteOnly));
     QVERIFY(client.size() == localFile.size());
-    QVERIFY(client.uploaded() == localFile.size() - cutLength);
-    QVERIFY(!client.complete());
+    QVERIFY(client.complete() == cutOffset);
+    QVERIFY(client.complete(cutOffset) == cutOffset);
+    QVERIFY(client.complete(cutOffset + cutLength) == localFile.size());
+    QVERIFY(!client.finish());
 
     QVERIFY(localFile.seek(cutOffset));
     QVERIFY(localFile.read(buffer, sizeof(buffer)) == cutLength);
     QVERIFY(client.seek(cutOffset));
     QVERIFY(client.write(buffer, cutLength) == cutLength);
-    QVERIFY(client.uploaded() == localFile.size());
-    QVERIFY(client.complete());
+    QVERIFY(client.complete() == localFile.size());
+    QVERIFY(client.finish());
 
     client.close();
     server.close();
@@ -338,7 +344,151 @@ void test_filetrans::testDamageUpload()
     thread.quit();
     thread.wait();
 
-    QVERIFY(uploaded == fileId);
+    QVERIFY(server.uploaded == fileId);
+    GtFTTemp temp(QDir::tempPath(), fileId);
+    QVERIFY(temp.remove());
+}
+
+void test_filetrans::testNormalDownload()
+{
+    TestServer server;
+    GtFTClient client;
+    QHostAddress host(QHostAddress::LocalHost);
+    QThread thread;
+
+    QVERIFY(server.listen(host, TEST_PORT));
+    server.moveToThread(&thread);
+
+    thread.start();
+
+#ifdef Q_WS_WIN
+    QFile localFile("test_filetrans.exe");
+#else
+    QFile localFile("test_filetrans");
+#endif
+
+    QVERIFY(localFile.open(QIODevice::ReadOnly));
+    QString fileId(GtDocument::makeFileId(&localFile));
+
+    client.setFileInfo(fileId, host, TEST_PORT, "testsession");
+    QVERIFY(client.fileId() == fileId);
+    QVERIFY(!client.open(QIODevice::ReadOnly));
+    QVERIFY(client.error() == GtFTClient::FileNotExists);
+    client.unsetError();
+    QVERIFY(client.open(QIODevice::WriteOnly));
+
+    // upload
+    char buffer[1024];
+    qint64 length;
+
+    QVERIFY(localFile.seek(0));
+    do {
+        length = localFile.read(buffer, sizeof(buffer));
+        QVERIFY(client.write(buffer, length) == length);
+    } while (length > 0);
+
+    QVERIFY(client.finish());
+    client.close();
+
+    // download
+    GtFTTemp downTemp(QDir::tempPath(), fileId + ".download");
+    QVERIFY(downTemp.open(QIODevice::ReadWrite));
+    QVERIFY(client.open(QIODevice::ReadOnly));
+    do {
+        length = client.read(buffer, sizeof(buffer));
+        QVERIFY(downTemp.write(buffer, length) == length);
+    } while (length > 0);
+
+    downTemp.seek(0);
+    QVERIFY(GtDocument::makeFileId(&downTemp) == fileId);
+    client.close();
+    server.close();
+    localFile.close();
+    downTemp.remove();
+
+    thread.quit();
+    thread.wait();
+
+    GtFTTemp temp(QDir::tempPath(), fileId);
+    QVERIFY(temp.remove());
+}
+
+void test_filetrans::testBrokenDownload()
+{
+    TestServer server;
+    GtFTClient client;
+    QHostAddress host(QHostAddress::LocalHost);
+    QThread thread;
+
+    QVERIFY(server.listen(host, TEST_PORT));
+    server.moveToThread(&thread);
+
+    thread.start();
+
+#ifdef Q_WS_WIN
+    QFile localFile("test_filetrans.exe");
+#else
+    QFile localFile("test_filetrans");
+#endif
+
+    QVERIFY(localFile.open(QIODevice::ReadOnly));
+    QString fileId(GtDocument::makeFileId(&localFile));
+
+    client.setFileInfo(fileId, host, TEST_PORT, "testsession");
+    QVERIFY(client.fileId() == fileId);
+    QVERIFY(!client.open(QIODevice::ReadOnly));
+    QVERIFY(client.error() == GtFTClient::FileNotExists);
+    client.unsetError();
+    QVERIFY(client.open(QIODevice::WriteOnly));
+
+    // upload
+    char buffer[1024];
+    qint64 length;
+
+    QVERIFY(localFile.seek(0));
+    do {
+        length = localFile.read(buffer, sizeof(buffer));
+        QVERIFY(client.write(buffer, length) == length);
+    } while (length > 0);
+
+    QVERIFY(client.finish());
+    client.close();
+
+    // download
+    qint64 offset = 0;
+    GtFTTemp downTemp(QDir::tempPath(), fileId + ".download");
+    QVERIFY(downTemp.open(QIODevice::ReadWrite));
+    QVERIFY(client.open(QIODevice::ReadOnly));
+    do {
+        length = client.read(buffer, sizeof(buffer));
+        QVERIFY(downTemp.write(buffer, length) == length);
+        offset += length;
+        if (offset > client.size() / 2)
+            break;
+    } while (length > 0);
+
+    downTemp.seek(0);
+    QVERIFY(GtDocument::makeFileId(&downTemp) != fileId);
+    downTemp.close();
+
+    QVERIFY(downTemp.open(QIODevice::ReadWrite));
+    QVERIFY(client.seek(offset));
+    QVERIFY(downTemp.seek(offset));
+    do {
+        length = client.read(buffer, sizeof(buffer));
+        QVERIFY(downTemp.write(buffer, length) == length);
+    } while (length > 0);
+
+    downTemp.seek(0);
+    QVERIFY(GtDocument::makeFileId(&downTemp) == fileId);
+    client.close();
+    server.close();
+    localFile.close();
+    downTemp.remove();
+
+    thread.quit();
+    thread.wait();
+
     GtFTTemp temp(QDir::tempPath(), fileId);
     QVERIFY(temp.remove());
 }

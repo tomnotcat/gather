@@ -22,6 +22,7 @@ public:
         ConnectFailed,
         InvalidSession,
         InvalidState,
+        FileNotExists,
         OpenFailed,
         SeekFailed,
         RequestFailed,
@@ -54,8 +55,8 @@ public:
     qint64 size();
     bool seek(qint64 pos);
 
-    qint64 uploaded() const;
-    bool complete();
+    qint64 complete(qint64 begin = 0) const;
+    bool finish();
 
 protected:
     qint64 readData(char *data, qint64 maxlen);

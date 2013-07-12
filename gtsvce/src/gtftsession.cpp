@@ -10,6 +10,7 @@
 #include "gtsvcutil.h"
 #include <QtCore/QDebug>
 #include <QtCore/qendian.h>
+#include <limits>
 
 GT_BEGIN_NAMESPACE
 
@@ -22,24 +23,27 @@ public:
     ~GtFTSessionPrivate();
 
 public:
-    bool complete();
+    bool finish();
     void close();
 
 public:
     void handleOpenRequest(GtFTOpenRequest &msg);
     void handleSeekRequest(GtFTSeekRequest &msg);
     void handleSizeRequest();
+    void handleReadRequest(GtFTReadRequest &msg);
     void handleWriteRequest(const char *data, int size);
-    void handleCompleteRequest();
+    void handleFinishRequest();
 
 protected:
     GtFTSession *q_ptr;
     GtFTTemp temp;
+    QIODevice *device;
     bool opened;
 };
 
 GtFTSessionPrivate::GtFTSessionPrivate(GtFTSession *q)
     : q_ptr(q)
+    , device(0)
     , opened(false)
 {
 }
@@ -49,8 +53,11 @@ GtFTSessionPrivate::~GtFTSessionPrivate()
     close();
 }
 
-bool GtFTSessionPrivate::complete()
+bool GtFTSessionPrivate::finish()
 {
+    if (device != &temp)
+        return true;
+
     qint64 pos = temp.pos();
     temp.seek(0);
 
@@ -62,19 +69,23 @@ bool GtFTSessionPrivate::complete()
 
 void GtFTSessionPrivate::close()
 {
-    if (!opened)
-        return;
+    Q_Q(GtFTSession);
 
-    bool complete = this->complete();
+    if (opened) {
+        if (&temp == device && finish()) {
+            GtFTServer *server = qobject_cast<GtFTServer*>(q->server());
+            server->upload(temp.fileId(), device);
+        }
 
-    temp.close();
-    opened = false;
+        device->close();
+        opened = false;
+    }
 
-    if (complete) {
-        Q_Q(GtFTSession);
+    if (device) {
+        if (device != &temp)
+            delete device;
 
-        GtFTServer *server = qobject_cast<GtFTServer*>(q->server());
-        emit server->uploaded(temp.fileId());
+        device = 0;
     }
 }
 
@@ -94,15 +105,34 @@ void GtFTSessionPrivate::handleOpenRequest(GtFTOpenRequest &msg)
     }
     else {
         GtFTServer *server = qobject_cast<GtFTServer*>(q->server());
-        temp.setPath(server->tempPath(), fileId);
-        opened = temp.open(QIODevice::ReadWrite);
+        QIODevice::OpenMode mode;
 
-        if (opened) {
-            result = GtFTClient::NoError;
+        mode = static_cast<QIODevice::OpenMode>(msg.mode());
+        mode |= QIODevice::ReadOnly;
+
+        if (QIODevice::ReadOnly == mode) {
+            // download
+            device = server->download(fileId);
         }
         else {
-            qWarning() << "open temp file failed:" << fileId;
-            result = GtFTClient::OpenFailed;
+            // upload
+            temp.setPath(server->tempPath(), fileId);
+            device = &temp;
+        }
+
+        if (device) {
+            opened = device->open(mode);
+
+            if (opened) {
+                result = GtFTClient::NoError;
+            }
+            else {
+                qWarning() << "open temp file failed:" << fileId;
+                result = GtFTClient::OpenFailed;
+            }
+        }
+        else {
+            result = GtFTClient::FileNotExists;
         }
     }
 
@@ -110,8 +140,15 @@ void GtFTSessionPrivate::handleOpenRequest(GtFTOpenRequest &msg)
     response.set_error(result);
 
     if (GtFTClient::NoError == result) {
-        for (int i = 0; i < temp.temps_size(); ++i) {
-            *response.add_temps() = temp.temps(i);
+        if (&temp == device) {
+            for (int i = 0; i < temp.temps_size(); ++i) {
+                *response.add_temps() = temp.temps(i);
+            }
+        }
+        else {
+            GtFTTempData *data = response.add_temps();
+            data->set_offset(0);
+            data->set_size(device->size());
         }
     }
 
@@ -125,7 +162,7 @@ void GtFTSessionPrivate::handleSeekRequest(GtFTSeekRequest &msg)
     GtFTSeekResponse response;
 
     if (opened) {
-        if (temp.seek(msg.pos()))
+        if (device->seek(msg.pos()))
             response.set_error(GtFTClient::NoError);
         else
             response.set_error(GtFTClient::SeekFailed);
@@ -144,13 +181,35 @@ void GtFTSessionPrivate::handleSizeRequest()
     GtFTSizeResponse response;
 
     if (opened) {
-        response.set_size(temp.size());
+        response.set_size(device->size());
     }
     else {
         response.set_size(-1);
     }
 
     GtSvcUtil::sendMessage(q->socket(), GT_FT_SIZE_RESPONSE, &response);
+}
+
+void GtFTSessionPrivate::handleReadRequest(GtFTReadRequest &msg)
+{
+    Q_Q(GtFTSession);
+
+    int size = msg.size();
+    if (size + sizeof(quint16) > std::numeric_limits<quint16>::max()) {
+        qWarning() << "Invalid FT read size:" << size;
+        size = 0;
+    }
+
+    QByteArray bytes(sizeof(quint32) + size, -1);
+    char *buffer = bytes.data();
+
+    if (size > 0)
+        size = device->read(buffer + sizeof(quint32), size);
+
+    *(quint16*)buffer = qToBigEndian<quint16>(static_cast<quint16>(size + sizeof(quint16)));
+    *(quint16*)(buffer + sizeof(quint16)) = qToBigEndian<quint16>(GT_FT_READ_RESPONSE);
+
+    GtSvcUtil::syncWrite(q->socket(), buffer, sizeof(quint32) + size);
 }
 
 void GtFTSessionPrivate::handleWriteRequest(const char *data, int size)
@@ -160,7 +219,7 @@ void GtFTSessionPrivate::handleWriteRequest(const char *data, int size)
     GtFTWriteResponse response;
 
     if (opened) {
-        qint64 len = temp.write(data, size);
+        qint64 len = device->write(data, size);
         response.set_size(len);
     }
     else {
@@ -170,14 +229,14 @@ void GtFTSessionPrivate::handleWriteRequest(const char *data, int size)
     GtSvcUtil::sendMessage(q->socket(), GT_FT_WRITE_RESPONSE, &response);
 }
 
-void GtFTSessionPrivate::handleCompleteRequest()
+void GtFTSessionPrivate::handleFinishRequest()
 {
     Q_Q(GtFTSession);
 
-    GtFTCompleteResponse response;
+    GtFTFinishResponse response;
 
     if (opened) {
-        if (complete())
+        if (finish())
             response.set_error(GtFTClient::NoError);
         else
             response.set_error(GtFTClient::InvalidState);
@@ -186,7 +245,7 @@ void GtFTSessionPrivate::handleCompleteRequest()
         response.set_error(GtFTClient::InvalidState);
     }
 
-    GtSvcUtil::sendMessage(q->socket(), GT_FT_COMPLETE_RESPONSE, &response);
+    GtSvcUtil::sendMessage(q->socket(), GT_FT_FINISH_RESPONSE, &response);
 }
 
 GtFTSession::GtFTSession(QObject *parent)
@@ -246,16 +305,28 @@ void GtFTSession::message(const char *data, int size)
         }
         break;
 
+    case GT_FT_READ_REQUEST:
+        {
+            GtFTReadRequest msg;
+            if (msg.ParseFromArray(data, size)) {
+                d->handleReadRequest(msg);
+            }
+            else {
+                qWarning() << "Invalid FT read request";
+            }
+        }
+        break;
+
     case GT_FT_WRITE_REQUEST:
         d->handleWriteRequest(data, size);
         break;
 
-    case GT_FT_COMPLETE_REQUEST:
+    case GT_FT_FINISH_REQUEST:
         if (0 == size) {
-            d->handleCompleteRequest();
+            d->handleFinishRequest();
         }
         else {
-            qWarning() << "Invalid FT complete request";
+            qWarning() << "Invalid FT finish request";
         }
         break;
 

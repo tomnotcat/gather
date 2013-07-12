@@ -207,25 +207,13 @@ const GtFTTempData& GtFTTemp::temps(int index) const
 qint64 GtFTTemp::complete(qint64 begin) const
 {
     Q_D(const GtFTTemp);
+    return complete(d->tempDatas, begin);
+}
 
-    if (d->tempDatas.size() == 0)
-        return begin;
-
-    GtFTTempData *p = d->tempDatas[0];
-    if (p->offset() > begin)
-        return begin;
-
-    qint64 curPos;
-    qint64 maxPos = p->size();
-    foreach(GtFTTempData *it, d->tempDatas) {
-        if (it->offset() > maxPos && it->offset() > begin)
-            break;
-
-        curPos = it->offset() + it->size();
-        maxPos = MAX(curPos, maxPos);
-    }
-
-    return maxPos;
+bool GtFTTemp::exists() const
+{
+    Q_D(const GtFTTemp);
+    return d->metaFile.exists() && d->dataFile.exists();
 }
 
 bool GtFTTemp::remove()
@@ -246,11 +234,41 @@ qint64 GtFTTemp::writeData(const char *data, qint64 len)
 
     qint64 pos = d->dataFile.pos();
     qint64 size = d->dataFile.write(data, len);
-    qint64 begin0 = pos;
-    qint64 end0 = begin0 + size;
+
+    append(d->tempDatas, pos, pos + size);
+
+    return size;
+}
+
+qint64 GtFTTemp::complete(const QList<GtFTTempData*> &list, qint64 begin)
+{
+    if (list.size() == 0)
+        return begin;
+
+    GtFTTempData *p = list[0];
+    if (p->offset() > begin)
+        return begin;
+
+    qint64 curPos;
+    qint64 maxPos = p->size();
+    foreach(const GtFTTempData *it, list) {
+        if (it->offset() > maxPos && it->offset() > begin)
+            break;
+
+        curPos = it->offset() + it->size();
+        maxPos = MAX(curPos, maxPos);
+    }
+
+    return maxPos;
+}
+
+void GtFTTemp::append(QList<GtFTTempData*> &list, qint64 begin, qint64 end)
+{
+    qint64 begin0 = begin;
+    qint64 end0 = end;
     bool done = false;
 
-    foreach(GtFTTempData *p, d->tempDatas) {
+    foreach(GtFTTempData *p, list) {
         qint64 begin1 = p->offset();
         qint64 end1 = begin1 + p->size();
 
@@ -271,21 +289,19 @@ qint64 GtFTTemp::writeData(const char *data, qint64 len)
 
     if (!done) {
         GtFTTempData *p;
-        int i, count = d->tempDatas.size();
+        int i, count = list.size();
 
         for (i = 0; i < count; ++i) {
-            p = d->tempDatas[i];
-            if (pos + size < p->offset())
+            p = list[i];
+            if (end < p->offset())
                 break;
         }
 
         p = new GtFTTempData();
-        p->set_offset(pos);
-        p->set_size(size);
-        d->tempDatas.insert(i, p);
+        p->set_offset(begin);
+        p->set_size(end - begin);
+        list.insert(i, p);
     }
-
-    return size;
 }
 
 GT_END_NAMESPACE

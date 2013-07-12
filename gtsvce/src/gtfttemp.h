@@ -40,7 +40,12 @@ public:
     const GtFTTempData& temps(int index) const;
 
     qint64 complete(qint64 begin = 0) const;
+    bool exists() const;
     bool remove();
+
+public:
+    static qint64 complete(const QList<GtFTTempData*> &list, qint64 begin);
+    static void append(QList<GtFTTempData*> &list, qint64 begin, qint64 end);
 
 protected:
     qint64 readData(char *data, qint64 maxlen);

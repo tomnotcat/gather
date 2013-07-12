@@ -22,8 +22,9 @@ public:
 public:
     QString tempPath() const;
 
-Q_SIGNALS:
-    void uploaded(const QString &fileId);
+public:
+    virtual void upload(const QString &fileId, QIODevice *device) = 0;
+    virtual QIODevice* download(const QString &fileId) = 0;
 
 protected:
     GtSession* createSession();

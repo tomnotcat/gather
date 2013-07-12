@@ -11,8 +11,8 @@ enum GtFTMessageType {
     GT_FT_READ_RESPONSE = 8;
     GT_FT_WRITE_REQUEST = 9;
     GT_FT_WRITE_RESPONSE = 10;
-    GT_FT_COMPLETE_REQUEST = 11;
-    GT_FT_COMPLETE_RESPONSE = 12;
+    GT_FT_FINISH_REQUEST = 11;
+    GT_FT_FINISH_RESPONSE = 12;
 }
 
 message GtFTOpenRequest {
@@ -39,14 +39,14 @@ message GtFTSizeResponse {
 }
 
 message GtFTReadRequest {
-    optional int64 size = 1;
+    optional int32 size = 1;
 }
 
 message GtFTWriteResponse {
-    optional int64 size = 1;
+    optional int32 size = 1;
 }
 
-message GtFTCompleteResponse {
+message GtFTFinishResponse {
     optional int32 error = 1;
 }
 
