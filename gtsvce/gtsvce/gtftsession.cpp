@@ -31,7 +31,7 @@ public:
     void handleSeekRequest(GtFTSeekRequest &msg);
     void handleSizeRequest();
     void handleReadRequest(GtFTReadRequest &msg);
-    void handleWriteRequest(const char *data, int size);
+    void handleWriteRequest(GtFTWriteRequest &msg);
     void handleFinishRequest();
 
 protected:
@@ -200,26 +200,24 @@ void GtFTSessionPrivate::handleReadRequest(GtFTReadRequest &msg)
         size = 0;
     }
 
-    QByteArray bytes(sizeof(quint32) + size, -1);
-    char *buffer = bytes.data();
+    QByteArray bytes(size, -1);
 
     if (size > 0)
-        size = device->read(buffer + sizeof(quint32), size);
+        size = device->read(bytes.data(), size);
 
-    *(quint16*)buffer = qToBigEndian<quint16>(static_cast<quint16>(size + sizeof(quint16)));
-    *(quint16*)(buffer + sizeof(quint16)) = qToBigEndian<quint16>(GT_FT_READ_RESPONSE);
+    GtFTReadResponse response;
+    response.set_data(bytes.constData(), size);
 
-    GtSvcUtil::syncWrite(q->socket(), buffer, sizeof(quint32) + size);
+    GtSvcUtil::sendMessage(q->socket(), GT_FT_READ_RESPONSE, &response);
 }
 
-void GtFTSessionPrivate::handleWriteRequest(const char *data, int size)
+void GtFTSessionPrivate::handleWriteRequest(GtFTWriteRequest &msg)
 {
     Q_Q(GtFTSession);
 
     GtFTWriteResponse response;
-
     if (opened) {
-        qint64 len = device->write(data, size);
+        qint64 len = device->write(msg.data().data(), msg.data().size());
         response.set_size(len);
     }
     else {
@@ -318,7 +316,15 @@ void GtFTSession::message(const char *data, int size)
         break;
 
     case GT_FT_WRITE_REQUEST:
-        d->handleWriteRequest(data, size);
+        {
+            GtFTWriteRequest msg;
+            if (msg.ParseFromArray(data, size)) {
+                d->handleWriteRequest(msg);
+            }
+            else {
+                qWarning() << "Invalid FT write request";
+            }
+        }
         break;
 
     case GT_FT_FINISH_REQUEST:

@@ -22,6 +22,7 @@ public:
         ConnectFailed,
         InvalidSession,
         InvalidState,
+        InvalidDataSize,
         FileNotExists,
         OpenFailed,
         SeekFailed,

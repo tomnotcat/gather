@@ -308,6 +308,13 @@ void GtMainWindow::closeEvent(QCloseEvent *event)
             settings->setGeometry(saveGeometry());
             settings->setRecentFiles(recentFiles);
             settings->setLastOpenPath(lastOpenPath);
+
+            // notify opening tabs of close event
+            GtTabView *current = tabView();
+            for (int i = 0; i < ui.tabWidget->count(); ++i) {
+                GtTabView *tab = tabView(i);
+                tab->mainWindowClose(current);
+            }
         }
 
         event->accept();

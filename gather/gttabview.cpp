@@ -15,10 +15,6 @@ GtTabView::~GtTabView()
 {
 }
 
-void GtTabView::currentChanged(GtTabView *old, GtTabView *now)
-{
-}
-
 void GtTabView::onCut()
 {
 }
@@ -49,6 +45,17 @@ void GtTabView::onRotateLeft()
 
 void GtTabView::onRotateRight()
 {
+}
+
+void GtTabView::currentChanged(GtTabView *old, GtTabView *now)
+{
+    Q_UNUSED(old);
+    Q_UNUSED(now);
+}
+
+void GtTabView::mainWindowClose(GtTabView *current)
+{
+    Q_UNUSED(current);
 }
 
 GT_END_NAMESPACE

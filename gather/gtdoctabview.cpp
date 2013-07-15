@@ -7,6 +7,7 @@
 #include "gtdocoutline.h"
 #include "gtdocpage.h"
 #include "gtdocview.h"
+#include "gtmainsettings.h"
 #include "gttocdelegate.h"
 #include "gttocmodel.h"
 #include "ui_gtmainwindow.h"
@@ -69,6 +70,11 @@ GtDocTabView::GtDocTabView(QWidget *parent)
             SLOT(showDocViewContextMenu(const QPoint&)));
 
     m_verticalLayout->addWidget(m_splitter);
+
+    // settings
+    GtApplication *application = GtApplication::instance();
+    GtMainSettings *settings = application->settings();
+    m_splitter->restoreState(settings->docSplitter());
 }
 
 GtDocTabView::~GtDocTabView()
@@ -112,10 +118,6 @@ void GtDocTabView::setDocument(GtDocumentPointer document)
     }
 }
 
-void GtDocTabView::currentChanged(GtTabView *old, GtTabView *now)
-{
-}
-
 void GtDocTabView::onCut()
 {
 }
@@ -150,6 +152,20 @@ void GtDocTabView::onRotateLeft()
 void GtDocTabView::onRotateRight()
 {
     m_docModel->setRotation(m_docModel->rotation() + 90);
+}
+
+void GtDocTabView::currentChanged(GtTabView *old, GtTabView *now)
+{
+}
+
+void GtDocTabView::mainWindowClose(GtTabView *current)
+{
+    if (this != current)
+        return;
+
+    GtApplication *application = GtApplication::instance();
+    GtMainSettings *settings = application->settings();
+    settings->setDocSplitter(m_splitter->saveState());
 }
 
 void GtDocTabView::showDocViewContextMenu(const QPoint &pos)

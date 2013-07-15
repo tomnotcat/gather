@@ -89,7 +89,7 @@ GtApplication::GtApplication(int &argc, char **argv)
 
     m_docThread->start();
 
-    // Network
+    // network
     m_userClient = new GtUserClient(this);
 
     QTimer::singleShot(0, this, SLOT(postLaunch()));

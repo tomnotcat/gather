@@ -26,7 +26,8 @@ public:
                             int requestType,
                             const ::google::protobuf::Message *request,
                             int responseType,
-                            T *response);
+                            T *response,
+                            int bufferSize = 0);
 };
 
 template<typename T>
@@ -34,7 +35,8 @@ bool GtSvcUtil::syncRequest(QAbstractSocket *socket,
                             int requestType,
                             const ::google::protobuf::Message *request,
                             int responseType,
-                            T *response)
+                            T *response,
+                            int bufferSize)
 {
     if (!GtSvcUtil::sendMessage(socket, requestType, request))
         return false;
@@ -42,10 +44,20 @@ bool GtSvcUtil::syncRequest(QAbstractSocket *socket,
     if (!socket->waitForBytesWritten())
         return false;
 
-    char buffer[1024];
+    char temp[1024];
+    char *buffer = temp;
     int length;
+    QScopedArrayPointer<char> guard;
 
-    length = GtSvcUtil::readMessage(socket, buffer, sizeof(buffer));
+    if (bufferSize > (int)sizeof(temp)) {
+        buffer = new char[bufferSize];
+        guard.reset(buffer);
+    }
+    else {
+        bufferSize = (int)sizeof(temp);
+    }
+
+    length = GtSvcUtil::readMessage(socket, buffer, bufferSize);
     if (length < (int)sizeof(quint16))
         return false;
 

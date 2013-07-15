@@ -19,9 +19,6 @@ public:
     explicit GtTabView(QWidget *parent = 0);
     ~GtTabView();
 
-public:
-    virtual void currentChanged(GtTabView *old, GtTabView *now);
-
 public Q_SLOTS:
     virtual void onCut();
     virtual void onCopy();
@@ -31,6 +28,10 @@ public Q_SLOTS:
     virtual void onZoomOut();
     virtual void onRotateLeft();
     virtual void onRotateRight();
+
+protected:
+    virtual void currentChanged(GtTabView *old, GtTabView *now);
+    virtual void mainWindowClose(GtTabView *current);
 
 private:
     friend class GtMainWindow;

@@ -29,9 +29,6 @@ public:
     GtDocumentPointer document() const;
     void setDocument(GtDocumentPointer document);
 
-public:
-    void currentChanged(GtTabView *old, GtTabView *now);
-
 public Q_SLOTS:
     void onCut();
     void onCopy();
@@ -41,6 +38,10 @@ public Q_SLOTS:
     void onZoomOut();
     void onRotateLeft();
     void onRotateRight();
+
+protected:
+    void currentChanged(GtTabView *old, GtTabView *now);
+    void mainWindowClose(GtTabView *current);
 
 private Q_SLOTS:
     void showDocViewContextMenu(const QPoint &pos);

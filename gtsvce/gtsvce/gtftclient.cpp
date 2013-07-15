@@ -284,33 +284,30 @@ qint64 GtFTClient::readData(char *data, qint64 maxlen)
         return -1;
     }
 
-    Q_ASSERT(maxlen + sizeof(quint16) <= std::numeric_limits<quint16>::max());
+    Q_ASSERT(maxlen <= std::numeric_limits<int>::max());
 
     GtFTReadRequest request;
     request.set_size(maxlen);
 
-    if (!GtSvcUtil::sendMessage(d->socket, GT_FT_READ_REQUEST, &request)) {
+    GtFTReadResponse response;
+    if (!GtSvcUtil::syncRequest<GtFTReadResponse>(d->socket,
+                                                  GT_FT_READ_REQUEST,
+                                                  &request,
+                                                  GT_FT_READ_RESPONSE,
+                                                  &response,
+                                                  maxlen + 256))
+    {
         d->error = GtFTClient::RequestFailed;
         return -1;
     }
 
-    QByteArray bytes(maxlen + sizeof(quint16), -1);
-    char *buffer = bytes.data();
-    int length = bytes.size();
-
-    length = GtSvcUtil::readMessage(d->socket, buffer, length);
-    if (length < (int)sizeof(quint16)) {
-        d->error = GtFTClient::RequestFailed;
+    if (response.data().size() > maxlen) {
+        d->error = GtFTClient::InvalidDataSize;
         return -1;
     }
 
-    if (qFromBigEndian<quint16>(*(quint16*)buffer) != GT_FT_READ_RESPONSE) {
-        d->error = GtFTClient::RequestFailed;
-        return -1;
-    }
-
-    memcpy(data, buffer + 2, length - 2);
-    return (length - 2);
+    memcpy(data, response.data().data(), response.data().size());
+    return response.data().size();
 }
 
 qint64 GtFTClient::writeData(const char *data, qint64 len)
@@ -322,41 +319,28 @@ qint64 GtFTClient::writeData(const char *data, qint64 len)
         return -1;
     }
 
-    Q_ASSERT(len + sizeof(quint16) <= std::numeric_limits<quint16>::max());
+    Q_ASSERT(len <= std::numeric_limits<int>::max());
 
-    QByteArray bytes(sizeof(quint32) + len, -1);
-    char *buffer = bytes.data();
-    qint64 pos = this->pos();
-
-    *(quint16*)buffer = qToBigEndian<quint16>(static_cast<quint16>(len + sizeof(quint16)));
-    *(quint16*)(buffer + sizeof(quint16)) = qToBigEndian<quint16>(GT_FT_WRITE_REQUEST);
-
-    memcpy(buffer + sizeof(quint32), data, len);
-    if (!GtSvcUtil::syncWrite(d->socket, buffer, sizeof(quint32) + len)) {
-        d->error = GtFTClient::RequestFailed;
-        return -1;
-    }
-
-    char rbuf[1024];
-    int rlen;
-
-    rlen = GtSvcUtil::readMessage(d->socket, rbuf, sizeof(rbuf));
-    if (rlen < (int)sizeof(quint16)) {
-        d->error = GtFTClient::RequestFailed;
-        return -1;
-    }
-
-    if (qFromBigEndian<quint16>(*(quint16*)rbuf) != GT_FT_WRITE_RESPONSE) {
-        d->error = GtFTClient::RequestFailed;
-        return -1;
-    }
+    GtFTWriteRequest request;
+    request.set_data(data, len);
 
     GtFTWriteResponse response;
-    if (!response.ParseFromArray(rbuf + 2, rlen - 2)) {
+    if (!GtSvcUtil::syncRequest<GtFTWriteResponse>(d->socket,
+                                                   GT_FT_WRITE_REQUEST,
+                                                   &request,
+                                                   GT_FT_WRITE_RESPONSE,
+                                                   &response))
+    {
         d->error = GtFTClient::RequestFailed;
         return -1;
     }
 
+    if (response.size() < 0 || response.size() > len) {
+        d->error = GtFTClient::InvalidDataSize;
+        return -1;
+    }
+
+    qint64 pos = this->pos();
     GtFTTemp::append(d->temps, pos, pos + response.size());
     return response.size();
 }

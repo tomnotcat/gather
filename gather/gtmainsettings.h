@@ -25,6 +25,9 @@ public:
     inline QByteArray geometry() const { return m_geometry; }
     void setGeometry(const QByteArray &geometry);
 
+    inline QByteArray docSplitter() const { return m_docSplitter; }
+    void setDocSplitter(const QByteArray &docSplitter);
+
     inline QStringList recentFiles() const { return m_recentFiles; }
     void setRecentFiles(const QStringList &files);
 
@@ -36,6 +39,7 @@ private:
 
 private:
     QByteArray m_geometry;
+    QByteArray m_docSplitter;
     QStringList m_recentFiles;
     QString m_lastOpenPath;
 };

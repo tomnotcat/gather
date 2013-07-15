@@ -8,7 +8,7 @@
 
 using namespace Gather;
 
-class test_login: public QObject
+class test_login : public QObject
 {
     Q_OBJECT
 
