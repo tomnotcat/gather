@@ -25,18 +25,20 @@ public:
     ~GtDocText();
 
 public:
-    inline const QChar* texts() const { return _texts; }
-    inline const QRectF* rects() const { return _rects; }
-    inline int length() const { return _length; }
+    inline const QChar* texts() const { return m_texts; }
+    inline const QRectF* rects() const { return m_rects; }
+    inline int length() const { return m_length; }
 
 private:
     GtDocText &operator=(const GtDocText &);
 
 private:
-    QChar *_texts;
-    QRectF *_rects;
-    int _length;
+    QChar *m_texts;
+    QRectF *m_rects;
+    int m_length;
 };
+
+typedef QExplicitlySharedDataPointer<GtDocText> GtDocTextPointer;
 
 class GT_BASE_EXPORT GtDocPage : public QObject, public GtObject
 {
@@ -53,7 +55,7 @@ public:
     void size(double *width, double *height);
     QSize size(double scale = 1.0, int rotation = 0);
     int length();
-    const QSharedDataPointer<GtDocText> text();
+    GtDocTextPointer text();
     void paint(QPaintDevice *device, double scale = 1.0, int rotation = 0);
 
 protected:

@@ -1,20 +1,22 @@
 /*
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
-#include <QApplication>
-#include "gtmainwindow.h"
+#include "gtapplication.h"
 
 using namespace Gather;
 
 int main(int argc, char *argv[])
 {
+    Q_INIT_RESOURCE(gather);
+
     int result = 0;
 
     if (1) {
-        QApplication app(argc, argv);
-        GtMainWindow mainWin;
-        mainWin.show();
-        result = app.exec();
+        GtApplication application(argc, argv);
+        if (!application.isTheOnlyReader())
+            return 0;
+
+        result = application.exec();
     }
 
 #ifdef GT_DEBUG

@@ -711,7 +711,7 @@ void GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
 
 QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end) const
 {
-    const QSharedDataPointer<GtDocText> text(page->text());
+    GtDocTextPointer text(page->text());
     const QRectF *rect = text->rects() + begin;
     QTransform m = pageAreaToView(page);
     QRegion region;

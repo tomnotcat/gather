@@ -11,23 +11,23 @@
 GT_BEGIN_NAMESPACE
 
 GtDocText::GtDocText(QChar *texts, QRectF *rects, int length)
-    : _texts(texts)
-    , _rects(rects)
-    , _length(length)
+    : m_texts(texts)
+    , m_rects(rects)
+    , m_length(length)
 {
 }
 
 GtDocText::GtDocText(const GtDocText &o)
     : QSharedData(o)
 {
-    // this should not happen
+    // tricks for QSharedDataPointer, but should not happen
     Q_ASSERT(0);
 }
 
 GtDocText::~GtDocText()
 {
-    delete[] _texts;
-    delete[] _rects;
+    delete[] m_texts;
+    delete[] m_rects;
 }
 
 GtDocPagePrivate::GtDocPagePrivate()
@@ -130,11 +130,11 @@ int GtDocPage::length()
     return d->textLength;
 }
 
-const QSharedDataPointer<GtDocText> GtDocPage::text()
+GtDocTextPointer GtDocPage::text()
 {
     Q_D(GtDocPage);
 
-    QSharedDataPointer<GtDocText> r(d->text);
+    GtDocTextPointer r(d->text);
     if (!r) {
         QChar *texts = 0;
         QRectF *rects = 0;

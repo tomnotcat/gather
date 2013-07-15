@@ -26,7 +26,7 @@ public:
     }
 
     GtAbstractPage *abstractPage;
-    QSharedDataPointer<GtDocText> text;
+    GtDocTextPointer text;
 
 protected:
     GtDocPage *q_ptr;

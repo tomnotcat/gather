@@ -2,20 +2,11 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtmainwindow.h"
-#include "gtdocloader.h"
-#include "gtdocmodel.h"
-#include "gtdocoutline.h"
-#include "gtdocpage.h"
-#include "gtdocument.h"
-#include "gtdocview.h"
-#include "gttocdelegate.h"
-#include "gttocmodel.h"
-#include "gtuserclient.h"
+#include "gtapplication.h"
+#include "gtdoctabview.h"
+#include "gtmainsettings.h"
 #include <QtCore/QtDebug>
-#include <QtCore/QSettings>
-#include <QtCore/QThread>
 #include <QtGui/QCloseEvent>
-#include <QtWidgets/QApplication>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
 
@@ -25,48 +16,19 @@ GtMainWindow::GtMainWindow()
 {
     ui.setupUi(this);
 
+    setToolButtonStyle(Qt::ToolButtonFollowStyle);
+    setAttribute(Qt::WA_DeleteOnClose, true);
+
+    // tab widget
+    QTabBar *tabBar = ui.tabWidget->tabBar();
+
+    connect(ui.tabWidget, SIGNAL(tabCloseRequested(int)),
+            this, SLOT(closeTab(int)));
+    tabBar->setSelectionBehaviorOnRemove(QTabBar::SelectPreviousTab);
+    tabBar->hide();
+
     // adjust layout
     ui.verticalLayout->setMargin(0);
-    ui.splitter->setStretchFactor(0, 0);
-    ui.splitter->setStretchFactor(1, 255);
-    ui.docView->setMinimumWidth(120);
-
-    // document thread
-    docLoader = QSharedPointer<GtDocLoader>(new GtDocLoader());
-    docModel = QSharedPointer<GtDocModel>(new GtDocModel());
-    docModel->setMinScale(0.1);
-    docModel->setMaxScale(4.0);
-    docModel->setMouseMode(GtDocModel::SelectText);
-    docThread = new QThread(this);
-
-    QDir dir(QCoreApplication::applicationDirPath());
-
-    if (dir.cd("loader")) {
-        int count = docLoader->registerLoaders(dir.absolutePath());
-        qDebug() << "registered loaders:" << count;
-    }
-
-    docThread->start();
-
-    // GUI thread
-    ui.docView->setModel(docModel.data());
-    ui.docView->setRenderThread(docThread);
-    ui.docView->setRenderCacheSize(1024 * 1024 * 20);
-    ui.docView->setContextMenuPolicy(Qt::CustomContextMenu);
-
-    connect(ui.docView,
-            SIGNAL(customContextMenuRequested(const QPoint&)),
-            this,
-            SLOT(showDocViewContextMenu(const QPoint&)));
-
-    tocModel = QSharedPointer<GtTocModel>(new GtTocModel());
-    ui.tocView->setItemDelegate(new GtTocDelegate(ui.tocView));
-
-    connect(ui.tocView, SIGNAL(clicked(QModelIndex)), this, SLOT(tocChanged(QModelIndex)));
-    connect(ui.tocView, SIGNAL(activated(QModelIndex)), this, SLOT(tocChanged(QModelIndex)));
-
-    // Network
-    client = new GtUserClient(this);
 
     // Recent files
     recentFileActions[0] = ui.actionRecentFile0;
@@ -81,27 +43,85 @@ GtMainWindow::GtMainWindow()
                 this, SLOT(openRecentFile()));
     }
 
-    recentFileSeparator = ui.menuFile->insertSeparator(ui.actionExit);
+    recentFileSeparator = ui.menuFile->insertSeparator(ui.actionQuit);
 
-    // Settings
-    readSettings();
-    setWindowIcon(QIcon(":/images/logo.bmp"));
+    // settings
+    GtApplication *application = GtApplication::instance();
+    GtMainSettings *settings = application->settings();
+    QWidget *activeWindow = QApplication::activeWindow();
+
+    if (activeWindow && !activeWindow->isMaximized()) {
+        resize(QApplication::activeWindow()->size());
+    }
+    else {
+        restoreGeometry(settings->geometry());
+    }
+
+    recentFiles = settings->recentFiles();
+    lastOpenPath = settings->lastOpenPath();
+    updateRecentFileActions();
+
     setCurrentFile("");
 }
 
 GtMainWindow::~GtMainWindow()
 {
-    ui.docView->setModel(0);
-    ui.tocView->setModel(0);
-    document.clear();
-    docModel.clear();
-    docLoader.clear();
-
-    docThread->quit();
-    docThread->wait();
 }
 
-void GtMainWindow::on_actionOpen_triggered()
+GtTabView* GtMainWindow::tabView(int index)
+{
+    if (-1 == index)
+        index = ui.tabWidget->currentIndex();
+
+    return qobject_cast<GtTabView*>(ui.tabWidget->widget(index));
+}
+
+GtDocTabView* GtMainWindow::newDocTab()
+{
+    GtDocTabView *tab = new GtDocTabView;
+    openTab(tab);
+    return tab;
+}
+
+void GtMainWindow::closeTab(int index)
+{
+    QTabBar *tabBar = ui.tabWidget->tabBar();
+
+    if (index < 0)
+        index = tabBar->currentIndex();
+
+    if (index < 0 || index >= tabBar->count())
+        return;
+
+    bool hasFocus = false;
+
+    GtTabView *view = tabView(index);
+    if (view) {
+        hasFocus = view->hasFocus();
+        view->deleteLater();
+    }
+
+    ui.tabWidget->removeTab(index);
+
+    if (tabBar->count() < 2)
+        tabBar->hide();
+
+    if (hasFocus && tabBar->count() > 0)
+        tabView()->setFocus();
+}
+
+void GtMainWindow::on_actionNewWindow_triggered()
+{
+    GtMainWindow *mw = GtApplication::instance()->newMainWindow();
+    (void)mw;
+}
+
+void GtMainWindow::on_actionNewTab_triggered()
+{
+    (void)newDocTab();
+}
+
+void GtMainWindow::on_actionOpenFile_triggered()
 {
     if (okToContinue()) {
         QString fileName = QFileDialog::getOpenFileName(
@@ -116,103 +136,64 @@ void GtMainWindow::on_actionOpen_triggered()
     }
 }
 
-void GtMainWindow::on_actionExit_triggered()
+void GtMainWindow::on_actionQuit_triggered()
 {
     close();
 }
 
+void GtMainWindow::on_actionCut_triggered()
+{
+    tabView()->onCut();
+}
+
+void GtMainWindow::on_actionCopy_triggered()
+{
+    tabView()->onCopy();
+}
+
+void GtMainWindow::on_actionPaste_triggered()
+{
+    tabView()->onPaste();
+}
+
+void GtMainWindow::on_actionDelete_triggered()
+{
+    tabView()->onDelete();
+}
+
 void GtMainWindow::on_actionZoomIn_triggered()
 {
-    ui.docView->zoomIn();
+    tabView()->onZoomIn();
 }
 
 void GtMainWindow::on_actionZoomOut_triggered()
 {
-    ui.docView->zoomOut();
+    tabView()->onZoomOut();
 }
 
 void GtMainWindow::on_actionRotateLeft_triggered()
 {
-    docModel->setRotation(docModel->rotation() - 90);
+    tabView()->onRotateLeft();
 }
 
 void GtMainWindow::on_actionRotateRight_triggered()
 {
-    docModel->setRotation(docModel->rotation() + 90);
+    tabView()->onRotateRight();
 }
 
 void GtMainWindow::on_actionAboutGather_triggered()
 {
 }
 
-void GtMainWindow::showDocViewContextMenu(const QPoint &pos)
+void GtMainWindow::openTab(GtTabView *tab)
 {
-    GtDocRange selRange(ui.docView->selectRange());
+    tab->m_ui = &ui;
+    ui.tabWidget->addTab(tab, tr("(Untitled)"));
+    ui.tabWidget->setCurrentWidget(tab);
 
-    if (selRange.isEmpty())
-        return;
-
-    QMenu *menu = new QMenu(ui.docView);
-
-    QAction *searchAction = new QAction("&Search", menu);
-    connect(searchAction, SIGNAL(triggered()),
-            this, SLOT(searchSelectedText()));
-
-    menu->addAction(ui.actionCopy);
-    menu->addSeparator();
-    menu->addAction(searchAction);
-
-    menu->exec(QCursor::pos());
-}
-
-void GtMainWindow::docLoaded(GtDocument *doc)
-{
-    if (doc != document.data()) {
-        qWarning() << "invalid document loaded:" << document.data() << doc;
-        return;
-    }
-
-    if (document->isLoaded()) {
-        docModel->setDocument(document.data());
-        tocModel->setDocument(document.data());
-        ui.tocView->setModel(tocModel.data());
-    }
-    else {
-        Q_ASSERT(0);
-    }
-}
-
-void GtMainWindow::tocChanged(const QModelIndex &index)
-{
-    GtDocOutline *outline = tocModel->outlineFromIndex(index);
-    if (outline) {
-        // TODO: do not scroll when the page is already in viewport
-        QRect rect(ui.docView->pageExtents(outline->page));
-        ui.docView->scrollTo(rect.x(), rect.y());
-    }
-}
-
-void GtMainWindow::searchSelectedText()
-{
-}
-
-void GtMainWindow::readSettings()
-{
-    QSettings settings(ORGANIZATION_NAME, APPLICATION_NAME);
-    restoreGeometry(settings.value("geometry").toByteArray());
-    ui.splitter->restoreState(settings.value("splitter").toByteArray());
-    recentFiles = settings.value("recentFiles").toStringList();
-    lastOpenPath = settings.value("lastOpenPath").toString();
-    updateRecentFileActions();
-}
-
-void GtMainWindow::writeSettings()
-{
-    QSettings settings(ORGANIZATION_NAME, APPLICATION_NAME);
-    settings.setValue("geometry", saveGeometry());
-    settings.setValue("splitter", ui.splitter->saveState());
-    settings.setValue("recentFiles", recentFiles);
-    settings.setValue("lastOpenPath", lastOpenPath);
+    QTabBar *tabBar = ui.tabWidget->tabBar();
+    if (tabBar->count() == 2)
+        tabBar->show();
 }
 
 bool GtMainWindow::okToContinue()
@@ -235,24 +216,17 @@ bool GtMainWindow::okToContinue()
 
 bool GtMainWindow::loadFile(const QString &fileName)
 {
-    docModel->setDocument(0);
-    tocModel->setDocument(0);
-    ui.tocView->setModel(0);
+    GtDocumentPointer document;
 
-    GtDocument *doc = docLoader->loadDocument(fileName, docThread);
-    if (NULL == doc)
+    document = GtApplication::instance()->loadDocument(fileName);
+    if (!document)
         return false;
 
-    document = QSharedPointer<GtDocument>(doc, &QObject::deleteLater);
-    Q_ASSERT(document->thread() == docThread);
+    GtDocTabView *view = qobject_cast<GtDocTabView*>(tabView());
+    if (!view)
+        view = newDocTab();
 
-    if (document->isLoaded()) {
-        docLoaded(doc);
-    }
-    else {
-        connect(doc, SIGNAL(loaded(GtDocument*)), this, SLOT(docLoaded(GtDocument*)));
-    }
-
+    view->setDocument(document);
     setCurrentFile(fileName);
     statusBar()->showMessage(tr("File loaded"), 2000);
     return true;
@@ -328,9 +302,17 @@ void GtMainWindow::changeEvent(QEvent *event)
 void GtMainWindow::closeEvent(QCloseEvent *event)
 {
     if (okToContinue()) {
-        writeSettings();
+        GtApplication *application = GtApplication::instance();
+        if (application->mainWindows().size() == 1) {
+            GtMainSettings *settings = application->settings();
+            settings->setGeometry(saveGeometry());
+            settings->setRecentFiles(recentFiles);
+            settings->setLastOpenPath(lastOpenPath);
+        }
+
         event->accept();
-    } else {
+    }
+    else {
         event->ignore();
     }
 }

@@ -6,6 +6,7 @@
 
 #include "gtobject.h"
 #include <QtCore/QObject>
+#include <QtCore/QSharedDataPointer>
 #include <QtCore/QSize>
 
 class QIODevice;
@@ -17,13 +18,17 @@ class GtDocOutline;
 class GtDocPage;
 class GtDocumentPrivate;
 
-class GT_BASE_EXPORT GtDocument : public QObject, public GtObject
+class GT_BASE_EXPORT GtDocument
+    : public QObject
+    , public QSharedData
+    , public GtObject
 {
     Q_OBJECT
 
 public:
     explicit GtDocument(GtAbstractDocument *ad,
                         QObject *parent = 0);
+    GtDocument(const GtDocument &);
     ~GtDocument();
 
 public:
@@ -52,9 +57,11 @@ protected:
     QScopedPointer<GtDocumentPrivate> d_ptr;
 
 private:
-    Q_DISABLE_COPY(GtDocument)
     Q_DECLARE_PRIVATE(GtDocument)
+    GtDocument &operator=(const GtDocument &);
 };
+
+typedef QExplicitlySharedDataPointer<GtDocument> GtDocumentPointer;
 
 GT_END_NAMESPACE
 

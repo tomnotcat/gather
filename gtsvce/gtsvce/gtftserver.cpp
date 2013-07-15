@@ -18,10 +18,12 @@ public:
 
 protected:
     GtFTServer *q_ptr;
+    QString tempPath;
 };
 
 GtFTServerPrivate::GtFTServerPrivate(GtFTServer *q)
     : q_ptr(q)
+    , tempPath(QDir::tempPath())
 {
 }
 
@@ -39,9 +41,16 @@ GtFTServer::~GtFTServer()
 {
 }
 
+void GtFTServer::setTempPath(const QString &path)
+{
+    Q_D(GtFTServer);
+    d->tempPath = path;
+}
+
 QString GtFTServer::tempPath() const
 {
-    return QDir::tempPath();
+    Q_D(const GtFTServer);
+    return d->tempPath;
 }
 
 GtSession* GtFTServer::createSession()

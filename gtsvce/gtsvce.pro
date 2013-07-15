@@ -1,2 +1,2 @@
 TEMPLATE = subdirs
-SUBDIRS = src tests
+SUBDIRS = gtsvce tests gtftserver

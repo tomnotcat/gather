@@ -20,6 +20,7 @@ public:
     ~GtFTServer();
 
 public:
+    void setTempPath(const QString &path);
     QString tempPath() const;
 
 public:

@@ -4,20 +4,17 @@
 #ifndef __GT_MAINWINDOW_H__
 #define __GT_MAINWINDOW_H__
 
-#include "gtobject.h"
+#include "gtdocument.h"
 #include "ui_gtmainwindow.h"
 
 GT_BEGIN_NAMESPACE
 
-class GtDocLoader;
 class GtDocument;
 class GtDocModel;
 class GtTocModel;
 class GtDocView;
-class GtUserClient;
-
-#define ORGANIZATION_NAME "Clue Network"
-#define APPLICATION_NAME "Gather"
+class GtTabView;
+class GtDocTabView;
 
 class GtMainWindow : public QMainWindow, public GtObject
 {
@@ -27,23 +24,31 @@ public:
     GtMainWindow();
     ~GtMainWindow();
 
+public:
+    GtTabView* tabView(int index = -1);
+    GtDocTabView* newDocTab();
+
+public Q_SLOTS:
+    void closeTab(int index = -1);
+
 private Q_SLOTS:
-    void on_actionOpen_triggered();
-    void on_actionExit_triggered();
+    void on_actionNewWindow_triggered();
+    void on_actionNewTab_triggered();
+    void on_actionOpenFile_triggered();
+    void on_actionQuit_triggered();
+    void on_actionCut_triggered();
+    void on_actionCopy_triggered();
+    void on_actionPaste_triggered();
+    void on_actionDelete_triggered();
     void on_actionZoomIn_triggered();
     void on_actionZoomOut_triggered();
     void on_actionRotateLeft_triggered();
     void on_actionRotateRight_triggered();
     void on_actionAboutGather_triggered();
     void openRecentFile();
-    void showDocViewContextMenu(const QPoint &pos);
-    void docLoaded(GtDocument *doc);
-    void tocChanged(const QModelIndex &index);
-    void searchSelectedText();
 
 private:
-    void readSettings();
-    void writeSettings();
+    void openTab(GtTabView *tab);
     bool okToContinue();
     bool loadFile(const QString &fileName);
     void setCurrentFile(const QString &fileName);
@@ -55,24 +60,14 @@ private:
     void closeEvent(QCloseEvent *event);
 
 private:
-    Ui::MainWindow ui;
+    Ui_MainWindow ui;
 
-    // Objects in document thread
-    QThread *docThread;
-    QSharedPointer<GtDocLoader> docLoader;
-    QSharedPointer<GtDocModel> docModel;
-    QSharedPointer<GtDocument> document;
-    QSharedPointer<GtTocModel> tocModel;
-
-    // Network
-    GtUserClient *client;
-
-    // Objects in GUI thread
+    // objects in GUI thread
     QStringList recentFiles;
     QString curFile;
     QString lastOpenPath;
 
-    // Recent opened files
+    // recent opened files
     enum { MaxRecentFiles = 5 };
     QAction *recentFileActions[MaxRecentFiles];
     QAction *recentFileSeparator;

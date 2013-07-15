@@ -1,14 +1,16 @@
 TEMPLATE = app
 TARGET = gather
 CONFIG += qt debug
-QT += widgets
-HEADERS += gtmainwindow.h
-SOURCES += gtmainwindow.cpp gtmain.cpp
+QT += widgets network
+HEADERS += gtapplication.h gtmainwindow.h gttabview.h \
+    gtdoctabview.h gtmainsettings.h
+SOURCES += gtmain.cpp gtapplication.cpp gtmainwindow.cpp \
+    gttabview.cpp gtdoctabview.cpp gtmainsettings.cpp
 FORMS += gtmainwindow.ui
 RESOURCES = gather.qrc
 INCLUDEPATH += $$PWD/../gtbase
 INCLUDEPATH += $$PWD/../gtview
-INCLUDEPATH += $$PWD/../gtsvce/src
+INCLUDEPATH += $$PWD/../gtsvce/gtsvce
 
 CONFIG(debug, debug|release) {
     DESTDIR = ../build/debug

@@ -5,6 +5,7 @@
 #define __GT_DOCUMENT_P_H__
 
 #include "gtdocument.h"
+#include "gtdocpage.h"
 #include <QtCore/QMutex>
 #include <QtCore/QSharedDataPointer>
 
@@ -14,7 +15,6 @@ GT_BEGIN_NAMESPACE
 
 class GtAbstractPage;
 class GtAbstractOutline;
-class GtDocText;
 
 class GT_BASE_EXPORT GtDocumentPrivate
 {
@@ -28,7 +28,7 @@ public:
     void setDevice(QIODevice *device);
     GtAbstractPage* lockPage(int index);
     void unlockPage(int index);
-    void cacheText(int index, const QSharedDataPointer<GtDocText> &text);
+    void cacheText(int index, const GtDocTextPointer &text);
     inline QMutex* mutex() { return &_mutex; }
 
 protected:

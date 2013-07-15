@@ -35,7 +35,7 @@ int GtDocPoint::offset(bool inside) const
 
     int i, result = -1;
 
-    const QSharedDataPointer<GtDocText> text(_page->text());
+    GtDocTextPointer text(_page->text());
     const QRectF *rect = text->rects();
 
     if (inside) {

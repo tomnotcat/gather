@@ -1,6 +1,6 @@
 CONFIG += debug
 QT += network
-INCLUDEPATH += ../../../gtbase ../../src
+INCLUDEPATH += ../../../gtbase ../../gtsvce
 
 CONFIG(debug, debug|release) {
     DESTDIR = ../../../build/debug

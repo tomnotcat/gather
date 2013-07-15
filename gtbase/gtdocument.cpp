@@ -81,7 +81,7 @@ void GtDocumentPrivate::unlockPage(int index)
     _mutex.unlock();
 }
 
-void GtDocumentPrivate::cacheText(int index, const QSharedDataPointer<GtDocText> &text)
+void GtDocumentPrivate::cacheText(int index, const GtDocTextPointer &text)
 {
     Q_ASSERT(index >= 0 && index < pageCount);
 
@@ -147,6 +147,14 @@ GtDocument::GtDocument(GtAbstractDocument *ad,
     , d_ptr(new GtDocumentPrivate(ad))
 {
     d_ptr->q_ptr = this;
+}
+
+GtDocument::GtDocument(const GtDocument &o)
+    : QObject(0)
+    , QSharedData(o)
+{
+    // tricks for QSharedDataPointer, but should not happen
+    Q_ASSERT(0);
 }
 
 GtDocument::~GtDocument()

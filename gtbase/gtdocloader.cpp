@@ -168,10 +168,10 @@ int GtDocLoader::registerLoaders(const QString &loaderDir)
 
                         count++;
 
-                        qDebug() << "add loader info:" << info.info.path;
+                        qDebug() << "register loader:" << info.info.path;
                     }
                     else {
-                        qDebug() << "invalid loader info:"
+                        qDebug() << "invalid loader:"
                                  << modVal << descVal << mimeVal << extVal;
                     }
                 }
