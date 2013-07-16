@@ -8,3 +8,4 @@ build
 ui_*
 *.pb.h
 *.pb.cc
+*#
