@@ -13,7 +13,7 @@ class GtDocOutline;
 class GtDocument;
 class GtTocModelPrivate;
 
-class GT_BASE_EXPORT GtTocModel : public QAbstractItemModel, public GtObject
+class GT_VIEW_EXPORT GtTocModel : public QAbstractItemModel, public GtObject
 {
     Q_OBJECT
 

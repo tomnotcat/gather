@@ -14,7 +14,7 @@ class GtDocModel;
 class GtDocument;
 class GtDocViewPrivate;
 
-class GtDocView : public QAbstractScrollArea, public GtObject
+class GT_VIEW_EXPORT GtDocView : public QAbstractScrollArea, public GtObject
 {
     Q_OBJECT
 
@@ -61,6 +61,8 @@ private Q_SLOTS:
     void mouseModeChanged(int mode);
     void relayoutPages();
     void updateVisiblePages(int newValue = -1);
+    void scrollUp(bool singleStep = false);
+    void scrollDown(bool singleStep = false);
 
 protected:
     void resizeEvent(QResizeEvent *);

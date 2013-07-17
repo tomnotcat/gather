@@ -659,10 +659,10 @@ void GtDocViewPrivate::zoomForSizeSinglePage(int width, int height)
 
 void GtDocViewPrivate::fillRegion(QPainter &p, const QRegion &r, const QColor &c)
 {
-    const QVector<QRect> &rects = r.rects();
-    int n = rects.count();
+    QVector<QRect> rects = r.rects();
+    int count = rects.count();
 
-    for (int i = 0; i < n; ++i)
+    for (int i = 0; i < count; ++i)
         p.fillRect(rects[i], c);
 }
 
@@ -717,6 +717,7 @@ QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end) const
     QRegion region;
     QRectF lineRect;
     QRectF temp;
+    QRect real;
 
     for (int i = begin; i < end; ++i, ++rect) {
         if (lineRect.isValid()) {
@@ -731,7 +732,9 @@ QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end) const
             }
             else {
                 temp = m.mapRect(lineRect);
-                region += QRect(temp.x(), temp.y(), temp.width(), temp.height());
+                real.setCoords(temp.left(), temp.top(),
+                               temp.right(), temp.bottom());
+                region += real;
                 lineRect = *rect;
             }
         }
@@ -741,7 +744,8 @@ QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end) const
     }
 
     temp = m.mapRect(lineRect);
-    region += QRect(temp.x(), temp.y(), temp.width(), temp.height());
+    real.setCoords(temp.left(), temp.top(), temp.right(), temp.bottom());
+    region += real;
     return region;
 }
 
@@ -1478,6 +1482,42 @@ void GtDocView::updateVisiblePages(int newValue)
         viewport()->update();
 }
 
+void GtDocView::scrollUp(bool singleStep)
+{
+    Q_D(GtDocView);
+
+    // if in single page mode and at the top of the screen, go to \ page
+    if (d->continuous ||
+        verticalScrollBar()->value() > verticalScrollBar()->minimum())
+    {
+        if (singleStep)
+            verticalScrollBar()->triggerAction(QScrollBar::SliderSingleStepSub);
+        else
+            verticalScrollBar()->triggerAction(QScrollBar::SliderPageStepSub);
+    }
+    else if (d->model->page() > 0) {
+        Q_ASSERT(0);
+    }
+}
+
+void GtDocView::scrollDown(bool singleStep)
+{
+    Q_D(GtDocView);
+
+    // if in single page mode and at the bottom of the screen, go to next page
+    if (d->continuous ||
+        verticalScrollBar()->value() < verticalScrollBar()->maximum())
+    {
+        if (singleStep)
+            verticalScrollBar()->triggerAction(QScrollBar::SliderSingleStepAdd);
+        else
+            verticalScrollBar()->triggerAction(QScrollBar::SliderPageStepAdd);
+    }
+    else if (d->model->page() < d->document->pageCount() - 1) {
+        Q_ASSERT(0);
+    }
+}
+
 void GtDocView::resizeEvent(QResizeEvent *e)
 {
     Q_D(GtDocView);
@@ -1499,8 +1539,53 @@ void GtDocView::resizeEvent(QResizeEvent *e)
     d->relayoutPagesLater();
 }
 
-void GtDocView::keyPressEvent(QKeyEvent *)
+void GtDocView::keyPressEvent(QKeyEvent *e)
 {
+    e->accept();
+
+    switch (e->key()) {
+    case Qt::Key_J:
+    case Qt::Key_K:
+    case Qt::Key_Down:
+    case Qt::Key_PageDown:
+    case Qt::Key_Up:
+    case Qt::Key_PageUp:
+    case Qt::Key_Backspace:
+        if (e->key() == Qt::Key_Down
+            || e->key() == Qt::Key_PageDown
+            || e->key() == Qt::Key_J)
+        {
+            bool singleStep = e->key() == Qt::Key_Down || e->key() == Qt::Key_J;
+            scrollDown(singleStep);
+        }
+        else {
+            bool singleStep = e->key() == Qt::Key_Up || e->key() == Qt::Key_K;
+            scrollUp(singleStep);
+        }
+        break;
+
+    case Qt::Key_Left:
+    case Qt::Key_H:
+        if (horizontalScrollBar()->maximum() == 0) {
+            Q_ASSERT(0);
+        }
+        else
+            horizontalScrollBar()->triggerAction(QScrollBar::SliderSingleStepSub);
+        break;
+
+    case Qt::Key_Right:
+    case Qt::Key_L:
+        if (horizontalScrollBar()->maximum() == 0) {
+            Q_ASSERT(0);
+        }
+        else
+            horizontalScrollBar()->triggerAction(QScrollBar::SliderSingleStepAdd);
+        break;
+
+    default:
+        e->ignore();
+        break;
+    }
 }
 
 void GtDocView::keyReleaseEvent(QKeyEvent *)
@@ -1649,8 +1734,17 @@ void GtDocView::mousePressEvent(QMouseEvent *e)
     switch (e->buttons()) {
     case Qt::LeftButton:
         if (d->document && d->mouseMode != GtDocModel::BrowseMode) {
-            d->selectBegin = d->docPointFromViewPoint(e->pos(), true);
+            if (GtDocModel::SelectText == d->mouseMode) {
+                GtDocPoint docPoint(docPointFromViewPoint(e->pos(), true));
+
+                if (docPoint.offset(true) != -1)
+                    d->selectBegin = d->docPointFromViewPoint(e->pos(), true);
+                else
+                    d->selectBegin = GtDocPoint();
+            }
+
             d->selectEnd = GtDocPoint();
+
             // TODO: update invalid region only
             viewport()->update();
         }
@@ -1660,6 +1754,7 @@ void GtDocView::mousePressEvent(QMouseEvent *e)
         {
             GtDocRange selRange(selectRange());
             GtDocPoint docPoint(d->docPointFromViewPoint(e->pos(), true));
+
             if (!selRange.isEmpty() && !docPoint.isNull()) {
                 GtDocPage *page = docPoint.page();
                 QRegion selRegion(d->selectedRegion(selRange, page));

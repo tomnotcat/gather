@@ -47,6 +47,7 @@ private Q_SLOTS:
     void showDocViewContextMenu(const QPoint &pos);
     void docLoaded(GtDocument *doc);
     void tocChanged(const QModelIndex &index);
+    void highlightSelectedText();
     void searchSelectedText();
 
 private:

@@ -169,15 +169,19 @@ void GtDocTabView::mainWindowClose(GtTabView *current)
 void GtDocTabView::showDocViewContextMenu(const QPoint &pos)
 {
     GtDocRange selRange(m_docView->selectRange());
-
-    if (selRange.isEmpty())
-        return;
-
     QMenu menu;
 
-    menu.addAction(m_ui->actionCopy);
-    menu.addSeparator();
-    menu.addAction(tr("&Search"), this, SLOT(searchSelectedText()));
+    if (selRange.isEmpty()) {
+        menu.addAction(tr("S&elect Tool"), this, SLOT(highlightSelectedText()));
+        menu.addAction(tr("Ha&nd Tool"), this, SLOT(highlightSelectedText()));
+    }
+    else {
+        menu.addAction(m_ui->actionCopy);
+        menu.addSeparator();
+        menu.addAction(tr("&Highlight Text"), this, SLOT(highlightSelectedText()));
+        menu.addSeparator();
+        menu.addAction(tr("&Search"), this, SLOT(searchSelectedText()));
+    }
 
     menu.exec(QCursor::pos());
 }
@@ -193,6 +197,7 @@ void GtDocTabView::docLoaded(GtDocument *doc)
         m_docModel->setDocument(m_document.data());
         m_tocModel->setDocument(m_document.data());
         m_tocView->setModel(m_tocModel);
+        m_docView->setFocus();
     }
     else {
         Q_ASSERT(0);
@@ -207,6 +212,10 @@ void GtDocTabView::tocChanged(const QModelIndex &index)
         QRect rect(m_docView->pageExtents(outline->page));
         m_docView->scrollTo(rect.x(), rect.y());
     }
+}
+
+void GtDocTabView::highlightSelectedText()
+{
 }
 
 void GtDocTabView::searchSelectedText()

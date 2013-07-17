@@ -11,7 +11,7 @@ GT_BEGIN_NAMESPACE
 
 class GtTocDelegatePrivate;
 
-class GT_BASE_EXPORT GtTocDelegate : public QItemDelegate, public GtObject
+class GT_VIEW_EXPORT GtTocDelegate : public QItemDelegate, public GtObject
 {
     Q_OBJECT
 

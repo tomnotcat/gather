@@ -59,6 +59,14 @@ int GtDocPoint::offset(bool inside) const
                 result = i;
             }
         }
+
+        // check if point is inside right half of the char
+        if (result != -1) {
+            rect = text->rects() + result;
+
+            if (_x > rect->x() + rect->width() / 2.0)
+                ++result;
+        }
     }
 
     return result;

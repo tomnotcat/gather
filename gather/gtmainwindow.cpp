@@ -48,6 +48,12 @@ GtMainWindow::GtMainWindow()
 
     recentFileSeparator = ui.menuFile->insertSeparator(ui.actionCloseTab);
 
+    // shortcuts
+    QList<QKeySequence> shortcuts;
+    shortcuts.push_back(QKeySequence("Ctrl++"));
+    shortcuts.push_back(QKeySequence("Ctrl+="));
+    ui.actionZoomIn->setShortcuts(shortcuts);
+
     // settings
     GtApplication *application = GtApplication::instance();
     GtMainSettings *settings = application->settings();

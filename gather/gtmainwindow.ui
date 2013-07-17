@@ -69,6 +69,9 @@
     <property name="title">
      <string>&amp;Edit</string>
     </property>
+    <addaction name="actionUndo"/>
+    <addaction name="actionRedo"/>
+    <addaction name="separator"/>
     <addaction name="actionCut"/>
     <addaction name="actionCopy"/>
     <addaction name="actionPaste"/>
@@ -78,17 +81,31 @@
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <widget class="QMenu" name="menuOrientation">
+    <widget class="QMenu" name="menuRotateView">
      <property name="title">
-      <string>Ori&amp;entation</string>
+      <string>Rotate &amp;View</string>
      </property>
      <addaction name="actionRotateLeft"/>
      <addaction name="actionRotateRight"/>
     </widget>
-    <addaction name="actionZoomIn"/>
-    <addaction name="actionZoomOut"/>
+    <widget class="QMenu" name="menuPageNavigation">
+     <property name="title">
+      <string>Page &amp;Navigation</string>
+     </property>
+     <addaction name="actionFirstPage"/>
+    </widget>
+    <widget class="QMenu" name="menuZoom">
+     <property name="title">
+      <string>&amp;Zoom</string>
+     </property>
+     <addaction name="actionZoomTo"/>
+     <addaction name="actionZoomIn"/>
+     <addaction name="actionZoomOut"/>
+    </widget>
+    <addaction name="menuRotateView"/>
+    <addaction name="menuPageNavigation"/>
     <addaction name="separator"/>
-    <addaction name="menuOrientation"/>
+    <addaction name="menuZoom"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -145,23 +162,7 @@
     <string>&amp;Delete</string>
    </property>
    <property name="shortcut">
-    <string>Del</string>
-   </property>
-  </action>
-  <action name="actionZoomIn">
-   <property name="text">
-    <string>Zoom &amp;In</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+=</string>
-   </property>
-  </action>
-  <action name="actionZoomOut">
-   <property name="text">
-    <string>Zoom &amp;Out</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+-</string>
+    <string/>
    </property>
   </action>
   <action name="actionRotateLeft">
@@ -240,6 +241,51 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+W</string>
+   </property>
+  </action>
+  <action name="actionUndo">
+   <property name="text">
+    <string>&amp;Undo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Z</string>
+   </property>
+  </action>
+  <action name="actionRedo">
+   <property name="text">
+    <string>&amp;Redo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Y</string>
+   </property>
+  </action>
+  <action name="actionFirstPage">
+   <property name="text">
+    <string>&amp;First Page</string>
+   </property>
+  </action>
+  <action name="actionZoomIn">
+   <property name="text">
+    <string>Zoom &amp;In</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl++</string>
+   </property>
+  </action>
+  <action name="actionZoomOut">
+   <property name="text">
+    <string>Zoom &amp;Out</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+-</string>
+   </property>
+  </action>
+  <action name="actionZoomTo">
+   <property name="text">
+    <string>Zoom &amp;To</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+M</string>
    </property>
   </action>
  </widget>
