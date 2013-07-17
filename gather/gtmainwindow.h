@@ -29,12 +29,15 @@ public:
     GtDocTabView* newDocTab();
 
 public Q_SLOTS:
+    void showTabContextMenu(const QPoint &pos);
     void closeTab(int index = -1);
+    void closeOtherTabs();
 
 private Q_SLOTS:
     void on_actionNewWindow_triggered();
     void on_actionNewTab_triggered();
     void on_actionOpenFile_triggered();
+    void on_actionCloseTab_triggered();
     void on_actionQuit_triggered();
     void on_actionCut_triggered();
     void on_actionCopy_triggered();

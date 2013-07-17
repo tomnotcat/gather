@@ -64,10 +64,8 @@ GtDocTabView::GtDocTabView(QWidget *parent)
     m_splitter->setStretchFactor(0, 0);
     m_splitter->setStretchFactor(1, 255);
 
-    connect(m_docView,
-            SIGNAL(customContextMenuRequested(const QPoint&)),
-            this,
-            SLOT(showDocViewContextMenu(const QPoint&)));
+    connect(m_docView, SIGNAL(customContextMenuRequested(const QPoint&)),
+            this, SLOT(showDocViewContextMenu(const QPoint&)));
 
     m_verticalLayout->addWidget(m_splitter);
 
@@ -175,17 +173,13 @@ void GtDocTabView::showDocViewContextMenu(const QPoint &pos)
     if (selRange.isEmpty())
         return;
 
-    QMenu *menu = new QMenu(m_docView);
+    QMenu menu;
 
-    QAction *searchAction = new QAction("&Search", menu);
-    connect(searchAction, SIGNAL(triggered()),
-            this, SLOT(searchSelectedText()));
+    menu.addAction(m_ui->actionCopy);
+    menu.addSeparator();
+    menu.addAction(tr("&Search"), this, SLOT(searchSelectedText()));
 
-    menu->addAction(m_ui->actionCopy);
-    menu->addSeparator();
-    menu->addAction(searchAction);
-
-    menu->exec(QCursor::pos());
+    menu.exec(QCursor::pos());
 }
 
 void GtDocTabView::docLoaded(GtDocument *doc)

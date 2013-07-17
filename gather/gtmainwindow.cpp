@@ -22,6 +22,9 @@ GtMainWindow::GtMainWindow()
     // tab widget
     QTabBar *tabBar = ui.tabWidget->tabBar();
 
+    tabBar->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(tabBar, SIGNAL(customContextMenuRequested(const QPoint&)),
+            this, SLOT(showTabContextMenu(const QPoint&)));
     connect(ui.tabWidget, SIGNAL(tabCloseRequested(int)),
             this, SLOT(closeTab(int)));
     tabBar->setSelectionBehaviorOnRemove(QTabBar::SelectPreviousTab);
@@ -43,7 +46,7 @@ GtMainWindow::GtMainWindow()
                 this, SLOT(openRecentFile()));
     }
 
-    recentFileSeparator = ui.menuFile->insertSeparator(ui.actionQuit);
+    recentFileSeparator = ui.menuFile->insertSeparator(ui.actionCloseTab);
 
     // settings
     GtApplication *application = GtApplication::instance();
@@ -83,6 +86,33 @@ GtDocTabView* GtMainWindow::newDocTab()
     return tab;
 }
 
+void GtMainWindow::showTabContextMenu(const QPoint &pos)
+{
+    QMenu menu;
+    QTabBar *tabBar = ui.tabWidget->tabBar();
+
+    menu.addAction(ui.actionNewTab);
+    int index = tabBar->tabAt(pos);
+    if (index != -1) {
+        menu.addSeparator();
+
+        QAction *action = menu.addAction(tr("&Close Tab"),
+                                         this,
+                                         SLOT(on_actionCloseTab_triggered()),
+                                         QKeySequence::Close);
+        action->setData(index);
+
+
+        action = menu.addAction(tr("Close &Other Tabs"),
+                                this, SLOT(closeOtherTabs()));
+        action->setData(index);
+    }
+    else {
+    }
+
+    menu.exec(QCursor::pos());
+}
+
 void GtMainWindow::closeTab(int index)
 {
     QTabBar *tabBar = ui.tabWidget->tabBar();
@@ -110,6 +140,31 @@ void GtMainWindow::closeTab(int index)
         tabView()->setFocus();
 }
 
+void GtMainWindow::closeOtherTabs()
+{
+    int index = -1;
+    QAction *action = qobject_cast<QAction*>(sender());
+
+    if (action && !action->data().isNull())
+        index = action->data().toInt();
+
+    QTabBar *tabBar = ui.tabWidget->tabBar();
+
+    if (index < 0)
+        index = tabBar->currentIndex();
+
+    if (index < 0 || index >= tabBar->count())
+        return;
+
+    // right tabs
+    for (int i = tabBar->count() - 1; i > index; --i)
+        closeTab(i);
+
+    // left tabs
+    for (int i = index - 1; i >= 0; --i)
+        closeTab(i);
+}
+
 void GtMainWindow::on_actionNewWindow_triggered()
 {
     GtMainWindow *mw = GtApplication::instance()->newMainWindow();
@@ -134,6 +189,17 @@ void GtMainWindow::on_actionOpenFile_triggered()
         lastOpenPath = QFileInfo(fileName).path();
         loadFile(fileName);
     }
+}
+
+void GtMainWindow::on_actionCloseTab_triggered()
+{
+    int index = -1;
+    QAction *action = qobject_cast<QAction*>(sender());
+
+    if (action && !action->data().isNull())
+        index = action->data().toInt();
+
+    closeTab(index);
 }
 
 void GtMainWindow::on_actionQuit_triggered()

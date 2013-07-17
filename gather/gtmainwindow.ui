@@ -52,8 +52,8 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="actionNewWindow"/>
     <addaction name="actionNewTab"/>
+    <addaction name="actionNewWindow"/>
     <addaction name="actionOpenFile"/>
     <addaction name="separator"/>
     <addaction name="actionRecentFile0"/>
@@ -61,6 +61,8 @@
     <addaction name="actionRecentFile2"/>
     <addaction name="actionRecentFile3"/>
     <addaction name="actionRecentFile4"/>
+    <addaction name="actionCloseTab"/>
+    <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
@@ -230,6 +232,14 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+N</string>
+   </property>
+  </action>
+  <action name="actionCloseTab">
+   <property name="text">
+    <string>&amp;Close Tab</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+W</string>
    </property>
   </action>
  </widget>
