@@ -3,9 +3,10 @@ TARGET = gather
 CONFIG += qt debug
 QT += widgets network
 HEADERS += gtapplication.h gtmainwindow.h gttabview.h \
-    gtdoctabview.h gtmainsettings.h
+    gthometabview.h gtdoctabview.h gtmainsettings.h
 SOURCES += gtmain.cpp gtapplication.cpp gtmainwindow.cpp \
-    gttabview.cpp gtdoctabview.cpp gtmainsettings.cpp
+    gttabview.cpp gthometabview.cpp gtdoctabview.cpp \
+    gtmainsettings.cpp
 FORMS += gtmainwindow.ui
 RESOURCES = gather.qrc
 INCLUDEPATH += $$PWD/../gtbase

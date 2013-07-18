@@ -117,11 +117,14 @@
     <property name="title">
      <string>&amp;Account</string>
     </property>
+    <addaction name="actionLogin"/>
+    <addaction name="separator"/>
+    <addaction name="actionRegister"/>
    </widget>
+   <addaction name="menuAccount"/>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
    <addaction name="menuView"/>
-   <addaction name="menuAccount"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -286,6 +289,16 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+M</string>
+   </property>
+  </action>
+  <action name="actionLogin">
+   <property name="text">
+    <string>&amp;Log In</string>
+   </property>
+  </action>
+  <action name="actionRegister">
+   <property name="text">
+    <string>&amp;Register</string>
    </property>
   </action>
  </widget>
