@@ -14,7 +14,6 @@ class GtDocModel;
 class GtTocModel;
 class GtDocView;
 class GtTabView;
-class GtDocTabView;
 
 class GtMainWindow : public QMainWindow, public GtObject
 {
@@ -26,7 +25,7 @@ public:
 
 public:
     GtTabView* tabView(int index = -1);
-    GtDocTabView* newDocTab();
+    GtTabView* newTab();
 
 public Q_SLOTS:
     void showTabContextMenu(const QPoint &pos);

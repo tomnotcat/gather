@@ -8,6 +8,7 @@ GT_BEGIN_NAMESPACE
 GtHomeTabView::GtHomeTabView(QWidget *parent)
     : GtTabView(parent)
 {
+    ui.setupUi(this);
 }
 
 GtHomeTabView::~GtHomeTabView()

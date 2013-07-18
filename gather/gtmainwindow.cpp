@@ -4,6 +4,7 @@
 #include "gtmainwindow.h"
 #include "gtapplication.h"
 #include "gtdoctabview.h"
+#include "gthometabview.h"
 #include "gtmainsettings.h"
 #include <QtCore/QtDebug>
 #include <QtGui/QCloseEvent>
@@ -71,6 +72,8 @@ GtMainWindow::GtMainWindow()
     updateRecentFileActions();
 
     setCurrentFile("");
+
+    (void)newTab();
 }
 
 GtMainWindow::~GtMainWindow()
@@ -85,9 +88,9 @@ GtTabView* GtMainWindow::tabView(int index)
     return qobject_cast<GtTabView*>(ui.tabWidget->widget(index));
 }
 
-GtDocTabView* GtMainWindow::newDocTab()
+GtTabView* GtMainWindow::newTab()
 {
-    GtDocTabView *tab = new GtDocTabView;
+    GtHomeTabView *tab = new GtHomeTabView;
     openTab(tab);
     return tab;
 }
@@ -142,8 +145,16 @@ void GtMainWindow::closeTab(int index)
     if (tabBar->count() < 2)
         tabBar->hide();
 
-    if (hasFocus && tabBar->count() > 0)
+    if (tabBar->count() == 0) {
+#if defined(Q_WS_MAC)
+        close();
+#else
+        (void)newTab();
+#endif
+    }
+    else if (hasFocus) {
         tabView()->setFocus();
+    }
 }
 
 void GtMainWindow::closeOtherTabs()
@@ -179,7 +190,7 @@ void GtMainWindow::on_actionNewWindow_triggered()
 
 void GtMainWindow::on_actionNewTab_triggered()
 {
-    (void)newDocTab();
+    (void)newTab();
 }
 
 void GtMainWindow::on_actionOpenFile_triggered()
@@ -294,11 +305,20 @@ bool GtMainWindow::loadFile(const QString &fileName)
     if (!document)
         return false;
 
-    GtDocTabView *view = qobject_cast<GtDocTabView*>(tabView());
-    if (!view)
-        view = newDocTab();
+    GtTabView *view = tabView();
+    GtDocTabView *docView = qobject_cast<GtDocTabView*>(tabView());
+    if (!docView) {
+        view->deleteLater();
+        docView = new GtDocTabView;
+        view = docView;
 
-    view->setDocument(document);
+        int index = ui.tabWidget->currentIndex();
+        ui.tabWidget->removeTab(index);
+        ui.tabWidget->insertTab(index, view, tr("(Untitled)"));
+        ui.tabWidget->setCurrentWidget(view);
+    }
+
+    docView->setDocument(document);
     setCurrentFile(fileName);
     statusBar()->showMessage(tr("File loaded"), 2000);
     return true;

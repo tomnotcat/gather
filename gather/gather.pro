@@ -7,7 +7,7 @@ HEADERS += gtapplication.h gtmainwindow.h gttabview.h \
 SOURCES += gtmain.cpp gtapplication.cpp gtmainwindow.cpp \
     gttabview.cpp gthometabview.cpp gtdoctabview.cpp \
     gtmainsettings.cpp
-FORMS += gtmainwindow.ui
+FORMS += gtmainwindow.ui gthometabview.ui
 RESOURCES = gather.qrc
 INCLUDEPATH += $$PWD/../gtbase
 INCLUDEPATH += $$PWD/../gtview

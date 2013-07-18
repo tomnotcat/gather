@@ -5,6 +5,7 @@
 #define __GT_HOME_TAB_VIEW_H__
 
 #include "gttabview.h"
+#include "ui_gthometabview.h"
 
 GT_BEGIN_NAMESPACE
 
@@ -17,6 +18,7 @@ public:
     ~GtHomeTabView();
 
 private:
+    Ui_HomeTabView ui;
 };
 
 GT_END_NAMESPACE
