@@ -33,8 +33,8 @@ public Q_SLOTS:
     void closeOtherTabs();
 
 private Q_SLOTS:
-    void on_actionNewWindow_triggered();
     void on_actionNewTab_triggered();
+    void on_actionNewWindow_triggered();
     void on_actionOpenFile_triggered();
     void on_actionCloseTab_triggered();
     void on_actionQuit_triggered();
@@ -48,6 +48,7 @@ private Q_SLOTS:
     void on_actionRotateRight_triggered();
     void on_actionAboutGather_triggered();
     void openRecentFile();
+    void currentTabChanged(int index);
 
 private:
     void openTab(GtTabView *tab);
@@ -61,9 +62,10 @@ private:
     void changeEvent(QEvent *event);
     void closeEvent(QCloseEvent *event);
 
-private:
+public:
     Ui_MainWindow ui;
 
+private:
     // objects in GUI thread
     QStringList recentFiles;
     QString curFile;

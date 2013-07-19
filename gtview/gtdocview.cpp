@@ -922,7 +922,7 @@ void GtDocViewPrivate::updateCursor(const QPoint &p)
     if (GtDocModel::SelectText == mouseMode) {
         GtDocPoint docPoint(docPointFromViewPoint(p, true));
 
-        if (docPoint.offset(true) != -1)
+        if (docPoint.text(true) != -1)
             q->setCursor(Qt::IBeamCursor);
         else
             q->setCursor(Qt::ArrowCursor);
@@ -1737,7 +1737,7 @@ void GtDocView::mousePressEvent(QMouseEvent *e)
             if (GtDocModel::SelectText == d->mouseMode) {
                 GtDocPoint docPoint(docPointFromViewPoint(e->pos(), true));
 
-                if (docPoint.offset(true) != -1)
+                if (docPoint.text(true) != -1)
                     d->selectBegin = d->docPointFromViewPoint(e->pos(), true);
                 else
                     d->selectBegin = GtDocPoint();

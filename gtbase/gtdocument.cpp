@@ -37,10 +37,11 @@ GtDocumentPrivate::~GtDocumentPrivate()
     destroyed = true;
 }
 
-void GtDocumentPrivate::setDevice(QIODevice *device)
+void GtDocumentPrivate::setDevice(const QString &title, QIODevice *device)
 {
     Q_ASSERT(0 == this->device);
 
+    this->title = title;
     this->device = device;
 
     q_ptr->connect(device,
@@ -159,6 +160,18 @@ GtDocument::GtDocument(const GtDocument &o)
 
 GtDocument::~GtDocument()
 {
+}
+
+QString GtDocument::fileId() const
+{
+    Q_D(const GtDocument);
+    return d->fileId;
+}
+
+QString GtDocument::title() const
+{
+    Q_D(const GtDocument);
+    return d->title;
 }
 
 bool GtDocument::isLoaded() const
@@ -309,7 +322,12 @@ void GtDocument::slotLoadDocument()
         }
     }
 
-    // load outline
+    // title
+    QString title(d->abstractDoc->title());
+    if (!title.isNull())
+        d->title = title;
+
+    // outline
     GtAbstractOutline *outline = d->abstractDoc->loadOutline();
     d->outline = new GtDocOutline();
 
@@ -319,7 +337,7 @@ void GtDocument::slotLoadDocument()
 
     delete outline;
 
-    // make file ID
+    // file ID
     d->device->reset();
     d->fileId = makeFileId(d->device);
 

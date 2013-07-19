@@ -2,13 +2,14 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gttabview.h"
+#include "gtmainwindow.h"
 
 GT_BEGIN_NAMESPACE
 
 GtTabView::GtTabView(QWidget *parent)
     : QWidget(parent)
-    , m_ui(0)
 {
+    m_mainWindow = qobject_cast<GtMainWindow*>(parent);
 }
 
 GtTabView::~GtTabView()
@@ -47,10 +48,12 @@ void GtTabView::onRotateRight()
 {
 }
 
-void GtTabView::currentChanged(GtTabView *old, GtTabView *now)
+void GtTabView::gainCurrent()
 {
-    Q_UNUSED(old);
-    Q_UNUSED(now);
+}
+
+void GtTabView::loseCurrent()
+{
 }
 
 void GtTabView::mainWindowClose(GtTabView *current)

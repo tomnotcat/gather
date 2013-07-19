@@ -31,6 +31,9 @@ GtMainWindow::GtMainWindow()
     tabBar->setSelectionBehaviorOnRemove(QTabBar::SelectPreviousTab);
     tabBar->hide();
 
+    connect(ui.tabWidget, SIGNAL(currentChanged(int)),
+            this, SLOT(currentTabChanged(int)));
+
     // Recent files
     recentFileActions[0] = ui.actionRecentFile0;
     recentFileActions[1] = ui.actionRecentFile1;
@@ -87,7 +90,7 @@ GtTabView* GtMainWindow::tabView(int index)
 
 GtTabView* GtMainWindow::newTab()
 {
-    GtHomeTabView *tab = new GtHomeTabView;
+    GtHomeTabView *tab = new GtHomeTabView(this);
     openTab(tab);
     return tab;
 }
@@ -179,15 +182,14 @@ void GtMainWindow::closeOtherTabs()
         closeTab(i);
 }
 
-void GtMainWindow::on_actionNewWindow_triggered()
-{
-    GtMainWindow *mw = GtApplication::instance()->newMainWindow();
-    (void)mw;
-}
-
 void GtMainWindow::on_actionNewTab_triggered()
 {
     (void)newTab();
+}
+
+void GtMainWindow::on_actionNewWindow_triggered()
+{
+    (void)GtApplication::instance()->newMainWindow();
 }
 
 void GtMainWindow::on_actionOpenFile_triggered()
@@ -267,8 +269,8 @@ void GtMainWindow::on_actionAboutGather_triggered()
 
 void GtMainWindow::openTab(GtTabView *tab)
 {
-    tab->m_ui = &ui;
-    ui.tabWidget->addTab(tab, tr("(Untitled)"));
+    int index = ui.tabWidget->addTab(tab, tr("New Tab"));
+    ui.tabWidget->setTabToolTip(index, tr("New Tab"));
     ui.tabWidget->setCurrentWidget(tab);
 
     QTabBar *tabBar = ui.tabWidget->tabBar();
@@ -306,12 +308,12 @@ bool GtMainWindow::loadFile(const QString &fileName)
     GtDocTabView *docView = qobject_cast<GtDocTabView*>(tabView());
     if (!docView) {
         view->deleteLater();
-        docView = new GtDocTabView;
+        docView = new GtDocTabView(this);
         view = docView;
 
         int index = ui.tabWidget->currentIndex();
         ui.tabWidget->removeTab(index);
-        ui.tabWidget->insertTab(index, view, tr("(Untitled)"));
+        ui.tabWidget->insertTab(index, view, tr("New Tab"));
         ui.tabWidget->setCurrentWidget(view);
     }
 
@@ -324,17 +326,12 @@ bool GtMainWindow::loadFile(const QString &fileName)
 void GtMainWindow::setCurrentFile(const QString &fileName)
 {
     curFile = fileName;
-    setWindowModified(false);
 
-    QString shownName = tr("gather");
     if (!curFile.isEmpty()) {
-        shownName = strippedName(curFile);
         recentFiles.removeAll(curFile);
         recentFiles.prepend(curFile);
         updateRecentFileActions();
     }
-
-    setWindowTitle(shownName);
 }
 
 void GtMainWindow::updateRecentFileActions()
@@ -371,6 +368,13 @@ void GtMainWindow::openRecentFile()
         QAction *action = qobject_cast<QAction *>(sender());
         if (action)
             loadFile(action->data().toString());
+    }
+}
+
+void GtMainWindow::currentTabChanged(int index)
+{
+    if (index != -1) {
+        setWindowTitle(ui.tabWidget->tabText(index));
     }
 }
 

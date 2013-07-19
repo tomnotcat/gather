@@ -8,9 +8,9 @@
 #include "gtdocpage.h"
 #include "gtdocview.h"
 #include "gtmainsettings.h"
+#include "gtmainwindow.h"
 #include "gttocdelegate.h"
 #include "gttocmodel.h"
-#include "ui_gtmainwindow.h"
 #include <QtCore/QDebug>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QSplitter>
@@ -176,7 +176,7 @@ void GtDocTabView::showDocViewContextMenu(const QPoint &pos)
         menu.addAction(tr("Ha&nd Tool"), this, SLOT(highlightSelectedText()));
     }
     else {
-        menu.addAction(m_ui->actionCopy);
+        menu.addAction(m_mainWindow->ui.actionCopy);
         menu.addSeparator();
         menu.addAction(tr("&Highlight Text"), this, SLOT(highlightSelectedText()));
         menu.addSeparator();
@@ -198,6 +198,14 @@ void GtDocTabView::docLoaded(GtDocument *doc)
         m_tocModel->setDocument(m_document.data());
         m_tocView->setModel(m_tocModel);
         m_docView->setFocus();
+
+        // set tab text with document title
+        QTabWidget *tabWidget = m_mainWindow->ui.tabWidget;
+        int index = tabWidget->indexOf(this);
+        tabWidget->setTabText(index, m_document->title());
+        tabWidget->setTabToolTip(index, m_document->title());
+
+        m_mainWindow->setWindowTitle(m_document->title());
     }
     else {
         Q_ASSERT(0);

@@ -50,6 +50,7 @@ public:
 
 public:
     virtual bool load(QIODevice *device) = 0;
+    virtual QString title();
     virtual int countPages() = 0;
     virtual GtAbstractPage* loadPage(int index) = 0;
     virtual GtAbstractOutline* loadOutline() = 0;

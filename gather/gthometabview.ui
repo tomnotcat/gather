@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>654</width>
-    <height>550</height>
+    <width>557</width>
+    <height>394</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -27,12 +27,18 @@
     <number>0</number>
    </property>
    <item>
-    <widget class="QFrame" name="frame">
+    <widget class="QFrame" name="leftFrame">
      <property name="maximumSize">
       <size>
        <width>186</width>
        <height>16777215</height>
       </size>
+     </property>
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(82, 89, 107);</string>
      </property>
      <property name="frameShape">
       <enum>QFrame::NoFrame</enum>
@@ -57,7 +63,7 @@
        <number>0</number>
       </property>
       <item>
-       <widget class="QPushButton" name="pushButton">
+       <widget class="QPushButton" name="loginButton">
         <property name="text">
          <string>Log In</string>
         </property>
@@ -83,6 +89,9 @@
           <height>0</height>
          </size>
         </property>
+        <property name="autoFillBackground">
+         <bool>true</bool>
+        </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
         </property>
@@ -102,7 +111,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QTreeView" name="favTree">
+       <widget class="QTreeView" name="shelfTree">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
           <horstretch>0</horstretch>
@@ -114,6 +123,9 @@
           <width>16777215</width>
           <height>16777215</height>
          </size>
+        </property>
+        <property name="autoFillBackground">
+         <bool>true</bool>
         </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
@@ -131,9 +143,7 @@
        <height>0</height>
       </size>
      </property>
-     <widget class="QWidget" name="page">
-      <zorder></zorder>
-     </widget>
+     <widget class="QWidget" name="page"/>
      <widget class="QWidget" name="page_2"/>
     </widget>
    </item>

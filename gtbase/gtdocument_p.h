@@ -25,7 +25,7 @@ public:
     virtual ~GtDocumentPrivate();
 
 public:
-    void setDevice(QIODevice *device);
+    void setDevice(const QString &title, QIODevice *device);
     GtAbstractPage* lockPage(int index);
     void unlockPage(int index);
     void cacheText(int index, const GtDocTextPointer &text);
@@ -42,6 +42,7 @@ protected:
     GtDocPage **pages;
     GtDocOutline *outline;
     QString fileId;
+    QString title;
     int pageCount;
     double maxWidth;
     double maxHeight;

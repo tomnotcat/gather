@@ -138,6 +138,22 @@ bool PdfDocument::load(QIODevice *device)
     return (document != 0);
 }
 
+QString PdfDocument::title()
+{
+    /* TODO: some PDF document's title is meaningless
+    pdf_document *xref = (pdf_document *)document;
+    pdf_obj *info = pdf_dict_gets(xref->trailer, "Info");
+    pdf_obj *obj = pdf_dict_gets(info, "Title");
+
+    if (obj) {
+        QString title(pdf_to_str_len(obj) + 1, 0);
+        pdf_to_ucs2_buf((unsigned short *)title.data(), obj);
+        return title;
+    }
+    */
+    return QString();
+}
+
 int PdfDocument::countPages()
 {
     return fz_count_pages(document);

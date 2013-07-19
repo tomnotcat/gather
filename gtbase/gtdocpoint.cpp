@@ -12,6 +12,7 @@ GT_BEGIN_NAMESPACE
 
 GtDocPoint::GtDocPoint(GtDocPage *page, const QPointF &point)
     : _page(page)
+    , _text(-1)
     , _x(point.x())
     , _y(point.y())
 {
@@ -28,8 +29,11 @@ bool GtDocPoint::isValid() const
     return false;
 }
 
-int GtDocPoint::offset(bool inside) const
+int GtDocPoint::text(bool inside) const
 {
+    if (_text != -1)
+        return _text;
+
     if (!_page)
         return -1;
 
@@ -44,6 +48,7 @@ int GtDocPoint::offset(bool inside) const
                 _y >= rect->top() && _y < rect->bottom())
             {
                 result = i;
+                *(int*)&_text = i;
                 break;
             }
         }
@@ -81,6 +86,26 @@ GtDocPoint GtDocPoint::normalized() const
     }
 
     return *this;
+}
+
+GtDocPoint GtDocPoint::startOfWord() const
+{
+    return GtDocPoint();
+}
+
+GtDocPoint GtDocPoint::endOfWord() const
+{
+    return GtDocPoint();
+}
+
+GtDocPoint GtDocPoint::startOfLine() const
+{
+    return GtDocPoint();
+}
+
+GtDocPoint GtDocPoint::endOfLine() const
+{
+    return GtDocPoint();
 }
 
 bool operator>(const GtDocPoint &p1, const GtDocPoint &p2)

@@ -15,9 +15,9 @@ class GtDocPage;
 class GT_BASE_EXPORT GtDocPoint : public GtObject
 {
 public:
-    Q_DECL_CONSTEXPR GtDocPoint() : _page(0), _x(0), _y(0) {}
+    Q_DECL_CONSTEXPR GtDocPoint() : _page(0), _text(-1), _x(0), _y(0) {}
     GtDocPoint(GtDocPage *page, const QPointF &point);
-    GtDocPoint(GtDocPage *page, qreal x, qreal y) : _page(page), _x(x), _y(y) {}
+    GtDocPoint(GtDocPage *page, qreal x, qreal y) : _page(page), _text(-1), _x(x), _y(y) {}
 
     inline bool isNull() const;
     bool isValid() const;
@@ -25,8 +25,12 @@ public:
     inline GtDocPage* page() const;
     inline qreal x() const;
     inline qreal y() const;
-    int offset(bool inside) const;
+    int text(bool inside) const;
     GtDocPoint normalized() const;
+    GtDocPoint startOfWord() const;
+    GtDocPoint endOfWord() const;
+    GtDocPoint startOfLine() const;
+    GtDocPoint endOfLine() const;
 
     inline void setPage(GtDocPage *page);
     inline void moveTo(qreal x, qreal y);
@@ -42,6 +46,7 @@ public:
 
 private:
     GtDocPage *_page;
+    int _text;
     qreal _x;
     qreal _y;
 };

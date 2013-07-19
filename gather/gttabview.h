@@ -7,9 +7,9 @@
 #include "gtobject.h"
 #include <QtWidgets/QWidget>
 
-class Ui_MainWindow;
-
 GT_BEGIN_NAMESPACE
+
+class GtMainWindow;
 
 class GtTabView : public QWidget, public GtObject
 {
@@ -30,7 +30,8 @@ public Q_SLOTS:
     virtual void onRotateRight();
 
 protected:
-    virtual void currentChanged(GtTabView *old, GtTabView *now);
+    virtual void gainCurrent();
+    virtual void loseCurrent();
     virtual void mainWindowClose(GtTabView *current);
 
 private:
@@ -38,7 +39,7 @@ private:
     Q_DISABLE_COPY(GtTabView)
 
 protected:
-    Ui_MainWindow *m_ui;
+    GtMainWindow *m_mainWindow;
 };
 
 GT_END_NAMESPACE

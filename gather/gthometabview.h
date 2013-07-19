@@ -17,6 +17,9 @@ public:
     explicit GtHomeTabView(QWidget *parent = 0);
     ~GtHomeTabView();
 
+private Q_SLOTS:
+    void on_loginButton_clicked();
+
 private:
     Ui_HomeTabView ui;
 };

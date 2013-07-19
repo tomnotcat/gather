@@ -33,6 +33,7 @@ public:
 
 public:
     QString fileId() const;
+    QString title() const;
     bool isLoaded() const;
     bool isPageSizeUniform() const;
     QSize maxPageSize(double scale = 1.0, int rotation = 0) const;

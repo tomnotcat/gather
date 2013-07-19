@@ -73,9 +73,10 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
             GtAbstractDocument *ad = ((GtAbstractDocument* (*)())info.load)();
             Q_ASSERT(ad);
 
+            QFileInfo info(fileName);
             document = new GtDocument(ad);
             file->setParent(document);
-            document->d_ptr->setDevice(file.take());
+            document->d_ptr->setDevice(info.fileName(), file.take());
 
             if (thread)
                 document->moveToThread(thread);

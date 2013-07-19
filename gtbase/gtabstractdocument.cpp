@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtabstractdocument.h"
+#include <QtCore/QString>
 
 GT_BEGIN_NAMESPACE
 
@@ -38,6 +39,11 @@ GtAbstractDocument::GtAbstractDocument()
 
 GtAbstractDocument::~GtAbstractDocument()
 {
+}
+
+QString GtAbstractDocument::title()
+{
+    return QString();
 }
 
 GT_END_NAMESPACE

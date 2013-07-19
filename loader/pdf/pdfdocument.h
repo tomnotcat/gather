@@ -21,6 +21,7 @@ public:
 
 public:
     bool load(QIODevice *device);
+    QString title();
     int countPages();
     GtAbstractPage* loadPage(int index);
     GtAbstractOutline* loadOutline();

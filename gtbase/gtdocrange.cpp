@@ -10,8 +10,8 @@ GT_BEGIN_NAMESPACE
 QPoint GtDocRange::intersectedText(GtDocPage *page)
 {
     if (-1 == _textBegin || -1 == _textEnd) {
-        _textBegin = _begin.offset(false);
-        _textEnd = _end.offset(false);
+        _textBegin = _begin.text(false);
+        _textEnd = _end.text(false);
 
         if (-1 == _textBegin || -1 == _textEnd)
             return QPoint();
