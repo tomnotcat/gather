@@ -31,9 +31,6 @@ GtMainWindow::GtMainWindow()
     tabBar->setSelectionBehaviorOnRemove(QTabBar::SelectPreviousTab);
     tabBar->hide();
 
-    // adjust layout
-    ui.verticalLayout->setMargin(0);
-
     // Recent files
     recentFileActions[0] = ui.actionRecentFile0;
     recentFileActions[1] = ui.actionRecentFile1;

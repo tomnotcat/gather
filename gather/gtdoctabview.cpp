@@ -42,7 +42,7 @@ GtDocTabView::GtDocTabView(QWidget *parent)
     // tab of contents
     m_tocView = new QTreeView(m_splitter);
     m_tocView->setObjectName(QStringLiteral("tocView"));
-    m_tocView->setFrameStyle(QFrame::NoFrame);
+    m_tocView->setFrameShape(QFrame::NoFrame);
     m_tocView->setHeaderHidden(true);
     m_tocView->setItemDelegate(new GtTocDelegate(m_tocView));
     m_splitter->addWidget(m_tocView);
