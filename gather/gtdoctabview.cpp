@@ -122,6 +122,7 @@ void GtDocTabView::onCut()
 
 void GtDocTabView::onCopy()
 {
+    m_docView->copy();
 }
 
 void GtDocTabView::onPaste()
@@ -168,7 +169,7 @@ void GtDocTabView::mainWindowClose(GtTabView *current)
 
 void GtDocTabView::showDocViewContextMenu(const QPoint &pos)
 {
-    GtDocRange selRange(m_docView->selectRange());
+    GtDocRange selRange(m_docView->selectedRange());
     QMenu menu;
 
     if (selRange.isEmpty()) {

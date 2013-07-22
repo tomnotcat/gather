@@ -54,7 +54,7 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
 
     if (!info.lib->isLoaded()) {
         if (!info.lib->load()) {
-            qWarning() << "load library failed:" << info.lib->fileName();
+            qWarning() << "load library failed:" << info.lib->errorString();
             return NULL;
         }
 

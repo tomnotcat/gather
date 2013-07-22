@@ -6,6 +6,7 @@
 
 #include "gtobject.h"
 
+class QChar;
 class QPointF;
 
 GT_BEGIN_NAMESPACE
@@ -17,32 +18,35 @@ class GT_BASE_EXPORT GtDocPoint : public GtObject
 public:
     Q_DECL_CONSTEXPR GtDocPoint() : _page(0), _text(-1), _x(0), _y(0) {}
     GtDocPoint(GtDocPage *page, const QPointF &point);
+    GtDocPoint(GtDocPage *page, int text);
     GtDocPoint(GtDocPage *page, qreal x, qreal y) : _page(page), _text(-1), _x(x), _y(y) {}
 
     inline bool isNull() const;
     bool isValid() const;
+    void normalize();
 
     inline GtDocPage* page() const;
     inline qreal x() const;
     inline qreal y() const;
     int text(bool inside) const;
-    GtDocPoint normalized() const;
-    GtDocPoint startOfWord() const;
-    GtDocPoint endOfWord() const;
-    GtDocPoint startOfLine() const;
-    GtDocPoint endOfLine() const;
+    GtDocPoint beginOfWord(bool inside) const;
+    GtDocPoint endOfWord(bool inside) const;
 
     inline void setPage(GtDocPage *page);
     inline void moveTo(qreal x, qreal y);
     inline void setX(qreal x);
     inline void setY(qreal y);
 
-    friend inline bool operator==(const GtDocPoint &, const GtDocPoint &);
-    friend inline bool operator!=(const GtDocPoint &, const GtDocPoint &);
+    friend bool operator==(const GtDocPoint &, const GtDocPoint &);
+    friend bool operator!=(const GtDocPoint &, const GtDocPoint &);
     friend bool operator>(const GtDocPoint &, const GtDocPoint &);
     friend bool operator<(const GtDocPoint &, const GtDocPoint &);
     friend bool operator>=(const GtDocPoint &, const GtDocPoint &);
     friend bool operator<=(const GtDocPoint &, const GtDocPoint &);
+
+public:
+    static bool isSpace(const QChar &c);
+    static bool isWordSeparator(const QChar &c);
 
 private:
     GtDocPage *_page;
@@ -74,12 +78,6 @@ inline void GtDocPoint::setX(qreal x)
 
 inline void GtDocPoint::setY(qreal y)
 { _y = y; }
-
-inline bool operator==(const GtDocPoint &p1, const GtDocPoint &p2)
-{ return p1._page == p2._page && p1._x == p2._x && p1._y == p2._y; }
-
-inline bool operator!=(const GtDocPoint &p1, const GtDocPoint &p2)
-{ return p1._page != p2._page || p1._x != p2._x || p1._y != p2._y; }
 
 #ifndef QT_NO_DEBUG_STREAM
 GT_BASE_EXPORT QDebug operator<<(QDebug, const GtDocPoint &);

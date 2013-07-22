@@ -58,12 +58,29 @@ int PdfPage::textLength()
     fz_text_block *block;
     fz_text_line *line;
     fz_text_span *span;
-    int len = 0;
+    int i, h, len = 0;
+    QSet<int> dups;
 
     for (block = page->blocks; block < page->blocks + page->len; block++) {
         for (line = block->lines; line < block->lines + block->len; line++) {
-            for (span = line->spans; span < line->spans + line->len; span++)
-                len += span->len;
+            if (block->len > 1)
+                dups.clear();
+
+            for (span = line->spans; span < line->spans + line->len; span++) {
+                if (block->len > 1) {
+                    // remove duplicate chars
+                    for (i = 0; i < span->len; i++) {
+                        h = texthash(span->text[i]);
+                        if (!dups.contains(h)) {
+                            dups.insert(h);
+                            ++len;
+                        }
+                    }
+                }
+                else {
+                    len += span->len;
+                }
+            }
 
             /* pseudo-newline */
             len++;
@@ -82,19 +99,42 @@ int PdfPage::extractText(QChar *texts, QRectF *rects, int length)
     fz_text_line *line;
     fz_text_span *span;
     fz_rect bbox;
-    int c, i, p = 0;
+    int c, i, h, p = 0;
+    QSet<int> dups;
 
     for (block = page->blocks; block < page->blocks + page->len; block++) {
         for (line = block->lines; line < block->lines + block->len; line++) {
-            for (span = line->spans; span < line->spans + line->len; span++) {
-                for (i = 0; i < span->len; i++) {
-                    c = span->text[i].c;
-                    if (c < 32)
-                        c = '?';
+            if (block->len > 1)
+                dups.clear();
 
-                    bbox = span->text[i].bbox;
-                    rects[p].setCoords(bbox.x0, bbox.y0, bbox.x1, bbox.y1);
-                    texts[p++] = c;
+            for (span = line->spans; span < line->spans + line->len; span++) {
+                if (block->len > 1) {
+                    // remove duplicate chars
+                    for (i = 0; i < span->len; i++) {
+                        h = texthash(span->text[i]);
+                        if (dups.contains(h))
+                            continue;
+
+                        dups.insert(h);
+                        c = span->text[i].c;
+                        if (c < 32)
+                            c = '?';
+
+                        bbox = span->text[i].bbox;
+                        rects[p].setCoords(bbox.x0, bbox.y0, bbox.x1, bbox.y1);
+                        texts[p++] = c;
+                    }
+                }
+                else {
+                    for (i = 0; i < span->len; i++) {
+                        c = span->text[i].c;
+                        if (c < 32)
+                            c = '?';
+
+                        bbox = span->text[i].bbox;
+                        rects[p].setCoords(bbox.x0, bbox.y0, bbox.x1, bbox.y1);
+                        texts[p++] = c;
+                    }
                 }
             }
 

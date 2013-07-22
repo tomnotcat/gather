@@ -28,6 +28,9 @@ public:
 
 protected:
     void loadContent();
+    inline int texthash(const fz_text_char &c) {
+        return (c.c << 16) | ((int)c.bbox.x0);
+    }
 
 private:
     fz_context *context;

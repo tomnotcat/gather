@@ -44,9 +44,12 @@ public:
     QPoint scrollPoint() const;
     void scrollTo(int x, int y);
 
-    GtDocRange selectRange() const;
+    GtDocRange selectedRange() const;
     GtDocPoint docPointFromViewPoint(const QPoint &p, bool inside);
     QPoint viewPointFromDocPoint(const GtDocPoint &p);
+
+public Q_SLOTS:
+    void copy() const;
 
 private Q_SLOTS:
     void renderFinished(int page);
@@ -78,6 +81,7 @@ protected:
     void mousePressEvent(QMouseEvent *);
     void mouseReleaseEvent(QMouseEvent *);
     void mouseDoubleClickEvent(QMouseEvent *);
+    void timerEvent(QTimerEvent *);
 
     bool viewportEvent(QEvent *e);
 

@@ -9,13 +9,11 @@ GT_BEGIN_NAMESPACE
 
 QPoint GtDocRange::intersectedText(GtDocPage *page)
 {
-    if (-1 == _textBegin || -1 == _textEnd) {
-        _textBegin = _begin.text(false);
-        _textEnd = _end.text(false);
+    int beginText = _begin.text(false);
+    int endText = _end.text(false);
 
-        if (-1 == _textBegin || -1 == _textEnd)
-            return QPoint();
-    }
+    if (-1 == beginText || -1 == endText)
+        return QPoint();
 
     int beginIndex = _begin.page()->index();
     int endIndex = _end.page()->index();
@@ -26,17 +24,17 @@ QPoint GtDocRange::intersectedText(GtDocPage *page)
 
     if (index == beginIndex) {
         if (index == endIndex) {
-            if (_textEnd > _textBegin)
-                return QPoint(_textBegin, _textEnd);
+            if (endText > beginText)
+                return QPoint(beginText, endText);
 
-            return QPoint(_textEnd, _textBegin);
+            return QPoint(endText, beginText);
         }
 
-        return QPoint(_textBegin, page->length());
+        return QPoint(beginText, page->length());
     }
 
     if (index == endIndex)
-        return QPoint(0, _textEnd);
+        return QPoint(0, endText);
 
     return QPoint(0, page->length());
 }
