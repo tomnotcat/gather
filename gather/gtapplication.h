@@ -42,8 +42,8 @@ protected:
 #endif
 
 private:
-    void cleanWindows();
-    void cleanDocuments();
+    void clearWindows();
+    void clearDocuments();
 
 public Q_SLOTS:
     GtMainWindow* newMainWindow();

@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtdocmodel.h"
+#include "gtdocannot.h"
 #include "gtdocument.h"
 #include <QtCore/QDebug>
 #include <limits>
@@ -13,12 +14,13 @@ class GtDocModelPrivate
     Q_DECLARE_PUBLIC(GtDocModel)
 
 public:
-    GtDocModelPrivate();
+    GtDocModelPrivate(GtDocModel *q);
     ~GtDocModelPrivate();
 
 protected:
     GtDocModel *q_ptr;
     GtDocument *document;
+    GtDocAnnot *annotation;
     int pageCount;
     int page;
     double scale;
@@ -31,8 +33,10 @@ protected:
     GtDocModel::MouseMode mouseMode;
 };
 
-GtDocModelPrivate::GtDocModelPrivate()
-    : document(0)
+GtDocModelPrivate::GtDocModelPrivate(GtDocModel *q)
+    : q_ptr(q)
+    , document(0)
+    , annotation(0)
     , pageCount(0)
     , page(-1)
     , scale(1.)
@@ -52,29 +56,8 @@ GtDocModelPrivate::~GtDocModelPrivate()
 
 GtDocModel::GtDocModel(QObject *parent)
     : QObject(parent)
-    , d_ptr(new GtDocModelPrivate())
+    , d_ptr(new GtDocModelPrivate(this))
 {
-    d_ptr->q_ptr = this;
-}
-
-GtDocModel::GtDocModel(GtDocument *document, QObject *parent)
-    : QObject(parent)
-    , d_ptr(new GtDocModelPrivate())
-{
-    d_ptr->q_ptr = this;
-
-    if (document) {
-        d_ptr->document = document;
-        d_ptr->pageCount = document->pageCount();
-
-        if (d_ptr->pageCount > 0)
-            d_ptr->page = 0;
-
-        connect(d_ptr->document,
-                SIGNAL(destroyed(QObject*)),
-                this,
-                SLOT(documentDestroyed(QObject*)));
-    }
 }
 
 GtDocModel::~GtDocModel()
@@ -101,7 +84,15 @@ void GtDocModel::setDocument(GtDocument *document)
                    SLOT(documentDestroyed(QObject*)));
     }
 
+    if (d->annotation) {
+        disconnect(d->annotation,
+                   SIGNAL(destroyed(QObject*)),
+                   this,
+                   SLOT(annotationDestroyed(QObject*)));
+    }
+
     d->document = document;
+    d->annotation = 0;
     if (d->document) {
         d->pageCount = document->pageCount();
         setPage(CLAMP(d->page, 0, d->pageCount - 1));
@@ -113,6 +104,37 @@ void GtDocModel::setDocument(GtDocument *document)
     }
 
     emit documentChanged(d->document);
+}
+
+GtDocAnnot* GtDocModel::annotation() const
+{
+    Q_D(const GtDocModel);
+    return d->annotation;
+}
+
+void GtDocModel::setAnnotation(GtDocAnnot *annotation)
+{
+    Q_D(GtDocModel);
+
+    if (annotation == d->annotation)
+        return;
+
+    if (d->annotation) {
+        disconnect(d->annotation,
+                   SIGNAL(destroyed(QObject*)),
+                   this,
+                   SLOT(annotationDestroyed(QObject*)));
+    }
+
+    d->annotation = annotation;
+    if (d->annotation) {
+        connect(d->annotation,
+                SIGNAL(destroyed(QObject*)),
+                this,
+                SLOT(annotationDestroyed(QObject*)));
+    }
+
+    emit annotationChanged(d->annotation);
 }
 
 int GtDocModel::page() const
@@ -298,6 +320,14 @@ void GtDocModel::documentDestroyed(QObject *object)
 
     if (object == static_cast<QObject *>(d->document))
         setDocument(0);
+}
+
+void GtDocModel::annotationDestroyed(QObject *object)
+{
+    Q_D(GtDocModel);
+
+    if (object == static_cast<QObject *>(d->annotation))
+        setAnnotation(0);
 }
 
 GT_END_NAMESPACE

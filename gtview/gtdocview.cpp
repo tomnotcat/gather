@@ -99,7 +99,7 @@ public:
     void zoomForSizeSinglePage(int width, int height);
 
     void fillRegion(QPainter &p, const QRegion &r, const QColor &c);
-    void drawPage(QPainter &p, int index, const QRect &pageArea,
+    bool drawPage(QPainter &p, int index, const QRect &pageArea,
                   const QRect &border, const QColor &backColor);
     QRegion textRegion(GtDocPage *page, int begin, int end) const;
     QRegion selectedRegion(GtDocRange &range, GtDocPage *page) const;
@@ -672,7 +672,7 @@ void GtDocViewPrivate::fillRegion(QPainter &p, const QRegion &r, const QColor &c
         p.fillRect(rects[i], c);
 }
 
-void GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
+bool GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
                                 const QRect &border, const QColor &backColor)
 {
     QRect realArea(pageArea.x() + border.left(),
@@ -709,10 +709,13 @@ void GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
 
     // draw page contents
     QImage image = renderCache->image(index);
-    if (!image.isNull())
-        p.drawImage(realArea, image);
-    else
+    if (image.isNull()) {
         p.fillRect(realArea, QColor(255, 255, 255));
+        return false;
+    }
+
+    p.drawImage(realArea, image);
+    return true;
 }
 
 QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end) const
@@ -725,6 +728,8 @@ QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end) const
     QRectF temp;
     QRect real;
     bool lineDone = false;
+
+    Q_ASSERT(end > begin);
 
     for (int i = begin; i < end; ++i, ++rect) {
         if (!lineRect.isValid()) {
@@ -782,7 +787,9 @@ QRegion GtDocViewPrivate::selectedRegion(GtDocRange &range, GtDocPage *page) con
     case GtDocModel::SelectText:
         {
             QPoint selText(range.intersectedText(page));
-            region = textRegion(page, selText.x(), selText.y());
+
+            if (selText.y() > selText.x())
+                region = textRegion(page, selText.x(), selText.y());
         }
         break;
 
@@ -1329,7 +1336,6 @@ void GtDocView::copy() const
 
                 selText.append(text->texts() + textRange.x(),
                                textRange.y() - textRange.x());
-                qDebug() << text->length() << textRange << selText;
             }
 
             clipboard->setText(selText, QClipboard::Clipboard);
@@ -1823,17 +1829,18 @@ void GtDocView::paintEvent(QPaintEvent *e)
             if (!overlap.isValid())
                 continue;
 
-            d->drawPage(p, i, pageArea, border, backColor);
+            if (d->drawPage(p, i, pageArea, border, backColor)) {
+                // highlight selected region
+                GtDocPage *page = d->document->page(i);
+                QRegion selRegion(d->selectedRegion(selRange, page));
+
+                selRegion.translate(pageArea.x() + border.left(),
+                                    pageArea.y() + border.top());
+
+                d->fillRegion(p, selRegion, selBgColor);
+            }
+
             remainingArea -= pageArea;
-
-            // highlight selected region
-            GtDocPage *page = d->document->page(i);
-            QRegion selRegion(d->selectedRegion(selRange, page));
-
-            selRegion.translate(pageArea.x() + border.left(),
-                                pageArea.y() + border.top());
-
-            d->fillRegion(p, selRegion, selBgColor);
         }
 
         if (d->selectBegin.isValid() && d->selectEnd.isValid()) {

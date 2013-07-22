@@ -105,7 +105,7 @@ GtApplication::~GtApplication()
         delete window;
     }
 
-    cleanDocuments();
+    clearDocuments();
     Q_ASSERT(m_documents.size() == 0);
 
     m_settings->save();
@@ -118,7 +118,7 @@ bool GtApplication::isTheOnlyReader() const
 
 GtMainWindow* GtApplication::mainWindow()
 {
-    cleanWindows();
+    clearWindows();
 
     if (m_mainWindows.isEmpty())
         newMainWindow();
@@ -128,7 +128,7 @@ GtMainWindow* GtApplication::mainWindow()
 
 QList<GtMainWindow*> GtApplication::mainWindows()
 {
-    cleanWindows();
+    clearWindows();
 
     QList<GtMainWindow*> list;
     for (int i = 0; i < m_mainWindows.count(); ++i)
@@ -152,7 +152,7 @@ GtDocumentPointer GtApplication::loadDocument(const QString &fileName)
 
     GtDocumentPointer doc;
 
-    cleanDocuments();
+    clearDocuments();
     doc = m_docLoader->loadDocument(fileName, m_docThread);
     if (doc)
         m_documents.insert(fileName, doc);
@@ -185,18 +185,18 @@ bool GtApplication::event(QEvent *event)
 }
 #endif
 
-void GtApplication::cleanWindows()
+void GtApplication::clearWindows()
 {
-    // cleanup any deleted main windows
+    // clear up any deleted main windows
     for (int i = m_mainWindows.count() - 1; i >= 0; --i) {
         if (m_mainWindows.at(i).isNull())
             m_mainWindows.removeAt(i);
     }
 }
 
-void GtApplication::cleanDocuments()
+void GtApplication::clearDocuments()
 {
-    // cleanup any unreferenced documents
+    // clear up any unreferenced documents
     QHash<QString, GtDocumentPointer>::iterator it;
 
     for (it = m_documents.begin(); it != m_documents.end();) {

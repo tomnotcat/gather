@@ -6,6 +6,23 @@
 #include <QtCore/QDebug>
 #include <QtGui/QImage>
 
+inline bool operator<(const fz_text_char &a, const fz_text_char &b)
+{
+    if (a.c < b.c)
+        return true;
+
+    if (a.c > b.c)
+        return false;
+
+    if (a.bbox.x0 < b.bbox.x0 &&
+        a.bbox.x1 < b.bbox.x1)
+    {
+        return true;
+    }
+
+    return false;
+}
+
 GT_BEGIN_NAMESPACE
 
 PdfPage::PdfPage(fz_context *c, fz_document *d, fz_page *p, const QString &l)
@@ -58,27 +75,19 @@ int PdfPage::textLength()
     fz_text_block *block;
     fz_text_line *line;
     fz_text_span *span;
-    int i, h, len = 0;
-    QSet<int> dups;
+    int i, len = 0;
+    QMap<fz_text_char, int> txts;
 
     for (block = page->blocks; block < page->blocks + page->len; block++) {
         for (line = block->lines; line < block->lines + block->len; line++) {
-            if (block->len > 1)
-                dups.clear();
-
+            txts.clear();
             for (span = line->spans; span < line->spans + line->len; span++) {
-                if (block->len > 1) {
-                    // remove duplicate chars
-                    for (i = 0; i < span->len; i++) {
-                        h = texthash(span->text[i]);
-                        if (!dups.contains(h)) {
-                            dups.insert(h);
-                            ++len;
-                        }
+                for (i = 0; i < span->len; i++) {
+                    // remove duplicated text (fake boldface, drop shadows)
+                    if (!txts.contains(span->text[i])) {
+                        txts.insert(span->text[i], i);
+                        ++len;
                     }
-                }
-                else {
-                    len += span->len;
                 }
             }
 
@@ -99,42 +108,26 @@ int PdfPage::extractText(QChar *texts, QRectF *rects, int length)
     fz_text_line *line;
     fz_text_span *span;
     fz_rect bbox;
-    int c, i, h, p = 0;
-    QSet<int> dups;
+    int c, i, p = 0;
+    QMap<fz_text_char, int> txts;
 
     for (block = page->blocks; block < page->blocks + page->len; block++) {
         for (line = block->lines; line < block->lines + block->len; line++) {
-            if (block->len > 1)
-                dups.clear();
-
+            txts.clear();
             for (span = line->spans; span < line->spans + line->len; span++) {
-                if (block->len > 1) {
-                    // remove duplicate chars
-                    for (i = 0; i < span->len; i++) {
-                        h = texthash(span->text[i]);
-                        if (dups.contains(h))
-                            continue;
+                for (i = 0; i < span->len; i++) {
+                    // remove duplicated text (fake boldface, drop shadows)
+                    if (txts.contains(span->text[i]))
+                        continue;
 
-                        dups.insert(h);
-                        c = span->text[i].c;
-                        if (c < 32)
-                            c = '?';
+                    txts.insert(span->text[i], i);
+                    c = span->text[i].c;
+                    if (c < 32)
+                        c = '?';
 
-                        bbox = span->text[i].bbox;
-                        rects[p].setCoords(bbox.x0, bbox.y0, bbox.x1, bbox.y1);
-                        texts[p++] = c;
-                    }
-                }
-                else {
-                    for (i = 0; i < span->len; i++) {
-                        c = span->text[i].c;
-                        if (c < 32)
-                            c = '?';
-
-                        bbox = span->text[i].bbox;
-                        rects[p].setCoords(bbox.x0, bbox.y0, bbox.x1, bbox.y1);
-                        texts[p++] = c;
-                    }
+                    bbox = span->text[i].bbox;
+                    rects[p].setCoords(bbox.x0, bbox.y0, bbox.x1, bbox.y1);
+                    texts[p++] = c;
                 }
             }
 
