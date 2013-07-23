@@ -88,7 +88,7 @@ bool PdfDocument::load(QIODevice *device)
 {
     fz_stream *stream;
 
-    _context = fz_new_context(NULL, NULL, FZ_STORE_DEFAULT);
+    _context = fz_new_context(NULL, NULL, 8 << 20);
     stream = fz_new_stream(_context, device,
                            PdfDocument::readPdfStream,
                            PdfDocument::closePdfStream);
