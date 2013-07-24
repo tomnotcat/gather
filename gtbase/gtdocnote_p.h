@@ -5,6 +5,7 @@
 #define __GT_DOC_NOTE_P_H__
 
 #include "gtdocnote.h"
+#include "gtdocrange.h"
 
 GT_BEGIN_NAMESPACE
 
@@ -18,6 +19,8 @@ public:
 
 protected:
     GtDocNote *q_ptr;
+    GtDocRange range;
+    QString text;
 };
 
 GT_END_NAMESPACE

@@ -22,7 +22,10 @@ public:
 
 public:
     int pageCount() const;
-    QList<GtDocNote*> pageNotes(int index) const;
+    QList<GtDocNote*> pageNotes(int page) const;
+    QList<GtDocNote*> allNotes() const;
+
+    void addNote(GtDocNote *note);
 
 protected:
     QScopedPointer<GtDocNotesPrivate> d_ptr;

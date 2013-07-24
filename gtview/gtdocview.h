@@ -11,6 +11,7 @@
 GT_BEGIN_NAMESPACE
 
 class GtDocModel;
+class GtDocNotes;
 class GtDocument;
 class GtDocViewPrivate;
 
@@ -49,12 +50,14 @@ public:
     QPoint viewPointFromDocPoint(const GtDocPoint &p);
 
 public Q_SLOTS:
-    void copy() const;
+    void copy();
+    void highlight();
 
 private Q_SLOTS:
     void renderFinished(int page);
     void modelDestroyed(QObject *object);
     void documentChanged(GtDocument *document);
+    void notesChanged(GtDocNotes *notes);
     void pageChanged(int page);
     void scaleChanged(double scale);
     void rotationChanged(int rotation);

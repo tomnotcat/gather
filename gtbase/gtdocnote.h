@@ -9,6 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtDocRange;
 class GtDocNotePrivate;
 
 class GT_BASE_EXPORT GtDocNote : public QObject, public GtObject
@@ -17,7 +18,15 @@ class GT_BASE_EXPORT GtDocNote : public QObject, public GtObject
 
 public:
     explicit GtDocNote(QObject *parent = 0);
+    explicit GtDocNote(const GtDocRange &range, QObject *parent = 0);
     ~GtDocNote();
+
+public:
+    GtDocRange range() const;
+    void setRange(const GtDocRange &range);
+
+    QString text() const;
+    void setText(const QString &text);
 
 protected:
     GtDocNote(GtDocNotePrivate &dd, QObject* parent);

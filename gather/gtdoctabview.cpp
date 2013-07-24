@@ -173,13 +173,14 @@ void GtDocTabView::showDocViewContextMenu(const QPoint &pos)
     QMenu menu;
 
     if (selRange.isEmpty()) {
-        menu.addAction(tr("S&elect Tool"), this, SLOT(highlightSelectedText()));
-        menu.addAction(tr("Ha&nd Tool"), this, SLOT(highlightSelectedText()));
+        menu.addAction(tr("S&elect Tool"), m_docView, SLOT(highlight()));
+        menu.addAction(tr("Ha&nd Tool"), m_docView, SLOT(highlight()));
     }
     else {
         menu.addAction(m_mainWindow->ui.actionCopy);
         menu.addSeparator();
-        menu.addAction(tr("&Highlight Text"), this, SLOT(highlightSelectedText()));
+        menu.addAction(tr("&Highlight Text"), m_docView, SLOT(highlight()));
+        menu.addAction(tr("&Add Bookmark"), this, SLOT(addBookmark()));
         menu.addSeparator();
         menu.addAction(tr("&Search"), this, SLOT(searchSelectedText()));
     }
@@ -223,12 +224,14 @@ void GtDocTabView::tocChanged(const QModelIndex &index)
     }
 }
 
-void GtDocTabView::highlightSelectedText()
+void GtDocTabView::addBookmark()
 {
+    qDebug() << "add bookmark";
 }
 
 void GtDocTabView::searchSelectedText()
 {
+    qDebug() << "search selected text";
 }
 
 GT_END_NAMESPACE

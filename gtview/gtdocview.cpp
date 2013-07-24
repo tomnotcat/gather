@@ -3,6 +3,8 @@
  */
 #include "gtdocview.h"
 #include "gtdocmodel.h"
+#include "gtdocnote.h"
+#include "gtdocnotes.h"
 #include "gtdocpage.h"
 #include "gtdocrange.h"
 #include "gtdocrendercache.h"
@@ -116,6 +118,7 @@ private:
     GtDocView *q_ptr;
     GtDocModel *model;
     GtDocument *document;
+    GtDocNotes *notes;
     int beginPage;
     int endPage;
     int currentPage;
@@ -292,8 +295,9 @@ void GtDocViewPrivate::HeightCache::rebuild()
 
 GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     : q_ptr(parent)
-    , model(NULL)
-    , document(NULL)
+    , model(0)
+    , document(0)
+    , notes(0)
     , beginPage(-1)
     , endPage(-1)
     , currentPage(-1)
@@ -381,12 +385,12 @@ int GtDocViewPrivate::pageYOffset(int page)
 
     if (layoutMode != GtDocModel::SinglePage) {
         int e = evenPageLeft();
-        heightToPage(page, NULL, &offset);
+        heightToPage(page, 0, &offset);
         offset += ((page + e) / 2 + 1) * spacing +
                   ((page + e) / 2 ) * (border.top() + border.bottom());
     }
     else {
-        heightToPage(page, &offset, NULL);
+        heightToPage(page, &offset, 0);
         offset += (page + 1) * spacing + page * (border.top() + border.bottom());
     }
 
@@ -995,19 +999,19 @@ void GtDocViewPrivate::repaintOldAndNewSelection(const GtDocRange &oldRange)
 
         if (newBegin == oldBegin) {
             if (newEnd < oldEnd)
-                updateRange.setPoints(newEnd, oldEnd);
+                updateRange.setRange(newEnd, oldEnd);
             else
-                updateRange.setPoints(oldEnd, newEnd);
+                updateRange.setRange(oldEnd, newEnd);
         }
         else if (newEnd == oldEnd) {
             if (newBegin < oldBegin)
-                updateRange.setPoints(newBegin, oldBegin);
+                updateRange.setRange(newBegin, oldBegin);
             else
-                updateRange.setPoints(oldBegin, newBegin);
+                updateRange.setRange(oldBegin, newBegin);
         }
         else {
-            updateRange.setPoints(newBegin < oldBegin ? newBegin : oldBegin,
-                                  newEnd > oldEnd ? newEnd : oldEnd);
+            updateRange.setRange(newBegin < oldBegin ? newBegin : oldBegin,
+                                 newEnd > oldEnd ? newEnd : oldEnd);
         }
     }
 
@@ -1073,6 +1077,11 @@ void GtDocView::setModel(GtDocModel *model)
                    SLOT(documentChanged(GtDocument*)));
 
         disconnect(d->model,
+                   SIGNAL(notesChanged(GtDocNotes*)),
+                   this,
+                   SLOT(notesChanged(GtDocNotes*)));
+
+        disconnect(d->model,
                    SIGNAL(pageChanged(int)),
                    this,
                    SLOT(pageChanged(int)));
@@ -1113,12 +1122,14 @@ void GtDocView::setModel(GtDocModel *model)
                    SLOT(modelDestroyed(QObject*)));
     }
 
-    GtDocument *newdoc = NULL;
+    GtDocument *newdoc = 0;
+    GtDocNotes *newnotes = 0;
     d->model = model;
     d->renderCache->setModel(d->model);
 
     if (d->model) {
         newdoc = model->document();
+        newnotes = model->notes();
         d->rotation = model->rotation();
         d->scale = model->scale();
         d->continuous = model->continuous();
@@ -1130,6 +1141,11 @@ void GtDocView::setModel(GtDocModel *model)
                 SIGNAL(documentChanged(GtDocument*)),
                 this,
                 SLOT(documentChanged(GtDocument*)));
+
+        connect(d->model,
+                SIGNAL(notesChanged(GtDocNotes*)),
+                this,
+                SLOT(notesChanged(GtDocNotes*)));
 
         connect(d->model,
                 SIGNAL(pageChanged(int)),
@@ -1173,6 +1189,7 @@ void GtDocView::setModel(GtDocModel *model)
     }
 
     documentChanged(newdoc);
+    notesChanged(newnotes);
 }
 
 void GtDocView::setRenderThread(QThread *thread)
@@ -1269,23 +1286,29 @@ GtDocRange GtDocView::selectedRange() const
 {
     Q_D(const GtDocView);
 
+    GtDocRange selRange;
+
     bool selText = (GtDocModel::SelectText == d->mouseMode);
     if (selText) {
         d->selectBegin.text(true);
         d->selectEnd.text(false);
-    }
-
-    GtDocRange selRange;
-    if (d->selectBegin < d->selectEnd) {
-        selRange.setPoints(d->selectBegin, d->selectEnd);
+        selRange.setType(GtDocRange::TextRange);
     }
     else {
-        selRange.setPoints(d->selectEnd, d->selectBegin);
+        selRange.setType(GtDocRange::GeomRange);
+    }
+
+    if (d->selectBegin < d->selectEnd) {
+        selRange.setRange(d->selectBegin, d->selectEnd);
+    }
+    else {
+        selRange.setRange(d->selectEnd, d->selectBegin);
     }
 
     if (d->selectWordOnDoubleClick) {
         return GtDocRange(selRange.begin().beginOfWord(false),
-                          selRange.end().endOfWord(false));
+                          selRange.end().endOfWord(false),
+                          selRange.type());
     }
 
     return selRange;
@@ -1312,9 +1335,9 @@ QPoint GtDocView::viewPointFromDocPoint(const GtDocPoint &p)
     return d->viewPointFromDocPoint(p);
 }
 
-void GtDocView::copy() const
+void GtDocView::copy()
 {
-    Q_D(const GtDocView);
+    Q_D(GtDocView);
 
     GtDocRange selRange(selectedRange());
 
@@ -1322,8 +1345,8 @@ void GtDocView::copy() const
         return;
 
     QClipboard *clipboard = QApplication::clipboard();
-    switch (d->mouseMode) {
-    case GtDocModel::SelectText:
+    switch (selRange.type()) {
+    case GtDocRange::TextRange:
         {
             int selBegin = selRange.begin().page()->index();
             int selEnd = selRange.end().page()->index() + 1;
@@ -1343,8 +1366,22 @@ void GtDocView::copy() const
         break;
 
     default:
+        Q_ASSERT(0);
         break;
     }
+}
+
+void GtDocView::highlight()
+{
+    Q_D(GtDocView);
+
+    GtDocRange selRange(selectedRange());
+
+    if (selRange.isEmpty())
+        return;
+
+    GtDocNote *note = new GtDocNote(selRange);
+    d->notes->addNote(note);
 }
 
 void GtDocView::renderFinished(int page)
@@ -1370,9 +1407,6 @@ void GtDocView::documentChanged(GtDocument *document)
 {
     Q_D(GtDocView);
 
-    if (d->document == document)
-        return;
-
     d->document = document;
     d->pageCount = document ? document->pageCount() : 0;
     d->renderCache->clear();
@@ -1387,6 +1421,16 @@ void GtDocView::documentChanged(GtDocument *document)
     }
 
     d->relayoutPagesLater();
+}
+
+void GtDocView::notesChanged(GtDocNotes *notes)
+{
+    Q_D(GtDocView);
+
+    d->notes = notes;
+
+    if (!d->pendingRelayoutPages)
+        viewport()->update();
 }
 
 void GtDocView::pageChanged(int page)
@@ -1479,7 +1523,7 @@ void GtDocView::relayoutPages()
     d->pendingRelayoutPages = false;
 
     QSize size;
-    if (NULL == d->document) {
+    if (0 == d->document) {
         d->resizeContentArea(size);
         return;
     }
@@ -1742,7 +1786,7 @@ void GtDocView::wheelEvent(QWheelEvent *e)
 {
     Q_D(GtDocView);
 
-    if (NULL == d->document) {
+    if (0 == d->document) {
         QAbstractScrollArea::wheelEvent(e);
         return;
     }
