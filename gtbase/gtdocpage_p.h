@@ -8,7 +8,7 @@
 
 GT_BEGIN_NAMESPACE
 
-class GT_BASE_EXPORT GtDocPagePrivate
+class GtDocPagePrivate
 {
     Q_DECLARE_PUBLIC(GtDocPage)
 

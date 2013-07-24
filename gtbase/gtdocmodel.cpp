@@ -2,7 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtdocmodel.h"
-#include "gtdocannot.h"
+#include "gtdocnotes.h"
 #include "gtdocument.h"
 #include <QtCore/QDebug>
 #include <limits>
@@ -20,7 +20,7 @@ public:
 protected:
     GtDocModel *q_ptr;
     GtDocument *document;
-    GtDocAnnot *annotation;
+    GtDocNotes *notes;
     int pageCount;
     int page;
     double scale;
@@ -36,7 +36,7 @@ protected:
 GtDocModelPrivate::GtDocModelPrivate(GtDocModel *q)
     : q_ptr(q)
     , document(0)
-    , annotation(0)
+    , notes(0)
     , pageCount(0)
     , page(-1)
     , scale(1.)
@@ -84,15 +84,15 @@ void GtDocModel::setDocument(GtDocument *document)
                    SLOT(documentDestroyed(QObject*)));
     }
 
-    if (d->annotation) {
-        disconnect(d->annotation,
+    if (d->notes) {
+        disconnect(d->notes,
                    SIGNAL(destroyed(QObject*)),
                    this,
-                   SLOT(annotationDestroyed(QObject*)));
+                   SLOT(notesDestroyed(QObject*)));
     }
 
     d->document = document;
-    d->annotation = 0;
+    d->notes = 0;
     if (d->document) {
         d->pageCount = document->pageCount();
         setPage(CLAMP(d->page, 0, d->pageCount - 1));
@@ -106,35 +106,35 @@ void GtDocModel::setDocument(GtDocument *document)
     emit documentChanged(d->document);
 }
 
-GtDocAnnot* GtDocModel::annotation() const
+GtDocNotes* GtDocModel::notes() const
 {
     Q_D(const GtDocModel);
-    return d->annotation;
+    return d->notes;
 }
 
-void GtDocModel::setAnnotation(GtDocAnnot *annotation)
+void GtDocModel::setNotes(GtDocNotes *notes)
 {
     Q_D(GtDocModel);
 
-    if (annotation == d->annotation)
+    if (notes == d->notes)
         return;
 
-    if (d->annotation) {
-        disconnect(d->annotation,
+    if (d->notes) {
+        disconnect(d->notes,
                    SIGNAL(destroyed(QObject*)),
                    this,
-                   SLOT(annotationDestroyed(QObject*)));
+                   SLOT(notesDestroyed(QObject*)));
     }
 
-    d->annotation = annotation;
-    if (d->annotation) {
-        connect(d->annotation,
+    d->notes = notes;
+    if (d->notes) {
+        connect(d->notes,
                 SIGNAL(destroyed(QObject*)),
                 this,
-                SLOT(annotationDestroyed(QObject*)));
+                SLOT(notesDestroyed(QObject*)));
     }
 
-    emit annotationChanged(d->annotation);
+    emit notesChanged(d->notes);
 }
 
 int GtDocModel::page() const
@@ -322,12 +322,12 @@ void GtDocModel::documentDestroyed(QObject *object)
         setDocument(0);
 }
 
-void GtDocModel::annotationDestroyed(QObject *object)
+void GtDocModel::notesDestroyed(QObject *object)
 {
     Q_D(GtDocModel);
 
-    if (object == static_cast<QObject *>(d->annotation))
-        setAnnotation(0);
+    if (object == static_cast<QObject *>(d->notes))
+        setNotes(0);
 }
 
 GT_END_NAMESPACE

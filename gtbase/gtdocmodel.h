@@ -10,7 +10,7 @@
 GT_BEGIN_NAMESPACE
 
 class GtDocument;
-class GtDocAnnot;
+class GtDocNotes;
 class GtDocModelPrivate;
 
 class GT_BASE_EXPORT GtDocModel : public QObject, public GtObject
@@ -25,8 +25,8 @@ public:
     GtDocument* document() const;
     void setDocument(GtDocument *document);
 
-    GtDocAnnot* annotation() const;
-    void setAnnotation(GtDocAnnot *annotation);
+    GtDocNotes* notes() const;
+    void setNotes(GtDocNotes *notes);
 
     int page() const;
     void setPage(int page);
@@ -75,7 +75,7 @@ public:
 
 Q_SIGNALS:
     void documentChanged(GtDocument *document);
-    void annotationChanged(GtDocAnnot *annotation);
+    void notesChanged(GtDocNotes *notes);
     void pageChanged(int page);
     void scaleChanged(double scale);
     void rotationChanged(int rotation);
@@ -86,7 +86,7 @@ Q_SIGNALS:
 
 private Q_SLOTS:
     void documentDestroyed(QObject *object);
-    void annotationDestroyed(QObject *object);
+    void notesDestroyed(QObject *object);
 
 private:
     QScopedPointer<GtDocModelPrivate> d_ptr;

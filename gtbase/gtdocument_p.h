@@ -16,7 +16,7 @@ GT_BEGIN_NAMESPACE
 class GtAbstractPage;
 class GtAbstractOutline;
 
-class GT_BASE_EXPORT GtDocumentPrivate
+class GtDocumentPrivate
 {
     Q_DECLARE_PUBLIC(GtDocument)
 
