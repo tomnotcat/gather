@@ -2,7 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gttocmodel.h"
-#include "gtdocoutline.h"
+#include "gtbookmark.h"
 #include "gtdocpage.h"
 #include "gtdocument.h"
 #include "gttocdelegate.h"
@@ -21,17 +21,18 @@ public:
 protected:
     GtTocModel *q_ptr;
     GtDocument *document;
-    GtDocOutline *outline;
+    GtBookmark *bookmark;
 };
 
 GtTocModelPrivate::GtTocModelPrivate()
     : document(0)
-    , outline(0)
+    , bookmark(0)
 {
 }
 
 GtTocModelPrivate::~GtTocModelPrivate()
 {
+    delete bookmark;
 }
 
 GtTocModel::GtTocModel(QObject *parent)
@@ -67,7 +68,11 @@ void GtTocModel::setDocument(GtDocument *document)
 
     d->document = document;
     if (d->document) {
-        d->outline = d->document->outline();
+        if (d->bookmark)
+            delete d->bookmark;
+
+        d->bookmark = new GtBookmark();
+        d->document->loadOutline(d->bookmark);
 
         connect(d->document,
                 SIGNAL(destroyed(QObject*)),
@@ -76,12 +81,12 @@ void GtTocModel::setDocument(GtDocument *document)
     }
 }
 
-GtDocOutline* GtTocModel::outlineFromIndex(const QModelIndex &index) const
+GtBookmark* GtTocModel::bookmarkFromIndex(const QModelIndex &index) const
 {
     if (!index.isValid())
         return 0;
 
-    return static_cast<GtDocOutline*>(index.internalPointer());
+    return static_cast<GtBookmark*>(index.internalPointer());
 }
 
 QModelIndex GtTocModel::index(int row, int column,
@@ -92,13 +97,13 @@ QModelIndex GtTocModel::index(int row, int column,
     if (!hasIndex(row, column, parent))
         return QModelIndex();
 
-    GtDocOutline *node;
+    GtBookmark *node;
     if (!parent.isValid())
-        node = d->outline;
+        node = d->bookmark;
     else
-        node = static_cast<GtDocOutline*>(parent.internalPointer());
+        node = static_cast<GtBookmark*>(parent.internalPointer());
 
-    GtDocOutline *child = node->child(row);
+    GtBookmark *child = node->children()[row];
     if (child)
         return createIndex(row, column, child);
 
@@ -110,32 +115,32 @@ QModelIndex GtTocModel::parent(const QModelIndex &child) const
     if (!child.isValid())
         return QModelIndex();
 
-    GtDocOutline *node = static_cast<GtDocOutline*>(child.internalPointer());
-    GtDocOutline *parent = node->parent();
+    GtBookmark *node = static_cast<GtBookmark*>(child.internalPointer());
+    GtBookmark *parent = node->parent();
 
     if (0 == parent)
         return QModelIndex();
 
-    return createIndex(parent->row, 0, static_cast<void *>(parent));
+    return createIndex(parent->index(), 0, static_cast<void *>(parent));
 }
 
 int GtTocModel::rowCount(const QModelIndex &parent) const
 {
     Q_D(const GtTocModel);
 
-    if (!d->outline)
+    if (!d->bookmark)
         return 0;
 
     if (parent.column() > 0)
         return 0;
 
-    GtDocOutline *node;
+    GtBookmark *node;
     if (!parent.isValid())
-        node = d->outline;
+        node = d->bookmark;
     else
-        node = static_cast<GtDocOutline*>(parent.internalPointer());
+        node = static_cast<GtBookmark*>(parent.internalPointer());
 
-    return node->childCount();
+    return node->children().size();
 }
 
 int GtTocModel::columnCount(const QModelIndex &) const
@@ -150,17 +155,17 @@ QVariant GtTocModel::data(const QModelIndex &index, int role) const
     if (!index.isValid())
         return QVariant();
 
-    GtDocOutline *node = static_cast<GtDocOutline*>(index.internalPointer());
+    GtBookmark *node = static_cast<GtBookmark*>(index.internalPointer());
     switch (role) {
     case Qt::DisplayRole:
     case Qt::ToolTipRole:
-        return QVariant(node->title);
+        return QVariant(node->title());
 
     case GtTocDelegate::PageIndex:
-        return QVariant(node->page + 1);
+        return QVariant(node->dest().page() + 1);
 
     case GtTocDelegate::PageLabel:
-        return QVariant(d->document->page(node->page)->label());
+        return QVariant(d->document->page(node->dest().page())->label());
 
     default:
         break;

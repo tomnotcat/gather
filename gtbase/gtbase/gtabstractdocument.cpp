@@ -46,4 +46,9 @@ QString GtAbstractDocument::title()
     return QString();
 }
 
+GtAbstractOutline* GtAbstractDocument::loadOutline()
+{
+    return 0;
+}
+
 GT_END_NAMESPACE

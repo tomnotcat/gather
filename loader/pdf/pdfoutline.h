@@ -23,7 +23,7 @@ public:
     void* nextNode(void *node);
     void* childNode(void *node);
     QString title(void *node);
-    int page(void *node);
+    GtLinkDest dest(void *node);
 
 private:
     fz_context *context;

@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "pdfoutline.h"
+#include "gtlinkdest.h"
 #include <QtCore/QDebug>
 
 GT_BEGIN_NAMESPACE
@@ -34,16 +35,20 @@ void* PdfOutline::childNode(void *node)
     return l->down;
 }
 
-QString PdfOutline::title(void *it)
+QString PdfOutline::title(void *node)
 {
-    fz_outline *l = static_cast<fz_outline*>(it);
+    fz_outline *l = static_cast<fz_outline*>(node);
     return QString::fromUtf8(l->title);
 }
 
-int PdfOutline::page(void *it)
+GtLinkDest PdfOutline::dest(void *node)
 {
-    fz_outline *l = static_cast<fz_outline*>(it);
-    return l->dest.kind == FZ_LINK_GOTO ? l->dest.ld.gotor.page : -1;
+    fz_outline *l = static_cast<fz_outline*>(node);
+
+    if (l->dest.kind == FZ_LINK_GOTO)
+        return GtLinkDest(l->dest.ld.gotor.page);
+
+    return GtLinkDest();
 }
 
 GT_END_NAMESPACE

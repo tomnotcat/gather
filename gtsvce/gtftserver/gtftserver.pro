@@ -5,7 +5,7 @@ QT -= gui
 QT += network
 HEADERS +=
 SOURCES += gtftserver.cpp
-INCLUDEPATH += $$PWD/../../gtbase
+INCLUDEPATH += $$PWD/../../gtbase/gtbase
 INCLUDEPATH += $$PWD/../gtsvce
 INCLUDEPATH += $$PWD/../../
 

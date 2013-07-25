@@ -14,7 +14,7 @@ class QIODevice;
 GT_BEGIN_NAMESPACE
 
 class GtAbstractDocument;
-class GtDocOutline;
+class GtBookmark;
 class GtDocPage;
 class GtDocumentPrivate;
 
@@ -40,7 +40,7 @@ public:
     QSize minPageSize(double scale = 1.0, int rotation = 0) const;
     int pageCount() const;
     GtDocPage* page(int index) const;
-    GtDocOutline* outline() const;
+    int loadOutline(GtBookmark *root);
 
 public:
     static QString makeFileId(QIODevice *device);

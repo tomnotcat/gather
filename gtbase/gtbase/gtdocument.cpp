@@ -3,7 +3,7 @@
  */
 #include "gtdocument_p.h"
 #include "gtabstractdocument.h"
-#include "gtdocoutline.h"
+#include "gtbookmark.h"
 #include "gtdocpage_p.h"
 #include <QtCore/QCryptographicHash>
 #include <QtCore/QDebug>
@@ -13,7 +13,6 @@ GT_BEGIN_NAMESPACE
 GtDocumentPrivate::GtDocumentPrivate(GtAbstractDocument *ad)
     : device(0)
     , pages(0)
-    , outline(0)
     , pageCount(0)
     , maxWidth(0)
     , maxHeight(0)
@@ -32,7 +31,6 @@ GtDocumentPrivate::~GtDocumentPrivate()
         delete pages[i];
 
     delete[] pages;
-    delete outline;
 
     destroyed = true;
 }
@@ -116,30 +114,26 @@ void GtDocumentPrivate::cacheText(int index, const GtDocTextPointer &text)
     }
 }
 
-void GtDocumentPrivate::loadOutline(GtAbstractOutline *outline,
-                                    GtDocOutline *parent,
-                                    GtDocOutline **node, void *it)
+int GtDocumentPrivate::loadOutline(GtAbstractOutline *outline,
+                                   GtBookmark *parent, void *it)
 {
-    if (0 == node)
-        node = &parent->_child;
+    GtBookmark *node;
+    int count = 0;
 
-    int row = 0;
     while (it) {
-        *node = new GtDocOutline(outline->title(it), outline->page(it), row++);
-        (*node)->_parent = parent;
+        node = parent->addChild(outline->title(it), outline->dest(it));
+        ++count;
 
         void *child = outline->childNode(it);
         if (child) {
-            loadOutline(outline, *node, &(*node)->_child, child);
+            count += loadOutline(outline, node, child);
             outline->freeNode(child);
         }
 
         it = outline->nextNode(it);
-        node = &(*node)->_next;
     }
 
-    if (row > 0)
-        parent->_childCount = row;
+    return count;
 }
 
 GtDocument::GtDocument(GtAbstractDocument *ad,
@@ -235,10 +229,22 @@ GtDocPage* GtDocument::page(int index) const
     return d->pages[index];
 }
 
-GtDocOutline* GtDocument::outline() const
+int GtDocument::loadOutline(GtBookmark *root)
 {
-    Q_D(const GtDocument);
-    return d->outline;
+    Q_D(GtDocument);
+
+    QMutexLocker locker(&d->_mutex);
+
+    GtAbstractOutline *outline = d->abstractDoc->loadOutline();
+    if (!outline)
+        return 0;
+
+    void *it = outline->firstNode();
+    int count = d->loadOutline(outline, root, it);
+    outline->freeNode(it);
+    delete outline;
+
+    return count;
 }
 
 QString GtDocument::makeFileId(QIODevice *device)
@@ -326,16 +332,6 @@ void GtDocument::slotLoadDocument()
     QString title(d->abstractDoc->title());
     if (!title.isNull())
         d->title = title;
-
-    // outline
-    GtAbstractOutline *outline = d->abstractDoc->loadOutline();
-    d->outline = new GtDocOutline();
-
-    void *it = outline->firstNode();
-    d->loadOutline(outline, d->outline, 0, it);
-    outline->freeNode(it);
-
-    delete outline;
 
     // file ID
     d->device->reset();

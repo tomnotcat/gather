@@ -32,15 +32,13 @@ public:
     inline QMutex* mutex() { return &_mutex; }
 
 protected:
-    void loadOutline(GtAbstractOutline *outline,
-                     GtDocOutline *parent,
-                     GtDocOutline **node, void *it);
+    int loadOutline(GtAbstractOutline *outline,
+                    GtBookmark *parent, void *it);
 
 protected:
     GtDocument *q_ptr;
     QIODevice *device;
     GtDocPage **pages;
-    GtDocOutline *outline;
     QString fileId;
     QString title;
     int pageCount;

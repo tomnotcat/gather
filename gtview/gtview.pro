@@ -5,7 +5,7 @@ HEADERS += gtdocview.h gtdocrendercache.h gttocmodel.h \
     gttocdelegate.h
 SOURCES += gtdocview.cpp gtdocrendercache.cpp gttocmodel.cpp \
     gttocdelegate.cpp
-INCLUDEPATH += ../gtbase
+INCLUDEPATH += ../gtbase/gtbase
 
 CONFIG(debug, debug|release) {
     DESTDIR = ../build/debug

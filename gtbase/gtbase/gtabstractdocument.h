@@ -13,6 +13,8 @@ class QRectF;
 
 GT_BEGIN_NAMESPACE
 
+class GtLinkDest;
+
 class GT_BASE_EXPORT GtAbstractPage
 {
 public:
@@ -39,7 +41,7 @@ public:
     virtual void* childNode(void *node);
     virtual void freeNode(void *node);
     virtual QString title(void *node) = 0;
-    virtual int page(void *it) = 0;
+    virtual GtLinkDest dest(void *node) = 0;
 };
 
 class GT_BASE_EXPORT GtAbstractDocument
@@ -53,7 +55,7 @@ public:
     virtual QString title();
     virtual int countPages() = 0;
     virtual GtAbstractPage* loadPage(int index) = 0;
-    virtual GtAbstractOutline* loadOutline() = 0;
+    virtual GtAbstractOutline* loadOutline();
 };
 
 #define GT_DEFINE_DOCUMENT_LOADER(constructor) \

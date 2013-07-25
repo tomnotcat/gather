@@ -3,8 +3,8 @@
  */
 #include "gtdoctabview.h"
 #include "gtapplication.h"
+#include "gtbookmark.h"
 #include "gtdocmodel.h"
-#include "gtdocoutline.h"
 #include "gtdocpage.h"
 #include "gtdocview.h"
 #include "gtmainsettings.h"
@@ -216,10 +216,10 @@ void GtDocTabView::docLoaded(GtDocument *doc)
 
 void GtDocTabView::tocChanged(const QModelIndex &index)
 {
-    GtDocOutline *outline = m_tocModel->outlineFromIndex(index);
-    if (outline) {
+    GtBookmark *bookmark = m_tocModel->bookmarkFromIndex(index);
+    if (bookmark) {
         // TODO: do not scroll when the page is already in viewport
-        QRect rect(m_docView->pageExtents(outline->page));
+        QRect rect(m_docView->pageExtents(bookmark->dest().page()));
         m_docView->scrollTo(rect.x(), rect.y());
     }
 }

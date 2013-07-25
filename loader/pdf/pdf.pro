@@ -3,7 +3,7 @@ TARGET = pdf
 CONFIG += qt debug
 HEADERS += pdfdocument.h pdfpage.h pdfoutline.h
 SOURCES += pdfdocument.cpp pdfpage.cpp pdfoutline.cpp
-INCLUDEPATH += ../../gtbase
+INCLUDEPATH += ../../gtbase/gtbase
 INCLUDEPATH += ../../../mupdf/fitz
 INCLUDEPATH += ../../../mupdf/pdf
 

@@ -9,7 +9,7 @@ SOURCES += gtmain.cpp gtapplication.cpp gtmainwindow.cpp \
     gtmainsettings.cpp gtlogindialog.cpp
 FORMS += gtmainwindow.ui gthometabview.ui gtlogindialog.ui
 RESOURCES = gather.qrc
-INCLUDEPATH += $$PWD/../gtbase
+INCLUDEPATH += $$PWD/../gtbase/gtbase
 INCLUDEPATH += $$PWD/../gtview
 INCLUDEPATH += $$PWD/../gtsvce/gtsvce
 
