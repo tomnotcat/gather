@@ -3,6 +3,8 @@
  */
 #include "gttocmodel.h"
 #include "gtbookmark.h"
+#include "gtbookmarks.h"
+#include "gtdocmodel.h"
 #include "gtdocpage.h"
 #include "gtdocument.h"
 #include "gttocdelegate.h"
@@ -15,69 +17,66 @@ class GtTocModelPrivate
     Q_DECLARE_PUBLIC(GtTocModel)
 
 public:
-    GtTocModelPrivate();
+    GtTocModelPrivate(GtTocModel *q);
     ~GtTocModelPrivate();
 
 protected:
     GtTocModel *q_ptr;
-    GtDocument *document;
+    GtDocModel *docModel;
     GtBookmark *bookmark;
 };
 
-GtTocModelPrivate::GtTocModelPrivate()
-    : document(0)
+GtTocModelPrivate::GtTocModelPrivate(GtTocModel *q)
+    : q_ptr(q)
+    , docModel(0)
     , bookmark(0)
 {
 }
 
 GtTocModelPrivate::~GtTocModelPrivate()
 {
-    delete bookmark;
 }
 
 GtTocModel::GtTocModel(QObject *parent)
     : QAbstractItemModel(parent)
-    , d_ptr(new GtTocModelPrivate())
+    , d_ptr(new GtTocModelPrivate(this))
 {
-    d_ptr->q_ptr = this;
 }
 
 GtTocModel::~GtTocModel()
 {
 }
 
-GtDocument* GtTocModel::document() const
+GtDocModel* GtTocModel::docModel() const
 {
     Q_D(const GtTocModel);
-    return d->document;
+    return d->docModel;
 }
 
-void GtTocModel::setDocument(GtDocument *document)
+void GtTocModel::setDocModel(GtDocModel *docModel)
 {
     Q_D(GtTocModel);
 
-    if (document == d->document)
+    if (docModel == d->docModel)
         return;
 
-    if (d->document) {
-        disconnect(d->document,
+    if (d->docModel) {
+        disconnect(d->docModel,
                    SIGNAL(destroyed(QObject*)),
                    this,
-                   SLOT(documentDestroyed(QObject*)));
+                   SLOT(docModelDestroyed(QObject*)));
     }
 
-    d->document = document;
-    if (d->document) {
-        if (d->bookmark)
-            delete d->bookmark;
+    d->docModel = docModel;
+    d->bookmark = 0;
 
-        d->bookmark = new GtBookmark();
-        d->document->loadOutline(d->bookmark);
+    if (d->docModel) {
+        d->bookmark = docModel->bookmarks()->root();
 
-        connect(d->document,
+        connect(d->docModel,
                 SIGNAL(destroyed(QObject*)),
                 this,
-                SLOT(documentDestroyed(QObject*)));
+                SLOT(docModelDestroyed(QObject*)));
     }
 }
 
@@ -165,7 +164,11 @@ QVariant GtTocModel::data(const QModelIndex &index, int role) const
         return QVariant(node->dest().page() + 1);
 
     case GtTocDelegate::PageLabel:
-        return QVariant(d->document->page(node->dest().page())->label());
+        {
+            GtDocument *document = d->docModel->document();
+            return QVariant(document->page(node->dest().page())->label());
+        }
+        break;
 
     default:
         break;
@@ -187,12 +190,12 @@ QVariant GtTocModel::headerData(int, Qt::Orientation, int) const
     return QVariant();
 }
 
-void GtTocModel::documentDestroyed(QObject *object)
+void GtTocModel::docModelDestroyed(QObject *object)
 {
     Q_D(GtTocModel);
 
-    if (object == static_cast<QObject *>(d->document))
-        setDocument(0);
+    if (object == static_cast<QObject *>(d->docModel))
+        setDocModel(0);
 }
 
 GT_END_NAMESPACE

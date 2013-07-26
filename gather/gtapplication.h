@@ -4,7 +4,7 @@
 #ifndef __GT_APPLICATION_H__
 #define __GT_APPLICATION_H__
 
-#include "gtdocument.h"
+#include "gtobject.h"
 #include <QtCore/QPointer>
 #include <QtWidgets/QApplication>
 
@@ -12,7 +12,7 @@ class QLocalServer;
 
 GT_BEGIN_NAMESPACE
 
-class GtDocLoader;
+class GtDocManager;
 class GtUserClient;
 class GtMainSettings;
 class GtMainWindow;
@@ -29,9 +29,9 @@ public:
     bool isTheOnlyReader() const;
     GtMainWindow* mainWindow();
     QList<GtMainWindow*> mainWindows();
-    QThread* renderThread();
-    GtDocumentPointer loadDocument(const QString &fileName);
     inline GtMainSettings* settings() { return m_settings; }
+    inline QThread* docThread() { return m_docThread; }
+    inline GtDocManager* docManager() { return m_docManager; }
 
 public:
     static GtApplication* instance();
@@ -43,7 +43,6 @@ protected:
 
 private:
     void clearWindows();
-    void clearDocuments();
 
 public Q_SLOTS:
     GtMainWindow* newMainWindow();
@@ -59,12 +58,12 @@ private Q_SLOTS:
 
 private:
     QList<QPointer<GtMainWindow> > m_mainWindows;
-    QHash<QString, GtDocumentPointer> m_documents;
     QLocalServer *m_localServer;
 
     GtMainSettings *m_settings;
     QThread *m_docThread;
-    GtDocLoader *m_docLoader;
+
+    GtDocManager *m_docManager;
 
     // Network
     GtUserClient *m_userClient;

@@ -4,8 +4,8 @@
 #include "gtdoctabview.h"
 #include "gtapplication.h"
 #include "gtbookmark.h"
-#include "gtdocmodel.h"
 #include "gtdocpage.h"
+#include "gtdocument.h"
 #include "gtdocview.h"
 #include "gtmainsettings.h"
 #include "gtmainwindow.h"
@@ -23,11 +23,6 @@ GtDocTabView::GtDocTabView(QWidget *parent)
     : GtTabView(parent)
 {
     // model
-    m_docModel = new GtDocModel(this);
-    m_docModel->setMinScale(0.1);
-    m_docModel->setMaxScale(4.0);
-    m_docModel->setMouseMode(GtDocModel::SelectText);
-
     m_tocModel = new GtTocModel(this);
 
     // view
@@ -56,8 +51,7 @@ GtDocTabView::GtDocTabView(QWidget *parent)
     m_docView = new GtDocView(m_splitter);
     m_docView->setMinimumWidth(120);
     m_docView->setObjectName(QStringLiteral("docView"));
-    m_docView->setModel(m_docModel);
-    m_docView->setRenderThread(GtApplication::instance()->renderThread());
+    m_docView->setRenderThread(GtApplication::instance()->docThread());
     m_docView->setRenderCacheSize(1024 * 1024 * 20);
     m_docView->setContextMenuPolicy(Qt::CustomContextMenu);
     m_splitter->addWidget(m_docView);
@@ -79,40 +73,40 @@ GtDocTabView::~GtDocTabView()
 {
     m_docView->setModel(0);
     m_tocView->setModel(0);
-    m_docModel->setDocument(0);
-    m_tocModel->setDocument(0);
+    m_tocModel->setDocModel(0);
 }
 
-GtDocumentPointer GtDocTabView::document() const
+GtDocModelPointer GtDocTabView::docModel() const
 {
-    return m_document;
+    return m_docModel;
 }
 
-void GtDocTabView::setDocument(GtDocumentPointer document)
+void GtDocTabView::setDocModel(GtDocModelPointer docModel)
 {
-    m_docModel->setDocument(0);
-    m_tocModel->setDocument(0);
+    m_tocModel->setDocModel(0);
     m_tocView->setModel(0);
 
-    // release old document first
-    if (m_document) {
-        disconnect(m_document.data(),
+    // release old model first
+    if (m_docModel) {
+        disconnect(m_docModel->document(),
                    SIGNAL(loaded(GtDocument*)),
                    this,
-                   SLOT(docLoaded(GtDocument*)));
-        m_document = 0;
+                   SLOT(documentLoaded(GtDocument*)));
+        m_docModel = 0;
     }
 
-    m_document = document;
-    if (0 == m_document)
+    m_docModel = docModel;
+    m_docView->setModel(docModel.data());
+
+    if (0 == m_docModel)
         return;
 
-    if (m_document->isLoaded()) {
-        docLoaded(m_document.data());
+    if (m_docModel->document()->isLoaded()) {
+        documentLoaded(m_docModel->document());
     }
     else {
-        connect(m_document.data(), SIGNAL(loaded(GtDocument*)),
-                this, SLOT(docLoaded(GtDocument*)));
+        connect(m_docModel->document(), SIGNAL(loaded(GtDocument*)),
+                this, SLOT(documentLoaded(GtDocument*)));
     }
 }
 
@@ -188,26 +182,26 @@ void GtDocTabView::showDocViewContextMenu(const QPoint &pos)
     menu.exec(QCursor::pos());
 }
 
-void GtDocTabView::docLoaded(GtDocument *doc)
+void GtDocTabView::documentLoaded(GtDocument *document)
 {
-    if (doc != m_document.data()) {
-        qWarning() << "invalid document loaded:" << m_document.data() << doc;
+    if (document != m_docModel->document()) {
+        qWarning() << "invalid document loaded:"
+                   << m_docModel->document() << document;
         return;
     }
 
-    if (m_document->isLoaded()) {
-        m_docModel->setDocument(m_document.data());
-        m_tocModel->setDocument(m_document.data());
+    if (document->isLoaded()) {
+        m_tocModel->setDocModel(m_docModel.data());
         m_tocView->setModel(m_tocModel);
         m_docView->setFocus();
 
         // set tab text with document title
         QTabWidget *tabWidget = m_mainWindow->ui.tabWidget;
         int index = tabWidget->indexOf(this);
-        tabWidget->setTabText(index, m_document->title());
-        tabWidget->setTabToolTip(index, m_document->title());
+        tabWidget->setTabText(index, document->title());
+        tabWidget->setTabToolTip(index, document->title());
 
-        m_mainWindow->setWindowTitle(m_document->title());
+        m_mainWindow->setWindowTitle(document->title());
     }
     else {
         Q_ASSERT(0);

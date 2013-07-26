@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtdocmodel.h"
+#include "gtbookmarks.h"
 #include "gtdocnotes.h"
 #include "gtdocument.h"
 #include <QtCore/QDebug>
@@ -20,6 +21,7 @@ public:
 protected:
     GtDocModel *q_ptr;
     GtDocument *document;
+    GtBookmarks *bookmarks;
     GtDocNotes *notes;
     int pageCount;
     int page;
@@ -36,8 +38,9 @@ protected:
 GtDocModelPrivate::GtDocModelPrivate(GtDocModel *q)
     : q_ptr(q)
     , document(0)
+    , bookmarks(0)
     , notes(0)
-    , pageCount(0)
+    , pageCount(-1)
     , page(-1)
     , scale(1.)
     , maxScale(std::numeric_limits<double>::max())
@@ -82,20 +85,19 @@ void GtDocModel::setDocument(GtDocument *document)
                    SIGNAL(destroyed(QObject*)),
                    this,
                    SLOT(documentDestroyed(QObject*)));
-    }
 
-    if (d->notes) {
-        disconnect(d->notes,
-                   SIGNAL(destroyed(QObject*)),
-                   this,
-                   SLOT(notesDestroyed(QObject*)));
+        if (d->document->parent() == this)
+            delete d->document;
     }
 
     d->document = document;
-    d->notes = 0;
+    d->pageCount = -1;
+
     if (d->document) {
-        d->pageCount = document->pageCount();
-        setPage(CLAMP(d->page, 0, d->pageCount - 1));
+        if (document->isLoaded()) {
+            d->pageCount = document->pageCount();
+            setPage(CLAMP(d->page, 0, d->pageCount - 1));
+        }
 
         connect(d->document,
                 SIGNAL(destroyed(QObject*)),
@@ -103,7 +105,44 @@ void GtDocModel::setDocument(GtDocument *document)
                 SLOT(documentDestroyed(QObject*)));
     }
 
+    if (-1 == d->pageCount)
+        setPage(-1);
+
     emit documentChanged(d->document);
+}
+
+GtBookmarks* GtDocModel::bookmarks() const
+{
+    Q_D(const GtDocModel);
+    return d->bookmarks;
+}
+
+void GtDocModel::setBookmarks(GtBookmarks *bookmarks)
+{
+    Q_D(GtDocModel);
+
+    if (bookmarks == d->bookmarks)
+        return;
+
+    if (d->bookmarks) {
+        disconnect(d->bookmarks,
+                   SIGNAL(destroyed(QObject*)),
+                   this,
+                   SLOT(bookmarksDestroyed(QObject*)));
+
+        if (d->bookmarks->parent() == this)
+            delete d->bookmarks;
+    }
+
+    d->bookmarks = bookmarks;
+    if (d->bookmarks) {
+        connect(d->bookmarks,
+                SIGNAL(destroyed(QObject*)),
+                this,
+                SLOT(bookmarksDestroyed(QObject*)));
+    }
+
+    emit bookmarksChanged(d->bookmarks);
 }
 
 GtDocNotes* GtDocModel::notes() const
@@ -124,6 +163,9 @@ void GtDocModel::setNotes(GtDocNotes *notes)
                    SIGNAL(destroyed(QObject*)),
                    this,
                    SLOT(notesDestroyed(QObject*)));
+
+        if (d->notes->parent() == this)
+            delete d->notes;
     }
 
     d->notes = notes;
@@ -147,10 +189,13 @@ void GtDocModel::setPage(int page)
 {
     Q_D(GtDocModel);
 
-    if (d->page == page)
+    if (!d->document || d->page == page)
         return;
 
-    if (page < 0 || (d->document && page >= d->pageCount))
+    if (-1 == d->pageCount && d->document->isLoaded())
+        d->pageCount = d->document->pageCount();
+
+    if (page < 0 || page >= d->pageCount)
         return;
 
     d->page = page;
@@ -320,6 +365,14 @@ void GtDocModel::documentDestroyed(QObject *object)
 
     if (object == static_cast<QObject *>(d->document))
         setDocument(0);
+}
+
+void GtDocModel::bookmarksDestroyed(QObject *object)
+{
+    Q_D(GtDocModel);
+
+    if (object == static_cast<QObject *>(d->bookmarks))
+        setBookmarks(0);
 }
 
 void GtDocModel::notesDestroyed(QObject *object)

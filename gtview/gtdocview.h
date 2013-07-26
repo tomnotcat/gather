@@ -11,6 +11,7 @@
 GT_BEGIN_NAMESPACE
 
 class GtDocModel;
+class GtBookmarks;
 class GtDocNotes;
 class GtDocument;
 class GtDocViewPrivate;
@@ -21,7 +22,6 @@ class GT_VIEW_EXPORT GtDocView : public QAbstractScrollArea, public GtObject
 
 public:
     explicit GtDocView(QWidget *parent = 0);
-    explicit GtDocView(GtDocModel *model, QWidget *parent = 0);
     ~GtDocView();
 
 public:
@@ -57,6 +57,8 @@ private Q_SLOTS:
     void renderFinished(int page);
     void modelDestroyed(QObject *object);
     void documentChanged(GtDocument *document);
+    void documentLoaded(GtDocument *document);
+    void bookmarksChanged(GtBookmarks *bookmarks);
     void notesChanged(GtDocNotes *notes);
     void pageChanged(int page);
     void scaleChanged(double scale);

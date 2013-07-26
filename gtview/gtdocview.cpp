@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtdocview.h"
+#include "gtbookmarks.h"
 #include "gtdocmodel.h"
 #include "gtdocnote.h"
 #include "gtdocnotes.h"
@@ -56,12 +57,16 @@ public:
     void changePage(int page);
     void resizeContentArea(const QSize &size);
 
+    inline bool isDocLoaded() const {
+        return m_document && m_document->isLoaded();
+    }
+
     inline int evenPageLeft() {
-        return (layoutMode == GtDocModel::EvenPageLeft) ? 1 : 0;
+        return (m_layoutMode == GtDocModel::EvenPageLeft) ? 1 : 0;
     }
 
     inline bool dualPage() {
-        return (layoutMode != GtDocModel::SinglePage);
+        return (m_layoutMode != GtDocModel::SinglePage);
     }
 
     void heightToPage(int page, double *height, double *dualHeight);
@@ -69,11 +74,11 @@ public:
     QRect computeBorder(const QSize &size);
 
     inline QSize pageSizeOfView(int index) {
-        return document->page(index)->size(scale, rotation);
+        return m_document->page(index)->size(m_scale, m_rotation);
     }
 
     inline QSize pageSizeOfDoc(int index) {
-        return document->page(index)->size(1.0, rotation);
+        return m_document->page(index)->size(1.0, m_rotation);
     }
 
     inline double zoomForSizeFitWidth(const QSize &docSize,
@@ -116,37 +121,38 @@ public:
 
 private:
     GtDocView *q_ptr;
-    GtDocModel *model;
-    GtDocument *document;
-    GtDocNotes *notes;
-    int beginPage;
-    int endPage;
-    int currentPage;
-    int pageCount;
-    int rotation;
-    int spacing;
-    double scale;
-    bool continuous;
-    GtDocModel::LayoutMode layoutMode;
-    GtDocModel::SizingMode sizingMode;
-    GtDocModel::MouseMode mouseMode;
-    HeightCache heightCache;
+    GtDocModel *m_model;
+    GtDocument *m_document;
+    GtBookmarks *m_bookmarks;
+    GtDocNotes *m_notes;
+    int m_beginPage;
+    int m_endPage;
+    int m_currentPage;
+    int m_pageCount;
+    int m_rotation;
+    int m_spacing;
+    double m_scale;
+    bool m_continuous;
+    GtDocModel::LayoutMode m_layoutMode;
+    GtDocModel::SizingMode m_sizingMode;
+    GtDocModel::MouseMode m_mouseMode;
+    HeightCache m_heightCache;
 
-    QSharedPointer<GtDocRenderCache> renderCache;
-    QBasicTimer cursorBlinkTimer;
+    QSharedPointer<GtDocRenderCache> m_renderCache;
+    QBasicTimer m_cursorBlinkTimer;
 
     // selection
-    GtDocPoint selectBegin;
-    GtDocPoint selectEnd;
+    GtDocPoint m_selectBegin;
+    GtDocPoint m_selectEnd;
 
     // prevent update visible pages
-    int lockPageUpdate;
-    bool lockPageNeedUpdate;
+    int m_lockPageUpdate;
+    bool m_lockPageNeedUpdate;
 
     // infinite resizing loop prevention
-    bool verticalScrollBarVisible;
-    bool pendingRelayoutPages;
-    bool selectWordOnDoubleClick;
+    bool m_verticalScrollBarVisible;
+    bool m_pendingRelayoutPages;
+    bool m_selectWordOnDoubleClick;
 };
 
 GtDocViewPrivate::HeightCache::HeightCache()
@@ -295,31 +301,33 @@ void GtDocViewPrivate::HeightCache::rebuild()
 
 GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     : q_ptr(parent)
-    , model(0)
-    , document(0)
-    , notes(0)
-    , beginPage(-1)
-    , endPage(-1)
-    , currentPage(-1)
-    , pageCount(0)
-    , rotation(0)
-    , spacing(5)
-    , scale(1.0)
-    , continuous(true)
-    , layoutMode(GtDocModel::SinglePage)
-    , sizingMode(GtDocModel::FitWidth)
-    , mouseMode(GtDocModel::BrowseMode)
-    , renderCache(new GtDocRenderCache(), &QObject::deleteLater)
-    , lockPageUpdate(0)
-    , lockPageNeedUpdate(false)
-    , verticalScrollBarVisible(false)
-    , pendingRelayoutPages(false)
-    , selectWordOnDoubleClick(false)
+    , m_model(0)
+    , m_document(0)
+    , m_bookmarks(0)
+    , m_notes(0)
+    , m_beginPage(-1)
+    , m_endPage(-1)
+    , m_currentPage(-1)
+    , m_pageCount(0)
+    , m_rotation(0)
+    , m_spacing(5)
+    , m_scale(1.0)
+    , m_continuous(true)
+    , m_layoutMode(GtDocModel::SinglePage)
+    , m_sizingMode(GtDocModel::FitWidth)
+    , m_mouseMode(GtDocModel::BrowseMode)
+    , m_renderCache(new GtDocRenderCache(), &QObject::deleteLater)
+    , m_lockPageUpdate(0)
+    , m_lockPageNeedUpdate(false)
+    , m_verticalScrollBarVisible(false)
+    , m_pendingRelayoutPages(false)
+    , m_selectWordOnDoubleClick(false)
 
 {
     Q_Q(GtDocView);
 
-    q->connect(renderCache.data(), SIGNAL(finished(int)), q, SLOT(renderFinished(int)));
+    q->connect(m_renderCache.data(), SIGNAL(finished(int)),
+               q, SLOT(renderFinished(int)));
 
     q->setFrameStyle(QFrame::NoFrame);
     q->setAttribute(Qt::WA_StaticContents);
@@ -353,7 +361,7 @@ GtDocViewPrivate::~GtDocViewPrivate()
 
 void GtDocViewPrivate::changePage(int page)
 {
-    currentPage = page;
+    m_currentPage = page;
     relayoutPagesLater();
 }
 
@@ -372,26 +380,27 @@ void GtDocViewPrivate::resizeContentArea(const QSize &size)
 
 void GtDocViewPrivate::heightToPage(int page, double *height, double *dualHeight)
 {
-    heightCache.height(document, page,
-                       rotation, evenPageLeft(), scale,
-                       height, dualHeight);
+    m_heightCache.height(m_document, page,
+                         m_rotation, evenPageLeft(), m_scale,
+                         height, dualHeight);
 }
 
 int GtDocViewPrivate::pageYOffset(int page)
 {
-    QSize maxSize = document->maxPageSize(scale, rotation);
+    QSize maxSize = m_document->maxPageSize(m_scale, m_rotation);
     QRect border = computeBorder(maxSize);
     double offset = 0;
 
-    if (layoutMode != GtDocModel::SinglePage) {
+    if (m_layoutMode != GtDocModel::SinglePage) {
         int e = evenPageLeft();
         heightToPage(page, 0, &offset);
-        offset += ((page + e) / 2 + 1) * spacing +
+        offset += ((page + e) / 2 + 1) * m_spacing +
                   ((page + e) / 2 ) * (border.top() + border.bottom());
     }
     else {
         heightToPage(page, &offset, 0);
-        offset += (page + 1) * spacing + page * (border.top() + border.bottom());
+        offset += (page + 1) * m_spacing +
+                  page * (border.top() + border.bottom());
     }
 
     return offset;
@@ -432,22 +441,22 @@ QRect GtDocViewPrivate::pageExtents(int page, QRect *border)
     r.setWidth(pageSize.width() + b.left() + b.right());
     r.setHeight(pageSize.height() + b.top() + b.bottom());
 
-    if (continuous) {
-        QSize maxSize = document->maxPageSize(scale, rotation);
+    if (m_continuous) {
+        QSize maxSize = m_document->maxPageSize(m_scale, m_rotation);
         int maxWidth;
 
         maxWidth = maxSize.width() + b.left() + b.right();
 
         /* Get the location of the bounding box */
         if (dualPage()) {
-            x = spacing + ((page % 2 == evenPageLeft()) ? 0 : 1) * (maxWidth + spacing);
-            x = x + MAX(0, vs.width() - (maxWidth * 2 + spacing * 3)) / 2;
+            x = m_spacing + ((page % 2 == evenPageLeft()) ? 0 : 1) * (maxWidth + m_spacing);
+            x = x + MAX(0, vs.width() - (maxWidth * 2 + m_spacing * 3)) / 2;
             if (page % 2 == evenPageLeft())
                 x = x + (maxWidth - pageSize.width() - b.left() - b.right());
         }
         else {
-            x = spacing;
-            x = x + MAX(0, vs.width() - (pageSize.width() + spacing * 2)) / 2;
+            x = m_spacing;
+            x = x + MAX(0, vs.width() - (pageSize.width() + m_spacing * 2)) / 2;
         }
 
         y = pageYOffset(page);
@@ -462,7 +471,7 @@ QRect GtDocViewPrivate::pageExtents(int page, QRect *border)
             otherPage = (page % 2 == evenPageLeft()) ? page + 1: page - 1;
 
             /* First, we get the bounding box of the two pages */
-            if (otherPage < pageCount && (0 <= otherPage)) {
+            if (otherPage < m_pageCount && (0 <= otherPage)) {
                 otherSize = pageSizeOfView (otherPage);
 
                 if (otherSize.width() > pageSize.width())
@@ -475,8 +484,8 @@ QRect GtDocViewPrivate::pageExtents(int page, QRect *border)
             overallBorder = computeBorder(maxSize);
 
             /* Find the offsets */
-            x = spacing;
-            y = spacing;
+            x = m_spacing;
+            y = m_spacing;
 
             /* Adjust for being the left or right page */
             if (page % 2 == evenPageLeft()) {
@@ -485,23 +494,22 @@ QRect GtDocViewPrivate::pageExtents(int page, QRect *border)
             else {
                 x = x + (maxSize.width() +
                          overallBorder.left() +
-                         overallBorder.right()) + spacing;
+                         overallBorder.right()) + m_spacing;
             }
 
             y = y + (maxSize.height() - pageSize.height()) / 2;
 
             /* Adjust for extra allocation */
-            x = x + MAX(0, vs.width() -
-                        ((maxSize.width() + overallBorder.left() + overallBorder.right()) * 2 + spacing * 3)) / 2;
-            y = y + MAX(0, vs.height() - (pageSize.height() + spacing * 2)) / 2;
+            x = x + MAX(0, vs.width() - ((maxSize.width() + overallBorder.left() + overallBorder.right()) * 2 + m_spacing * 3)) / 2;
+            y = y + MAX(0, vs.height() - (pageSize.height() + m_spacing * 2)) / 2;
         }
         else {
-            x = spacing;
-            y = spacing;
+            x = m_spacing;
+            y = m_spacing;
 
             /* Adjust for extra allocation */
-            x = x + MAX(0, vs.width() - (pageSize.width() + b.left() + b.right() + spacing * 2)) / 2;
-            y = y + MAX(0, vs.height() - (pageSize.height() + b.top() + b.bottom() + spacing * 2)) / 2;
+            x = x + MAX(0, vs.width() - (pageSize.width() + b.left() + b.right() + m_spacing * 2)) / 2;
+            y = y + MAX(0, vs.height() - (pageSize.height() + b.top() + b.bottom() + m_spacing * 2)) / 2;
         }
     }
 
@@ -517,9 +525,9 @@ QSize GtDocViewPrivate::layoutPagesContinuous()
 {
     QSize size;
 
-    size.setHeight(pageYOffset(pageCount));
+    size.setHeight(pageYOffset(m_pageCount));
 
-    switch (sizingMode) {
+    switch (m_sizingMode) {
     case GtDocModel::FitWidth:
     case GtDocModel::BestFit:
         size.setWidth(0);
@@ -527,16 +535,17 @@ QSize GtDocViewPrivate::layoutPagesContinuous()
 
     case GtDocModel::FreeSize:
         {
-            QSize maxSize = document->maxPageSize(scale, rotation);
+            QSize maxSize = m_document->maxPageSize(m_scale, m_rotation);
             QRect border = computeBorder(maxSize);
 
-            size.setWidth(maxSize.width() + (spacing * 2) +
+            size.setWidth(maxSize.width() + (m_spacing * 2) +
                           border.left() + border.right());
         }
         break;
 
     default:
         Q_ASSERT(0);
+        break;
     }
 
     return size;
@@ -564,20 +573,20 @@ void GtDocViewPrivate::zoomForSizeContinuousAndDualPage(int width, int height)
 {
     Q_Q(GtDocView);
 
-    QSize docSize(document->maxPageSize(1.0, this->rotation));
+    QSize docSize(m_document->maxPageSize(1.0, m_rotation));
     QRect border(computeBorder(docSize));
 
     docSize.setWidth(docSize.width() * 2);
-    width -= (2 * (border.left() + border.right()) + 3 * spacing);
-    height -= (border.top() + border.bottom() + 2 * spacing - 1);
+    width -= (2 * (border.left() + border.right()) + 3 * m_spacing);
+    height -= (border.top() + border.bottom() + 2 * m_spacing - 1);
 
     QSize viewSize(width - q->verticalScrollBar()->width(), height);
 
-    if (sizingMode == GtDocModel::FitWidth) {
-        model->setScale(zoomForSizeFitWidth(docSize, viewSize));
+    if (m_sizingMode == GtDocModel::FitWidth) {
+        m_model->setScale(zoomForSizeFitWidth(docSize, viewSize));
     }
-    else if (sizingMode == GtDocModel::BestFit) {
-        model->setScale(zoomForSizeBestFit(docSize, viewSize));
+    else if (m_sizingMode == GtDocModel::BestFit) {
+        m_model->setScale(zoomForSizeBestFit(docSize, viewSize));
     }
     else {
         Q_ASSERT(0);
@@ -588,19 +597,19 @@ void GtDocViewPrivate::zoomForSizeContinuous(int width, int height)
 {
     Q_Q(GtDocView);
 
-    QSize docSize(document->maxPageSize(1.0, this->rotation));
+    QSize docSize(m_document->maxPageSize(1.0, m_rotation));
     QRect border(computeBorder(docSize));
 
-    width -= (border.left() + border.right() + 2 * spacing);
-    height -= (border.top() + border.bottom() + 2 * spacing - 1);
+    width -= (border.left() + border.right() + 2 * m_spacing);
+    height -= (border.top() + border.bottom() + 2 * m_spacing - 1);
 
     QSize viewSize(width - q->verticalScrollBar()->width(), height);
 
-    if (sizingMode == GtDocModel::FitWidth) {
-        model->setScale(zoomForSizeFitWidth(docSize, viewSize));
+    if (m_sizingMode == GtDocModel::FitWidth) {
+        m_model->setScale(zoomForSizeFitWidth(docSize, viewSize));
     }
-    else if (sizingMode == GtDocModel::BestFit) {
-        model->setScale(zoomForSizeBestFit(docSize, viewSize));
+    else if (m_sizingMode == GtDocModel::BestFit) {
+        m_model->setScale(zoomForSizeBestFit(docSize, viewSize));
     }
     else {
         Q_ASSERT(0);
@@ -612,10 +621,10 @@ void GtDocViewPrivate::zoomForSizeDualPage(int width, int height)
     Q_Q(GtDocView);
 
     /* Find the largest of the two. */
-    QSize docSize(pageSizeOfDoc(currentPage));
-    int otherPage = currentPage ^ 1;
+    QSize docSize(pageSizeOfDoc(m_currentPage));
+    int otherPage = m_currentPage ^ 1;
 
-    if (otherPage < pageCount) {
+    if (otherPage < m_pageCount) {
         QSize docSize2(pageSizeOfDoc(otherPage));
 
         if (docSize2.width() > docSize.width())
@@ -628,16 +637,16 @@ void GtDocViewPrivate::zoomForSizeDualPage(int width, int height)
     QRect border(computeBorder(QSize(width, height)));
 
     docSize.setWidth(docSize.width() * 2);
-    width -= ((border.left() + border.right())* 2 + 3 * spacing);
-    height -= (border.top() + border.bottom() + 2 * spacing);
+    width -= ((border.left() + border.right())* 2 + 3 * m_spacing);
+    height -= (border.top() + border.bottom() + 2 * m_spacing);
 
-    if (sizingMode == GtDocModel::FitWidth) {
+    if (m_sizingMode == GtDocModel::FitWidth) {
         QSize viewSize(width - q->verticalScrollBar()->width(), height);
-        model->setScale(zoomForSizeFitWidth(docSize, viewSize));
+        m_model->setScale(zoomForSizeFitWidth(docSize, viewSize));
     }
-    else if (sizingMode == GtDocModel::BestFit) {
+    else if (m_sizingMode == GtDocModel::BestFit) {
         QSize viewSize(width, height);
-        model->setScale(zoomForSizeBestFit(docSize, viewSize));
+        m_model->setScale(zoomForSizeBestFit(docSize, viewSize));
     }
     else {
         Q_ASSERT(0);
@@ -648,19 +657,19 @@ void GtDocViewPrivate::zoomForSizeSinglePage(int width, int height)
 {
     Q_Q(GtDocView);
 
-    QSize docSize(pageSizeOfDoc(currentPage));
+    QSize docSize(pageSizeOfDoc(m_currentPage));
     QRect border(computeBorder(QSize(width, height)));
 
-    width -= (border.left() + border.right() + 2 * spacing);
-    height -= (border.top() + border.bottom() + 2 * spacing);
+    width -= (border.left() + border.right() + 2 * m_spacing);
+    height -= (border.top() + border.bottom() + 2 * m_spacing);
 
-    if (sizingMode == GtDocModel::FitWidth) {
+    if (m_sizingMode == GtDocModel::FitWidth) {
         QSize viewSize(width - q->verticalScrollBar()->width(), height);
-        model->setScale(zoomForSizeFitWidth(docSize, viewSize));
+        m_model->setScale(zoomForSizeFitWidth(docSize, viewSize));
     }
-    else if (sizingMode == GtDocModel::BestFit) {
+    else if (m_sizingMode == GtDocModel::BestFit) {
         QSize viewSize(width, height);
-        model->setScale(zoomForSizeBestFit(docSize, viewSize));
+        m_model->setScale(zoomForSizeBestFit(docSize, viewSize));
     }
     else {
         Q_ASSERT(0);
@@ -712,7 +721,7 @@ bool GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
     p.translate(-x, -y);
 
     // draw page contents
-    QImage image = renderCache->image(index);
+    QImage image = m_renderCache->image(index);
     if (image.isNull()) {
         p.fillRect(realArea, QColor(255, 255, 255));
         return false;
@@ -787,7 +796,7 @@ QRegion GtDocViewPrivate::selectedRegion(GtDocRange &range, GtDocPage *page) con
 {
     QRegion region;
 
-    switch (mouseMode) {
+    switch (m_mouseMode) {
     case GtDocModel::SelectText:
         {
             QPoint selText(range.intersectedText(page));
@@ -872,24 +881,24 @@ QTransform GtDocViewPrivate::pageAreaToView(GtDocPage *page) const
     qreal w, h;
 
     page->size(&w, &h);
-    w *= scale;
-    h *= scale;
+    w *= m_scale;
+    h *= m_scale;
 
-    if (90 == rotation) {
+    if (90 == m_rotation) {
         m = m.translate(h, 0);
     }
-    else if (180 == rotation) {
+    else if (180 == m_rotation) {
         m = m.translate(w, h);
     }
-    else if (270 == rotation) {
+    else if (270 == m_rotation) {
         m = m.translate(0, w);
     }
     else {
-        Q_ASSERT(rotation == 0);
+        Q_ASSERT(m_rotation == 0);
     }
 
-    m = m.scale(scale, scale);
-    return m.rotate(rotation);
+    m = m.scale(m_scale, m_scale);
+    return m.rotate(m_rotation);
 }
 
 QPoint GtDocViewPrivate::pageViewToView(int index)
@@ -910,7 +919,7 @@ GtDocPoint GtDocViewPrivate::docPointFromViewPoint(const QPoint &p, bool inside)
 {
     Q_Q(GtDocView);
 
-    if (!document)
+    if (!isDocLoaded())
         return GtDocPoint();
 
     QPoint point(p + q->scrollPoint());
@@ -920,7 +929,7 @@ GtDocPoint GtDocViewPrivate::docPointFromViewPoint(const QPoint &p, bool inside)
     int bestDistance = -1;
     int distance;
 
-    for (int i = beginPage; i < endPage; ++i) {
+    for (int i = m_beginPage; i < m_endPage; ++i) {
         distance = pageDistance(i, point, &ppoint);
         if (-1 == bestPage || distance < bestDistance) {
             bestPage = i;
@@ -936,7 +945,7 @@ GtDocPoint GtDocViewPrivate::docPointFromViewPoint(const QPoint &p, bool inside)
     if (inside && bestDistance != 0)
         return GtDocPoint();
 
-    GtDocPage *page = document->page(bestPage);
+    GtDocPage *page = m_document->page(bestPage);
     QTransform m = pageAreaToView(page);
     m = m.inverted();
 
@@ -958,7 +967,7 @@ void GtDocViewPrivate::updateCursor(const QPoint &p)
 {
     Q_Q(GtDocView);
 
-    if (GtDocModel::SelectText == mouseMode) {
+    if (GtDocModel::SelectText == m_mouseMode) {
         GtDocPoint docPoint(docPointFromViewPoint(p, true));
 
         if (docPoint.text(true) != -1)
@@ -972,8 +981,8 @@ void GtDocViewPrivate::relayoutPagesLater()
 {
     Q_Q(GtDocView);
 
-    if (!pendingRelayoutPages) {
-        pendingRelayoutPages = true;
+    if (!m_pendingRelayoutPages) {
+        m_pendingRelayoutPages = true;
         QMetaObject::invokeMethod(q, "relayoutPages", Qt::QueuedConnection);
     }
 }
@@ -1022,10 +1031,10 @@ void GtDocViewPrivate::repaintOldAndNewSelection(const GtDocRange &oldRange)
     int selBegin = updateRange.begin().page()->index();
     int selEnd = updateRange.end().page()->index() + 1;
 
-    selBegin = MAX(beginPage, selBegin);
-    selEnd = MIN(endPage, selEnd);
+    selBegin = MAX(m_beginPage, selBegin);
+    selEnd = MIN(m_endPage, selEnd);
     for (int i = selBegin; i < selEnd; ++i) {
-        GtDocPage *page = document->page(i);
+        GtDocPage *page = m_document->page(i);
         QRegion region = selectedRegion(updateRange, page);
         QRect pageArea, border;
 
@@ -1046,13 +1055,6 @@ GtDocView::GtDocView(QWidget *parent)
 {
 }
 
-GtDocView::GtDocView(GtDocModel *model, QWidget *parent)
-    : QAbstractScrollArea(parent)
-    , d_ptr(new GtDocViewPrivate(this))
-{
-    setModel(model);
-}
-
 GtDocView::~GtDocView()
 {
 }
@@ -1060,63 +1062,63 @@ GtDocView::~GtDocView()
 GtDocModel* GtDocView::model() const
 {
     Q_D(const GtDocView);
-    return d->model;
+    return d->m_model;
 }
 
 void GtDocView::setModel(GtDocModel *model)
 {
     Q_D(GtDocView);
 
-    if (model == d->model)
+    if (model == d->m_model)
         return;
 
-    if (d->model) {
-        disconnect(d->model,
+    if (d->m_model) {
+        disconnect(d->m_model,
                    SIGNAL(documentChanged(GtDocument*)),
                    this,
                    SLOT(documentChanged(GtDocument*)));
 
-        disconnect(d->model,
+        disconnect(d->m_model,
                    SIGNAL(notesChanged(GtDocNotes*)),
                    this,
                    SLOT(notesChanged(GtDocNotes*)));
 
-        disconnect(d->model,
+        disconnect(d->m_model,
                    SIGNAL(pageChanged(int)),
                    this,
                    SLOT(pageChanged(int)));
 
-        disconnect(d->model,
+        disconnect(d->m_model,
                    SIGNAL(scaleChanged(double)),
                    this,
                    SLOT(scaleChanged(double)));
 
-        disconnect(d->model,
+        disconnect(d->m_model,
                    SIGNAL(rotationChanged(int)),
                    this,
                    SLOT(rotationChanged(int)));
 
-        disconnect(d->model,
+        disconnect(d->m_model,
                    SIGNAL(continuousChanged(bool)),
                    this,
                    SLOT(continuousChanged(bool)));
 
-        disconnect(d->model,
+        disconnect(d->m_model,
                    SIGNAL(layoutModeChanged(int)),
                    this,
                    SLOT(layoutModeChanged(int)));
 
-        disconnect(d->model,
+        disconnect(d->m_model,
                    SIGNAL(sizingModeChanged(int)),
                    this,
                    SLOT(sizingModeChanged(int)));
 
-        disconnect(d->model,
+        disconnect(d->m_model,
                    SIGNAL(mouseModeChanged(int)),
                    this,
                    SLOT(mouseModeChanged(int)));
 
-        disconnect(d->model,
+        disconnect(d->m_model,
                    SIGNAL(destroyed(QObject*)),
                    this,
                    SLOT(modelDestroyed(QObject*)));
@@ -1124,65 +1126,65 @@ void GtDocView::setModel(GtDocModel *model)
 
     GtDocument *newdoc = 0;
     GtDocNotes *newnotes = 0;
-    d->model = model;
-    d->renderCache->setModel(d->model);
+    d->m_model = model;
+    d->m_renderCache->setModel(d->m_model);
 
-    if (d->model) {
+    if (d->m_model) {
         newdoc = model->document();
         newnotes = model->notes();
-        d->rotation = model->rotation();
-        d->scale = model->scale();
-        d->continuous = model->continuous();
-        d->layoutMode = model->layoutMode();
-        d->sizingMode = model->sizingMode();
-        d->mouseMode = model->mouseMode();
+        d->m_rotation = model->rotation();
+        d->m_scale = model->scale();
+        d->m_continuous = model->continuous();
+        d->m_layoutMode = model->layoutMode();
+        d->m_sizingMode = model->sizingMode();
+        d->m_mouseMode = model->mouseMode();
 
-        connect(d->model,
+        connect(d->m_model,
                 SIGNAL(documentChanged(GtDocument*)),
                 this,
                 SLOT(documentChanged(GtDocument*)));
 
-        connect(d->model,
+        connect(d->m_model,
                 SIGNAL(notesChanged(GtDocNotes*)),
                 this,
                 SLOT(notesChanged(GtDocNotes*)));
 
-        connect(d->model,
+        connect(d->m_model,
                 SIGNAL(pageChanged(int)),
                 this,
                 SLOT(pageChanged(int)));
 
-        connect(d->model,
+        connect(d->m_model,
                 SIGNAL(scaleChanged(double)),
                 this,
                 SLOT(scaleChanged(double)));
 
-        connect(d->model,
+        connect(d->m_model,
                 SIGNAL(rotationChanged(int)),
                 this,
                 SLOT(rotationChanged(int)));
 
-        connect(d->model,
+        connect(d->m_model,
                 SIGNAL(continuousChanged(bool)),
                 this,
                 SLOT(continuousChanged(bool)));
 
-        connect(d->model,
+        connect(d->m_model,
                 SIGNAL(layoutModeChanged(int)),
                 this,
                 SLOT(layoutModeChanged(int)));
 
-        connect(d->model,
+        connect(d->m_model,
                 SIGNAL(sizingModeChanged(int)),
                 this,
                 SLOT(sizingModeChanged(int)));
 
-        connect(d->model,
+        connect(d->m_model,
                 SIGNAL(mouseModeChanged(int)),
                 this,
                 SLOT(mouseModeChanged(int)));
 
-        connect(d->model,
+        connect(d->m_model,
                 SIGNAL(destroyed(QObject*)),
                 this,
                 SLOT(modelDestroyed(QObject*)));
@@ -1195,34 +1197,34 @@ void GtDocView::setModel(GtDocModel *model)
 void GtDocView::setRenderThread(QThread *thread)
 {
     Q_D(GtDocView);
-    d->renderCache->moveToThread(thread);
+    d->m_renderCache->moveToThread(thread);
 }
 
 void GtDocView::setRenderCacheSize(int size)
 {
     Q_D(GtDocView);
-    d->renderCache->setMaxSize(size);
+    d->m_renderCache->setMaxSize(size);
 }
 
 void GtDocView::lockPageUpdate()
 {
     Q_D(GtDocView);
-    d->lockPageUpdate++;
+    d->m_lockPageUpdate++;
 }
 
 void GtDocView::unlockPageUpdate(bool update)
 {
     Q_D(GtDocView);
 
-    Q_ASSERT(d->lockPageUpdate > 0);
+    Q_ASSERT(d->m_lockPageUpdate > 0);
 
     if (update)
-        d->lockPageNeedUpdate = true;
+        d->m_lockPageNeedUpdate = true;
 
-    d->lockPageUpdate--;
-    if (0 == d->lockPageUpdate && d->lockPageNeedUpdate) {
+    d->m_lockPageUpdate--;
+    if (0 == d->m_lockPageUpdate && d->m_lockPageNeedUpdate) {
         QMetaObject::invokeMethod(this, "updateVisiblePages", Qt::QueuedConnection);
-        d->lockPageNeedUpdate = false;
+        d->m_lockPageNeedUpdate = false;
     }
 }
 
@@ -1230,8 +1232,8 @@ bool GtDocView::canZoomIn() const
 {
     Q_D(const GtDocView);
 
-    if (d->model)
-        return d->scale < d->model->maxScale();
+    if (d->m_model)
+        return d->m_scale < d->m_model->maxScale();
 
     return false;
 }
@@ -1240,17 +1242,17 @@ void GtDocView::zoomIn()
 {
     Q_D(GtDocView);
 
-    double scale = d->model->scale() * ZOOM_IN_FACTOR;
-    d->model->setSizingMode(GtDocModel::FreeSize);
-    d->model->setScale(scale);
+    double scale = d->m_model->scale() * ZOOM_IN_FACTOR;
+    d->m_model->setSizingMode(GtDocModel::FreeSize);
+    d->m_model->setScale(scale);
 }
 
 bool GtDocView::canZoomOut() const
 {
     Q_D(const GtDocView);
 
-    if (d->model)
-        return d->scale > d->model->minScale();
+    if (d->m_model)
+        return d->m_scale > d->m_model->minScale();
 
     return false;
 }
@@ -1259,9 +1261,9 @@ void GtDocView::zoomOut()
 {
     Q_D(GtDocView);
 
-    double scale = d->model->scale() * ZOOM_OUT_FACTOR;
-    d->model->setSizingMode(GtDocModel::FreeSize);
-    d->model->setScale(scale);
+    double scale = d->m_model->scale() * ZOOM_OUT_FACTOR;
+    d->m_model->setSizingMode(GtDocModel::FreeSize);
+    d->m_model->setScale(scale);
 }
 
 QRect GtDocView::pageExtents(int page, QRect *border) const
@@ -1288,24 +1290,24 @@ GtDocRange GtDocView::selectedRange() const
 
     GtDocRange selRange;
 
-    bool selText = (GtDocModel::SelectText == d->mouseMode);
+    bool selText = (GtDocModel::SelectText == d->m_mouseMode);
     if (selText) {
-        d->selectBegin.text(true);
-        d->selectEnd.text(false);
+        d->m_selectBegin.text(true);
+        d->m_selectEnd.text(false);
         selRange.setType(GtDocRange::TextRange);
     }
     else {
         selRange.setType(GtDocRange::GeomRange);
     }
 
-    if (d->selectBegin < d->selectEnd) {
-        selRange.setRange(d->selectBegin, d->selectEnd);
+    if (d->m_selectBegin < d->m_selectEnd) {
+        selRange.setRange(d->m_selectBegin, d->m_selectEnd);
     }
     else {
-        selRange.setRange(d->selectEnd, d->selectBegin);
+        selRange.setRange(d->m_selectEnd, d->m_selectBegin);
     }
 
-    if (d->selectWordOnDoubleClick) {
+    if (d->m_selectWordOnDoubleClick) {
         return GtDocRange(selRange.begin().beginOfWord(false),
                           selRange.end().endOfWord(false),
                           selRange.type());
@@ -1319,7 +1321,7 @@ GtDocPoint GtDocView::docPointFromViewPoint(const QPoint &p,
 {
     Q_D(GtDocView);
 
-    if (d->pendingRelayoutPages)
+    if (d->m_pendingRelayoutPages)
         relayoutPages();
 
     return d->docPointFromViewPoint(p, inside);
@@ -1329,7 +1331,7 @@ QPoint GtDocView::viewPointFromDocPoint(const GtDocPoint &p)
 {
     Q_D(GtDocView);
 
-    if (d->pendingRelayoutPages)
+    if (d->m_pendingRelayoutPages)
         relayoutPages();
 
     return d->viewPointFromDocPoint(p);
@@ -1353,7 +1355,7 @@ void GtDocView::copy()
             QString selText;
 
             for (int i = selBegin; i < selEnd; ++i) {
-                GtDocPage *page = d->document->page(i);
+                GtDocPage *page = d->m_document->page(i);
                 QPoint textRange(selRange.intersectedText(page));
                 GtDocTextPointer text(page->text());
 
@@ -1381,7 +1383,7 @@ void GtDocView::highlight()
         return;
 
     GtDocNote *note = new GtDocNote(selRange);
-    d->notes->addNote(note);
+    d->m_notes->addNote(note);
 }
 
 void GtDocView::renderFinished(int page)
@@ -1399,7 +1401,7 @@ void GtDocView::modelDestroyed(QObject *object)
 {
     Q_D(GtDocView);
 
-    if (object == static_cast<QObject *>(d->model))
+    if (object == static_cast<QObject *>(d->m_model))
         setModel(0);
 }
 
@@ -1407,29 +1409,65 @@ void GtDocView::documentChanged(GtDocument *document)
 {
     Q_D(GtDocView);
 
-    d->document = document;
-    d->pageCount = document ? document->pageCount() : 0;
-    d->renderCache->clear();
-    d->selectBegin = GtDocPoint();
-    d->selectEnd = GtDocPoint();
+    if (document && !document->isLoaded()) {
+        connect(document,
+                SIGNAL(loaded(GtDocument*)),
+                this,
+                SLOT(documentLoaded(GtDocument*)));
+    }
 
-    if (d->document) {
-        int currentPage = d->model->page();
-        if (d->currentPage != currentPage) {
+    d->m_document = document;
+    d->m_pageCount = d->isDocLoaded() ? d->m_document->pageCount() : 0;
+    d->m_renderCache->clear();
+    d->m_selectBegin = GtDocPoint();
+    d->m_selectEnd = GtDocPoint();
+
+    if (d->isDocLoaded()) {
+        int currentPage = d->m_model->page();
+
+        if (d->m_currentPage != currentPage)
             d->changePage(currentPage);
-        }
     }
 
     d->relayoutPagesLater();
+}
+
+void GtDocView::documentLoaded(GtDocument *document)
+{
+    Q_D(GtDocView);
+
+    if (document != d->m_document)
+        return;
+
+    if (!d->isDocLoaded())
+        return;
+
+    d->m_pageCount = d->m_document->pageCount();
+
+    int currentPage = d->m_model->page();
+    if (d->m_currentPage != currentPage)
+        d->changePage(currentPage);
+
+    d->relayoutPagesLater();
+}
+
+void GtDocView::bookmarksChanged(GtBookmarks *bookmarks)
+{
+    Q_D(GtDocView);
+
+    d->m_bookmarks = bookmarks;
+
+    if (!d->m_pendingRelayoutPages)
+        viewport()->update();
 }
 
 void GtDocView::notesChanged(GtDocNotes *notes)
 {
     Q_D(GtDocView);
 
-    d->notes = notes;
+    d->m_notes = notes;
 
-    if (!d->pendingRelayoutPages)
+    if (!d->m_pendingRelayoutPages)
         viewport()->update();
 }
 
@@ -1437,10 +1475,10 @@ void GtDocView::pageChanged(int page)
 {
     Q_D(GtDocView);
 
-    if (!d->document)
+    if (!d->isDocLoaded())
         return;
 
-    if (d->currentPage != page) {
+    if (d->m_currentPage != page) {
         d->changePage(page);
     }
     else {
@@ -1452,12 +1490,12 @@ void GtDocView::scaleChanged(double scale)
 {
     Q_D(GtDocView);
 
-    if (ABS(d->scale - scale) < 0.0000001)
+    if (ABS(d->m_scale - scale) < 0.0000001)
         return;
 
-    d->scale = scale;
+    d->m_scale = scale;
 
-    if (d->sizingMode == GtDocModel::FreeSize)
+    if (d->m_sizingMode == GtDocModel::FreeSize)
         d->relayoutPagesLater();
 }
 
@@ -1465,8 +1503,8 @@ void GtDocView::rotationChanged(int rotation)
 {
     Q_D(GtDocView);
 
-    d->rotation = rotation;
-    d->renderCache->clear();
+    d->m_rotation = rotation;
+    d->m_renderCache->clear();
     d->relayoutPagesLater();
 }
 
@@ -1474,7 +1512,7 @@ void GtDocView::continuousChanged(bool continuous)
 {
     Q_D(GtDocView);
 
-    d->continuous = continuous;
+    d->m_continuous = continuous;
     d->relayoutPagesLater();
 }
 
@@ -1482,7 +1520,7 @@ void GtDocView::layoutModeChanged(int mode)
 {
     Q_D(GtDocView);
 
-    d->layoutMode = static_cast<GtDocModel::LayoutMode>(mode);
+    d->m_layoutMode = static_cast<GtDocModel::LayoutMode>(mode);
 
     /* FIXME: if we're keeping the pixbuf cache around, we should
      * extend the preload_cache_size to be 2 if dual_page is set.
@@ -1494,7 +1532,7 @@ void GtDocView::sizingModeChanged(int mode)
 {
     Q_D(GtDocView);
 
-    d->sizingMode = static_cast<GtDocModel::SizingMode>(mode);
+    d->m_sizingMode = static_cast<GtDocModel::SizingMode>(mode);
 
     if (mode != GtDocModel::FreeSize)
         d->relayoutPagesLater();
@@ -1504,11 +1542,11 @@ void GtDocView::mouseModeChanged(int mode)
 {
     Q_D(GtDocView);
 
-    d->mouseMode = static_cast<GtDocModel::MouseMode>(mode);
+    d->m_mouseMode = static_cast<GtDocModel::MouseMode>(mode);
 
-    if (d->selectBegin.isValid() || d->selectEnd.isValid()) {
-        d->selectBegin = GtDocPoint();
-        d->selectEnd = GtDocPoint();
+    if (d->m_selectBegin.isValid() || d->m_selectEnd.isValid()) {
+        d->m_selectBegin = GtDocPoint();
+        d->m_selectEnd = GtDocPoint();
         viewport()->update();
     }
 }
@@ -1517,13 +1555,13 @@ void GtDocView::relayoutPages()
 {
     Q_D(GtDocView);
 
-    if (!d->pendingRelayoutPages)
+    if (!d->m_pendingRelayoutPages)
         return;
 
-    d->pendingRelayoutPages = false;
+    d->m_pendingRelayoutPages = false;
 
     QSize size;
-    if (0 == d->document) {
+    if (!d->isDocLoaded()) {
         d->resizeContentArea(size);
         return;
     }
@@ -1533,13 +1571,13 @@ void GtDocView::relayoutPages()
     double dx = (double)hsbar->value() / hsbar->maximum();
     double dy = (double)vsbar->value() / vsbar->maximum();
 
-    if (d->sizingMode != GtDocModel::FreeSize) {
+    if (d->m_sizingMode != GtDocModel::FreeSize) {
         int width = viewport()->width();
         int height = viewport()->height();
 
-        if (d->continuous && d->dualPage())
+        if (d->m_continuous && d->dualPage())
             d->zoomForSizeContinuousAndDualPage(width, height);
-        else if (d->continuous)
+        else if (d->m_continuous)
             d->zoomForSizeContinuous(width, height);
         else if (d->dualPage())
             d->zoomForSizeDualPage(width, height);
@@ -1547,14 +1585,14 @@ void GtDocView::relayoutPages()
             d->zoomForSizeSinglePage(width, height);
     }
 
-    if (d->continuous) {
-        if (d->layoutMode == GtDocModel::SinglePage)
+    if (d->m_continuous) {
+        if (d->m_layoutMode == GtDocModel::SinglePage)
             size = d->layoutPagesContinuous();
         else
             size = d->layoutPagesContinuousDualPage();
     }
     else {
-        if (d->layoutMode == GtDocModel::SinglePage)
+        if (d->m_layoutMode == GtDocModel::SinglePage)
             size = d->layoutPages();
         else
             size = d->layoutPagesDualPage();
@@ -1569,18 +1607,18 @@ void GtDocView::updateVisiblePages(int newValue)
 {
     Q_D(GtDocView);
 
-    if (d->lockPageUpdate > 0)
+    if (d->m_lockPageUpdate > 0)
         return;
 
-    int begin = d->beginPage;
-    int end = d->endPage;
+    int begin = d->m_beginPage;
+    int end = d->m_endPage;
 
-    if (!d->document) {
-        d->beginPage = -1;
-        d->endPage = -1;
-        d->currentPage = -1;
+    if (!d->isDocLoaded()) {
+        d->m_beginPage = -1;
+        d->m_endPage = -1;
+        d->m_currentPage = -1;
     }
-    else if (d->continuous) {
+    else if (d->m_continuous) {
         QRect unused, pageArea;
         bool found = false;
         int areaMax = -1, area;
@@ -1592,7 +1630,7 @@ void GtDocView::updateVisiblePages(int newValue)
                                  viewport()->width(),
                                  viewport()->height());
 
-        for (i = 0; i < d->pageCount; ++i) {
+        for (i = 0; i < d->m_pageCount; ++i) {
             pageArea = d->pageExtents(i);
             unused = viewportRect.intersected(pageArea);
 
@@ -1601,7 +1639,7 @@ void GtDocView::updateVisiblePages(int newValue)
 
                 if (!found) {
                     areaMax = area;
-                    d->beginPage = i;
+                    d->m_beginPage = i;
                     found = true;
                     bestCurrentPage = i;
                 }
@@ -1611,10 +1649,10 @@ void GtDocView::updateVisiblePages(int newValue)
                     areaMax = area;
                 }
 
-                d->endPage = i + 1;
+                d->m_endPage = i + 1;
                 j = 0;
             }
-            else if (found && d->currentPage < d->endPage) {
+            else if (found && d->m_currentPage < d->m_endPage) {
                 if (d->dualPage() && j < 1) {
                     /* In dual mode we stop searching
                      * after two consecutive non-visible pages.
@@ -1626,43 +1664,43 @@ void GtDocView::updateVisiblePages(int newValue)
             }
         }
 
-        bestCurrentPage = MAX(bestCurrentPage, d->beginPage);
+        bestCurrentPage = MAX(bestCurrentPage, d->m_beginPage);
 
-        if (d->currentPage != bestCurrentPage) {
-            d->currentPage = bestCurrentPage;
-            d->model->setPage(bestCurrentPage);
+        if (d->m_currentPage != bestCurrentPage) {
+            d->m_currentPage = bestCurrentPage;
+            d->m_model->setPage(bestCurrentPage);
         }
     }
     else if (d->dualPage()) {
-        if (d->currentPage % 2 == d->evenPageLeft()) {
-            d->beginPage = d->currentPage;
+        if (d->m_currentPage % 2 == d->evenPageLeft()) {
+            d->m_beginPage = d->m_currentPage;
 
-            if (d->currentPage + 1 < d->pageCount)
-                d->endPage = d->beginPage + 2;
+            if (d->m_currentPage + 1 < d->m_pageCount)
+                d->m_endPage = d->m_beginPage + 2;
             else
-                d->endPage = d->beginPage + 1;
+                d->m_endPage = d->m_beginPage + 1;
         }
         else {
-            if (d->currentPage < 1)
-                d->beginPage = d->currentPage;
+            if (d->m_currentPage < 1)
+                d->m_beginPage = d->m_currentPage;
             else
-                d->beginPage = d->currentPage - 1;
+                d->m_beginPage = d->m_currentPage - 1;
 
-            d->endPage = d->currentPage + 1;
+            d->m_endPage = d->m_currentPage + 1;
         }
     }
     else {
-        d->beginPage = d->currentPage;
-        d->endPage = d->currentPage + 1;
+        d->m_beginPage = d->m_currentPage;
+        d->m_endPage = d->m_currentPage + 1;
     }
 
-    if (d->beginPage == -1 || d->endPage == -1)
+    if (d->m_beginPage == -1 || d->m_endPage == -1)
         return;
 
-    if (begin != d->beginPage || end != d->endPage) {
+    if (begin != d->m_beginPage || end != d->m_endPage) {
     }
 
-    d->renderCache->setPageRange(d->beginPage, d->endPage);
+    d->m_renderCache->setPageRange(d->m_beginPage, d->m_endPage);
 
     if (-1 == newValue)
         viewport()->update();
@@ -1673,7 +1711,7 @@ void GtDocView::scrollUp(bool singleStep)
     Q_D(GtDocView);
 
     // if in single page mode and at the top of the screen, go to \ page
-    if (d->continuous ||
+    if (d->m_continuous ||
         verticalScrollBar()->value() > verticalScrollBar()->minimum())
     {
         if (singleStep)
@@ -1681,7 +1719,7 @@ void GtDocView::scrollUp(bool singleStep)
         else
             verticalScrollBar()->triggerAction(QScrollBar::SliderPageStepSub);
     }
-    else if (d->model->page() > 0) {
+    else if (d->m_model->page() > 0) {
         Q_ASSERT(0);
     }
 }
@@ -1691,7 +1729,7 @@ void GtDocView::scrollDown(bool singleStep)
     Q_D(GtDocView);
 
     // if in single page mode and at the bottom of the screen, go to next page
-    if (d->continuous ||
+    if (d->m_continuous ||
         verticalScrollBar()->value() < verticalScrollBar()->maximum())
     {
         if (singleStep)
@@ -1699,7 +1737,7 @@ void GtDocView::scrollDown(bool singleStep)
         else
             verticalScrollBar()->triggerAction(QScrollBar::SliderPageStepAdd);
     }
-    else if (d->model->page() < d->document->pageCount() - 1) {
+    else if (d->m_model->page() < d->m_document->pageCount() - 1) {
         Q_ASSERT(0);
     }
 }
@@ -1708,20 +1746,20 @@ void GtDocView::resizeEvent(QResizeEvent *e)
 {
     Q_D(GtDocView);
 
-    if (d->sizingMode == GtDocModel::FitWidth &&
-        d->verticalScrollBarVisible && !verticalScrollBar()->isVisible() &&
+    if (d->m_sizingMode == GtDocModel::FitWidth &&
+        d->m_verticalScrollBarVisible && !verticalScrollBar()->isVisible() &&
         qAbs(e->oldSize().height() - e->size().height()) < verticalScrollBar()->width())
     {
         // this saves us from infinite resizing loop because of scrollbars appearing and disappearing
         // see bug 160628 for more info
         // TODO looks are still a bit ugly because things are left uncentered
         // but better a bit ugly than unusable
-        d->verticalScrollBarVisible = false;
+        d->m_verticalScrollBarVisible = false;
         d->resizeContentArea(e->size());
         return;
     }
 
-    d->verticalScrollBarVisible = verticalScrollBar()->isVisible();
+    d->m_verticalScrollBarVisible = verticalScrollBar()->isVisible();
     d->relayoutPagesLater();
 }
 
@@ -1786,7 +1824,7 @@ void GtDocView::wheelEvent(QWheelEvent *e)
 {
     Q_D(GtDocView);
 
-    if (0 == d->document) {
+    if (!d->isDocLoaded()) {
         QAbstractScrollArea::wheelEvent(e);
         return;
     }
@@ -1824,19 +1862,19 @@ void GtDocView::wheelEvent(QWheelEvent *e)
     }
     else if ((modifiers & Qt::ShiftModifier) == Qt::ShiftModifier) {
     }
-    else if (delta <= -120 && !d->continuous &&
+    else if (delta <= -120 && !d->m_continuous &&
              vScroll == verticalScrollBar()->maximum())
     {
         // go to next page
-        if (d->currentPage + 1 < d->pageCount) {
+        if (d->m_currentPage + 1 < d->m_pageCount) {
             qDebug() << "next page";
         }
     }
-    else if (delta >= 120 && !d->continuous &&
+    else if (delta >= 120 && !d->m_continuous &&
              vScroll == verticalScrollBar()->minimum())
     {
         // go to prev page
-        if (d->currentPage > 0) {
+        if (d->m_currentPage > 0) {
             qDebug() << "prev page";
         }
     }
@@ -1860,12 +1898,12 @@ void GtDocView::paintEvent(QPaintEvent *e)
     QColor backColor = viewport()->palette().color(QPalette::Dark);
 
     // draw page contents
-    if (d->document) {
+    if (d->isDocLoaded()) {
         QColor selBgColor = QColor(30, 76, 100, 120);
         QRect pageArea, border, overlap;
         GtDocRange selRange(selectedRange());
 
-        for (int i = d->beginPage; i < d->endPage; ++i) {
+        for (int i = d->m_beginPage; i < d->m_endPage; ++i) {
             pageArea = d->pageExtents(i, &border);
             pageArea.translate(-scrollX, -scrollY);
             overlap = contentsRect.intersected(pageArea);
@@ -1875,7 +1913,7 @@ void GtDocView::paintEvent(QPaintEvent *e)
 
             if (d->drawPage(p, i, pageArea, border, backColor)) {
                 // highlight selected region
-                GtDocPage *page = d->document->page(i);
+                GtDocPage *page = d->m_document->page(i);
                 QRegion selRegion(d->selectedRegion(selRange, page));
 
                 selRegion.translate(pageArea.x() + border.left(),
@@ -1887,7 +1925,7 @@ void GtDocView::paintEvent(QPaintEvent *e)
             remainingArea -= pageArea;
         }
 
-        if (d->selectBegin.isValid() && d->selectEnd.isValid()) {
+        if (d->m_selectBegin.isValid() && d->m_selectEnd.isValid()) {
         }
     }
 
@@ -1900,11 +1938,11 @@ void GtDocView::mouseMoveEvent(QMouseEvent *e)
     Q_D(GtDocView);
 
     if (e->buttons() == Qt::LeftButton) {
-        if (d->selectBegin.isValid()) {
+        if (d->m_selectBegin.isValid()) {
             GtDocPoint docPoint = d->docPointFromViewPoint(e->pos(), false);
-            if (docPoint != d->selectEnd) {
+            if (docPoint != d->m_selectEnd) {
                 GtDocRange oldRange(selectedRange());
-                d->selectEnd = docPoint;
+                d->m_selectEnd = docPoint;
                 d->repaintOldAndNewSelection(oldRange);
             }
         }
@@ -1920,19 +1958,19 @@ void GtDocView::mousePressEvent(QMouseEvent *e)
 
     switch (e->buttons()) {
     case Qt::LeftButton:
-        if (d->document && d->mouseMode != GtDocModel::BrowseMode) {
+        if (d->isDocLoaded() && d->m_mouseMode != GtDocModel::BrowseMode) {
             GtDocRange oldRange(selectedRange());
-            if (GtDocModel::SelectText == d->mouseMode) {
+            if (GtDocModel::SelectText == d->m_mouseMode) {
                 GtDocPoint docPoint(docPointFromViewPoint(e->pos(), true));
 
                 if (docPoint.text(true) != -1)
-                    d->selectBegin = docPoint;
+                    d->m_selectBegin = docPoint;
                 else
-                    d->selectBegin = GtDocPoint();
+                    d->m_selectBegin = GtDocPoint();
             }
 
-            d->selectEnd = GtDocPoint();
-            d->selectWordOnDoubleClick = false;
+            d->m_selectEnd = GtDocPoint();
+            d->m_selectWordOnDoubleClick = false;
             d->repaintOldAndNewSelection(oldRange);
         }
         break;
@@ -1950,9 +1988,9 @@ void GtDocView::mousePressEvent(QMouseEvent *e)
                 selRegion.translate(offset);
                 if (!selRegion.contains(e->pos())) {
                     GtDocRange oldRange(selectedRange());
-                    d->selectBegin = GtDocPoint();
-                    d->selectEnd = GtDocPoint();
-                    d->selectWordOnDoubleClick = false;
+                    d->m_selectBegin = GtDocPoint();
+                    d->m_selectEnd = GtDocPoint();
+                    d->m_selectWordOnDoubleClick = false;
                     d->repaintOldAndNewSelection(oldRange);
                 }
             }
@@ -1976,17 +2014,17 @@ void GtDocView::mouseDoubleClickEvent(QMouseEvent *e)
     Q_D(GtDocView);
 
     if (e->button() == Qt::LeftButton) {
-        if (d->document && GtDocModel::SelectText == d->mouseMode) {
+        if (d->isDocLoaded() && GtDocModel::SelectText == d->m_mouseMode) {
             GtDocRange oldRange(selectedRange());
             GtDocPoint docPoint(docPointFromViewPoint(e->pos(), true));
 
             if (docPoint.text(true) != -1)
-                d->selectBegin = docPoint;
+                d->m_selectBegin = docPoint;
             else
-                d->selectBegin = GtDocPoint();
+                d->m_selectBegin = GtDocPoint();
 
-            d->selectEnd = d->selectBegin;
-            d->selectWordOnDoubleClick = true;
+            d->m_selectEnd = d->m_selectBegin;
+            d->m_selectWordOnDoubleClick = true;
             d->repaintOldAndNewSelection(oldRange);
         }
     }

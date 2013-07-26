@@ -4,15 +4,11 @@
 #ifndef __GT_MAINWINDOW_H__
 #define __GT_MAINWINDOW_H__
 
-#include "gtdocument.h"
+#include "gtobject.h"
 #include "ui_gtmainwindow.h"
 
 GT_BEGIN_NAMESPACE
 
-class GtDocument;
-class GtDocModel;
-class GtTocModel;
-class GtDocView;
 class GtTabView;
 
 class GtMainWindow : public QMainWindow, public GtObject

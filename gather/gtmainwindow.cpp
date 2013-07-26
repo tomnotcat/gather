@@ -3,6 +3,7 @@
  */
 #include "gtmainwindow.h"
 #include "gtapplication.h"
+#include "gtdocmanager.h"
 #include "gtdoctabview.h"
 #include "gthometabview.h"
 #include "gtmainsettings.h"
@@ -303,11 +304,7 @@ bool GtMainWindow::okToContinue()
 
 bool GtMainWindow::loadFile(const QString &fileName)
 {
-    GtDocumentPointer document;
-
-    document = GtApplication::instance()->loadDocument(fileName);
-    if (!document)
-        return false;
+    GtDocModelPointer docModel;
 
     GtTabView *view = tabView();
     GtDocTabView *docView = qobject_cast<GtDocTabView*>(tabView());
@@ -322,7 +319,11 @@ bool GtMainWindow::loadFile(const QString &fileName)
         ui.tabWidget->setCurrentWidget(view);
     }
 
-    docView->setDocument(document);
+    docView->setDocModel(docModel);
+
+    GtDocManager *docManager = GtApplication::instance()->docManager();
+    docModel = docManager->loadDocument(fileName);
+    docView->setDocModel(docModel);
     setCurrentFile(fileName);
     statusBar()->showMessage(tr("File loaded"), 2000);
     return true;

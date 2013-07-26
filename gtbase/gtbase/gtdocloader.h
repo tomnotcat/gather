@@ -5,12 +5,33 @@
 #define __GT_DOC_LOADER_H__
 
 #include "gtobject.h"
-#include <QtCore/qobject.h>
+#include <QtCore/QMutex>
+#include <QtCore/QObject>
 
 GT_BEGIN_NAMESPACE
 
 class GtDocument;
 class GtDocLoaderPrivate;
+
+class GtDocLoaderObject : public QObject, public GtObject
+{
+    Q_OBJECT
+
+public:
+    explicit GtDocLoaderObject();
+    ~GtDocLoaderObject();
+
+public:
+    void load(GtDocument *document);
+
+private Q_SLOTS:
+    void loadDocument();
+    void documentDestroyed(QObject *object);
+
+private:
+    QMutex m_mutex;
+    QList<GtDocument*> m_documents;
+};
 
 class GT_BASE_EXPORT GtDocLoader : public QObject, public GtObject
 {
@@ -33,7 +54,9 @@ public:
 public:
     int registerLoaders(const QString &loaderDir);
     QList<const LoaderInfo *> loaderInfos();
-    GtDocument* loadDocument(const QString &fileName, QThread *thread = 0);
+    GtDocument* loadDocument(const QString &fileName,
+                             QThread *thread = 0,
+                             QObject *parent = 0);
 
 private:
     QScopedPointer<GtDocLoaderPrivate> d_ptr;

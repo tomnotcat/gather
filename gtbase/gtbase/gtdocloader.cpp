@@ -29,14 +29,66 @@ public:
     ~GtDocLoaderPrivate();
 
 public:
+    GtDocLoaderObject* loaderObject(QThread *thread);
     GtDocument* loadDocument(LoaderInfo &info,
                              const QString &fileName,
-                             QThread *thread);
+                             QThread *thread,
+                             QObject *parent);
 
 public:
     GtDocLoader *q_ptr;
     QList<LoaderInfo> infoList;
+    QHash<QThread*, GtDocLoaderObject*> loaderObjects;
 };
+
+GtDocLoaderObject::GtDocLoaderObject()
+{
+}
+
+GtDocLoaderObject::~GtDocLoaderObject()
+{
+}
+
+void GtDocLoaderObject::load(GtDocument *document)
+{
+    QMutexLocker locker(&m_mutex);
+
+    connect(document,
+            SIGNAL(destroyed(QObject*)),
+            this,
+            SLOT(documentDestroyed(QObject*)));
+
+    m_documents.push_back(document);
+    QMetaObject::invokeMethod(this, "loadDocument");
+}
+
+void GtDocLoaderObject::loadDocument()
+{
+    while (m_documents.size() > 0) {
+        GtDocument *document;
+
+        m_mutex.lock();
+        document = m_documents.front();
+        m_mutex.unlock();
+
+        document->loadDocument();
+
+        disconnect(document,
+                   SIGNAL(destroyed(QObject*)),
+                   this,
+                   SLOT(documentDestroyed(QObject*)));
+
+        m_mutex.lock();
+        m_documents.pop_front();
+        m_mutex.unlock();
+    }
+}
+
+void GtDocLoaderObject::documentDestroyed(QObject *)
+{
+    // TODO: document destroyed before load complete
+    Q_ASSERT(0);
+}
 
 GtDocLoaderPrivate::GtDocLoaderPrivate()
 {
@@ -44,11 +96,31 @@ GtDocLoaderPrivate::GtDocLoaderPrivate()
 
 GtDocLoaderPrivate::~GtDocLoaderPrivate()
 {
+    qDeleteAll(loaderObjects);
+}
+
+GtDocLoaderObject* GtDocLoaderPrivate::loaderObject(QThread *thread)
+{
+    QHash<QThread*, GtDocLoaderObject*>::iterator it;
+
+    it = loaderObjects.find(thread);
+    if (it != loaderObjects.end())
+        return it.value();
+
+    GtDocLoaderObject *loader = new GtDocLoaderObject;
+    loader->moveToThread(thread);
+    loaderObjects.insert(thread, loader);
+
+    // since we didn't destroy DocLoaderObjects,
+    // we use a guard to limit max objects.
+    Q_ASSERT(loaderObjects.size() < 10);
+    return loader;
 }
 
 GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
                                              const QString &fileName,
-                                             QThread *thread)
+                                             QThread *thread,
+                                             QObject *parent)
 {
     GtDocument *document = NULL;
 
@@ -74,14 +146,14 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
             Q_ASSERT(ad);
 
             QFileInfo info(fileName);
-            document = new GtDocument(ad);
+            document = new GtDocument(ad, parent);
             file->setParent(document);
             document->d_ptr->setDevice(info.fileName(), file.take());
 
             if (thread)
-                document->moveToThread(thread);
-
-            QMetaObject::invokeMethod(document, "slotLoadDocument");
+                loaderObject(thread)->load(document);
+            else
+                document->loadDocument();
         }
         else {
             qWarning() << "open file failed:" << fileName;
@@ -196,7 +268,9 @@ QList<const GtDocLoader::LoaderInfo *> GtDocLoader::loaderInfos()
     return constInfoList;
 }
 
-GtDocument* GtDocLoader::loadDocument(const QString &fileName, QThread *thread)
+GtDocument* GtDocLoader::loadDocument(const QString &fileName,
+                                      QThread *thread,
+                                      QObject *parent)
 {
     Q_D(GtDocLoader);
 
@@ -209,7 +283,7 @@ GtDocument* GtDocLoader::loadDocument(const QString &fileName, QThread *thread)
     // By extension
     for (int i = 0, count = infoList.count(); i != count; ++i) {
         if (infoList[i].info.extension == ext) {
-            document = d->loadDocument(infoList[i], fileName, thread);
+            document = d->loadDocument(infoList[i], fileName, thread, parent);
             if (document)
                 return document;
         }

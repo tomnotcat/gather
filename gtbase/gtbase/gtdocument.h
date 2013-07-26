@@ -6,7 +6,6 @@
 
 #include "gtobject.h"
 #include <QtCore/QObject>
-#include <QtCore/QSharedDataPointer>
 #include <QtCore/QSize>
 
 class QIODevice;
@@ -18,17 +17,12 @@ class GtBookmark;
 class GtDocPage;
 class GtDocumentPrivate;
 
-class GT_BASE_EXPORT GtDocument
-    : public QObject
-    , public QSharedData
-    , public GtObject
+class GT_BASE_EXPORT GtDocument : public QObject, public GtObject
 {
     Q_OBJECT
 
 public:
-    explicit GtDocument(GtAbstractDocument *ad,
-                        QObject *parent = 0);
-    GtDocument(const GtDocument &);
+    explicit GtDocument(GtAbstractDocument *ad, QObject *parent = 0);
     ~GtDocument();
 
 public:
@@ -50,10 +44,11 @@ Q_SIGNALS:
 
 private Q_SLOTS:
     void deviceDestroyed(QObject *object);
-    void slotLoadDocument();
+    void loadDocument();
 
 protected:
     friend class GtDocPage;
+    friend class GtDocLoaderObject;
     friend class GtDocLoaderPrivate;
     QScopedPointer<GtDocumentPrivate> d_ptr;
 
@@ -61,8 +56,6 @@ private:
     Q_DECLARE_PRIVATE(GtDocument)
     GtDocument &operator=(const GtDocument &);
 };
-
-typedef QExplicitlySharedDataPointer<GtDocument> GtDocumentPointer;
 
 GT_END_NAMESPACE
 

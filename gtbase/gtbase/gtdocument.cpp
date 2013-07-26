@@ -136,20 +136,11 @@ int GtDocumentPrivate::loadOutline(GtAbstractOutline *outline,
     return count;
 }
 
-GtDocument::GtDocument(GtAbstractDocument *ad,
-                       QObject *parent)
+GtDocument::GtDocument(GtAbstractDocument *ad, QObject *parent)
     : QObject(parent)
     , d_ptr(new GtDocumentPrivate(ad))
 {
     d_ptr->q_ptr = this;
-}
-
-GtDocument::GtDocument(const GtDocument &o)
-    : QObject(0)
-    , QSharedData(o)
-{
-    // tricks for QSharedDataPointer, but should not happen
-    Q_ASSERT(0);
 }
 
 GtDocument::~GtDocument()
@@ -159,12 +150,14 @@ GtDocument::~GtDocument()
 QString GtDocument::fileId() const
 {
     Q_D(const GtDocument);
+    Q_ASSERT(d->loaded);
     return d->fileId;
 }
 
 QString GtDocument::title() const
 {
     Q_D(const GtDocument);
+    Q_ASSERT(d->loaded);
     return d->title;
 }
 
@@ -216,12 +209,15 @@ QSize GtDocument::minPageSize(double scale, int rotation) const
 int GtDocument::pageCount() const
 {
     Q_D(const GtDocument);
+    Q_ASSERT(d->loaded);
     return d->pageCount;
 }
 
 GtDocPage* GtDocument::page(int index) const
 {
     Q_D(const GtDocument);
+
+    Q_ASSERT(d->loaded);
 
     if (index < 0 || index >= d->pageCount)
         return 0;
@@ -232,6 +228,8 @@ GtDocPage* GtDocument::page(int index) const
 int GtDocument::loadOutline(GtBookmark *root)
 {
     Q_D(GtDocument);
+
+    Q_ASSERT(d->loaded);
 
     QMutexLocker locker(&d->_mutex);
 
@@ -270,13 +268,16 @@ void GtDocument::deviceDestroyed(QObject*)
     Q_ASSERT(d->destroyed);
 }
 
-void GtDocument::slotLoadDocument()
+void GtDocument::loadDocument()
 {
     Q_D(GtDocument);
 
     Q_ASSERT(!d->loaded && d->device);
 
+    QMutexLocker locker(&d->_mutex);
+
     if (!d->abstractDoc->load(d->device)) {
+        locker.unlock();
         emit loaded(this);
         return;
     }
@@ -338,6 +339,8 @@ void GtDocument::slotLoadDocument()
     d->fileId = makeFileId(d->device);
 
     d->loaded = true;
+
+    locker.unlock();
     emit loaded(this);
 }
 

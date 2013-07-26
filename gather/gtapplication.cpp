@@ -2,7 +2,7 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtapplication.h"
-#include "gtdocloader.h"
+#include "gtdocmanager.h"
 #include "gtmainsettings.h"
 #include "gtmainwindow.h"
 #include "gtuserclient.h"
@@ -78,14 +78,14 @@ GtApplication::GtApplication(int &argc, char **argv)
     m_settings = new GtMainSettings(this);
     m_settings->load();
 
-    // document loader
+    // documents
     m_docThread = new QThread(this);
-    m_docLoader = new GtDocLoader(this);
+    m_docManager = new GtDocManager(this);
+    m_docManager->setDocThread(m_docThread);
 
     QDir dir(QCoreApplication::applicationDirPath());
-
     if (dir.cd("loader"))
-        m_docLoader->registerLoaders(dir.absolutePath());
+        m_docManager->registerLoaders(dir.absolutePath());
 
     m_docThread->start();
 
@@ -104,9 +104,6 @@ GtApplication::~GtApplication()
         GtMainWindow *window = m_mainWindows.at(i);
         delete window;
     }
-
-    clearDocuments();
-    Q_ASSERT(m_documents.size() == 0);
 
     m_settings->save();
 }
@@ -135,29 +132,6 @@ QList<GtMainWindow*> GtApplication::mainWindows()
         list.append(m_mainWindows.at(i));
 
     return list;
-}
-
-QThread* GtApplication::renderThread()
-{
-    return m_docThread;
-}
-
-GtDocumentPointer GtApplication::loadDocument(const QString &fileName)
-{
-    QHash<QString, GtDocumentPointer>::iterator it;
-
-    it = m_documents.find(fileName);
-    if (it != m_documents.end())
-        return it.value();
-
-    GtDocumentPointer doc;
-
-    clearDocuments();
-    doc = m_docLoader->loadDocument(fileName, m_docThread);
-    if (doc)
-        m_documents.insert(fileName, doc);
-
-    return doc;
 }
 
 GtApplication* GtApplication::instance()
@@ -191,21 +165,6 @@ void GtApplication::clearWindows()
     for (int i = m_mainWindows.count() - 1; i >= 0; --i) {
         if (m_mainWindows.at(i).isNull())
             m_mainWindows.removeAt(i);
-    }
-}
-
-void GtApplication::clearDocuments()
-{
-    // clear up any unreferenced documents
-    QHash<QString, GtDocumentPointer>::iterator it;
-
-    for (it = m_documents.begin(); it != m_documents.end();) {
-        if (it.value()->ref.load() < 2) {
-            it = m_documents.erase(it);
-        }
-        else {
-            ++it;
-        }
     }
 }
 

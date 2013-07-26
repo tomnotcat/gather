@@ -5,15 +5,20 @@
 #define __GT_DOC_MODEL_H__
 
 #include "gtobject.h"
-#include <QtCore/qobject.h>
+#include <QtCore/QObject>
+#include <QtCore/QSharedDataPointer>
 
 GT_BEGIN_NAMESPACE
 
 class GtDocument;
+class GtBookmarks;
 class GtDocNotes;
 class GtDocModelPrivate;
 
-class GT_BASE_EXPORT GtDocModel : public QObject, public GtObject
+class GT_BASE_EXPORT GtDocModel
+    : public QObject
+    , public QSharedData
+    , public GtObject
 {
     Q_OBJECT
 
@@ -24,6 +29,9 @@ public:
 public:
     GtDocument* document() const;
     void setDocument(GtDocument *document);
+
+    GtBookmarks* bookmarks() const;
+    void setBookmarks(GtBookmarks *bookmarks);
 
     GtDocNotes* notes() const;
     void setNotes(GtDocNotes *notes);
@@ -75,6 +83,7 @@ public:
 
 Q_SIGNALS:
     void documentChanged(GtDocument *document);
+    void bookmarksChanged(GtBookmarks *bookmarks);
     void notesChanged(GtDocNotes *notes);
     void pageChanged(int page);
     void scaleChanged(double scale);
@@ -86,6 +95,7 @@ Q_SIGNALS:
 
 private Q_SLOTS:
     void documentDestroyed(QObject *object);
+    void bookmarksDestroyed(QObject *object);
     void notesDestroyed(QObject *object);
 
 private:
@@ -95,6 +105,8 @@ private:
     Q_DISABLE_COPY(GtDocModel)
     Q_DECLARE_PRIVATE(GtDocModel)
 };
+
+typedef QExplicitlySharedDataPointer<GtDocModel> GtDocModelPointer;
 
 GT_END_NAMESPACE
 

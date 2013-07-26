@@ -5,7 +5,7 @@
 #define __GT_DOC_TAB_VIEW_H__
 
 #include "gttabview.h"
-#include "gtdocument.h"
+#include "gtdocmodel.h"
 
 class QSplitter;
 class QTreeView;
@@ -26,8 +26,8 @@ public:
     ~GtDocTabView();
 
 public:
-    GtDocumentPointer document() const;
-    void setDocument(GtDocumentPointer document);
+    GtDocModelPointer docModel() const;
+    void setDocModel(GtDocModelPointer docModel);
 
 public Q_SLOTS:
     void onCut();
@@ -45,15 +45,14 @@ protected:
 
 private Q_SLOTS:
     void showDocViewContextMenu(const QPoint &pos);
-    void docLoaded(GtDocument *doc);
+    void documentLoaded(GtDocument *document);
     void tocChanged(const QModelIndex &index);
     void addBookmark();
     void searchSelectedText();
 
 private:
     // model
-    GtDocumentPointer m_document;
-    GtDocModel *m_docModel;
+    GtDocModelPointer m_docModel;
     GtTocModel *m_tocModel;
 
     // view
