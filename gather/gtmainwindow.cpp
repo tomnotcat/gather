@@ -34,7 +34,7 @@ GtMainWindow::GtMainWindow()
     connect(ui.tabWidget, SIGNAL(currentChanged(int)),
             this, SLOT(currentTabChanged(int)));
 
-    // Recent files
+    // recent files
     recentFileActions[0] = ui.actionRecentFile0;
     recentFileActions[1] = ui.actionRecentFile1;
     recentFileActions[2] = ui.actionRecentFile2;
@@ -49,7 +49,12 @@ GtMainWindow::GtMainWindow()
 
     recentFileSeparator = ui.menuFile->insertSeparator(ui.actionCloseTab);
 
-    // shortcuts
+    // menu and shortcuts
+    connect(ui.menuEdit, SIGNAL(aboutToShow()),
+            this, SLOT(editMenuAboutToShow()));
+    connect(ui.menuEdit, SIGNAL(aboutToHide()),
+            this, SLOT(editMenuAboutToHide()));
+
     QList<QKeySequence> shortcuts;
     shortcuts.push_back(QKeySequence("Ctrl++"));
     shortcuts.push_back(QKeySequence("Ctrl+="));
@@ -376,6 +381,16 @@ void GtMainWindow::currentTabChanged(int index)
     if (index != -1) {
         setWindowTitle(ui.tabWidget->tabText(index));
     }
+}
+
+void GtMainWindow::editMenuAboutToShow()
+{
+    qDebug() << "show edit menu";
+}
+
+void GtMainWindow::editMenuAboutToHide()
+{
+    qDebug() << "hide edit menu";
 }
 
 void GtMainWindow::changeEvent(QEvent *event)

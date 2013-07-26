@@ -49,6 +49,8 @@ private Q_SLOTS:
     void on_actionAboutGather_triggered();
     void openRecentFile();
     void currentTabChanged(int index);
+    void editMenuAboutToShow();
+    void editMenuAboutToHide();
 
 private:
     void openTab(GtTabView *tab);
