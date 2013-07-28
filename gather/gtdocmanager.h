@@ -7,6 +7,8 @@
 #include "gtdocmodel.h"
 #include <QtCore/QHash>
 
+class QUndoStack;
+
 GT_BEGIN_NAMESPACE
 
 class GtDocLoader;
@@ -16,13 +18,16 @@ class GtDocManager : public QObject, public GtObject
     Q_OBJECT;
 
 public:
-    explicit GtDocManager(QObject *parent = 0);
+    explicit GtDocManager(QThread *thread = 0, QObject *parent = 0);
     ~GtDocManager();
 
 public:
     int registerLoaders(const QString &loaderDir);
-    inline void setDocThread(QThread *thread) { m_docThread = thread; }
     GtDocModelPointer loadDocument(const QString &fileName);
+    QUndoStack* undoStack(GtDocModel *docModel);
+
+private Q_SLOTS:
+    void documentLoaded(GtDocument *document);
 
 private:
     void clearDocuments();
@@ -30,6 +35,8 @@ private:
 private:
     GtDocLoader *m_docLoader;
     QThread *m_docThread;
+    QHash<GtDocument*, GtDocModel*> m_loadingDocs;
+    QHash<GtDocModel*, QUndoStack*> m_undoStatcks;
     QHash<QString, GtDocModelPointer> m_docModels;
 };
 

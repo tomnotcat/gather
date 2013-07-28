@@ -7,7 +7,7 @@
 
 GT_BEGIN_NAMESPACE
 
-QPoint GtDocRange::intersectedText(GtDocPage *page)
+QPoint GtDocRange::intersectedText(GtDocPage *page) const
 {
     int beginText = _begin.text(false);
     int endText = _end.text(false);

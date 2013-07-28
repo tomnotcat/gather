@@ -10,6 +10,7 @@
 GT_BEGIN_NAMESPACE
 
 class GtMainWindow;
+class GtMainSettings;
 
 class GtTabView : public QWidget, public GtObject
 {
@@ -19,27 +20,22 @@ public:
     explicit GtTabView(QWidget *parent = 0);
     ~GtTabView();
 
-public Q_SLOTS:
-    virtual void onCut();
-    virtual void onCopy();
-    virtual void onPaste();
-    virtual void onDelete();
-    virtual void onZoomIn();
-    virtual void onZoomOut();
-    virtual void onRotateLeft();
-    virtual void onRotateRight();
+public:
+    inline GtMainWindow* mainWindow() const { return m_mainWindow; }
+    inline bool isActive() const { return m_active; }
 
 protected:
-    virtual void gainCurrent();
-    virtual void loseCurrent();
-    virtual void mainWindowClose(GtTabView *current);
+    virtual void gainActive();
+    virtual void loseActive();
+    virtual void saveSettings(GtMainSettings *settings);
 
 private:
     friend class GtMainWindow;
     Q_DISABLE_COPY(GtTabView)
 
-protected:
+private:
     GtMainWindow *m_mainWindow;
+    bool m_active;
 };
 
 GT_END_NAMESPACE

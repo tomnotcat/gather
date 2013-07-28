@@ -15,51 +15,52 @@
 GT_BEGIN_NAMESPACE
 
 GtMainWindow::GtMainWindow()
+    : m_oldTabView(0)
 {
-    ui.setupUi(this);
+    m_ui.setupUi(this);
 
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
     setAttribute(Qt::WA_DeleteOnClose, true);
 
     // tab widget
-    QTabBar *tabBar = ui.tabWidget->tabBar();
+    QTabBar *tabBar = m_ui.tabWidget->tabBar();
 
     tabBar->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(tabBar, SIGNAL(customContextMenuRequested(const QPoint&)),
             this, SLOT(showTabContextMenu(const QPoint&)));
-    connect(ui.tabWidget, SIGNAL(tabCloseRequested(int)),
+    connect(m_ui.tabWidget, SIGNAL(tabCloseRequested(int)),
             this, SLOT(closeTab(int)));
     tabBar->setSelectionBehaviorOnRemove(QTabBar::SelectPreviousTab);
     tabBar->hide();
 
-    connect(ui.tabWidget, SIGNAL(currentChanged(int)),
+    connect(m_ui.tabWidget, SIGNAL(currentChanged(int)),
             this, SLOT(currentTabChanged(int)));
 
     // recent files
-    recentFileActions[0] = ui.actionRecentFile0;
-    recentFileActions[1] = ui.actionRecentFile1;
-    recentFileActions[2] = ui.actionRecentFile2;
-    recentFileActions[3] = ui.actionRecentFile3;
-    recentFileActions[4] = ui.actionRecentFile4;
+    m_recentFileActions[0] = m_ui.actionRecentFile0;
+    m_recentFileActions[1] = m_ui.actionRecentFile1;
+    m_recentFileActions[2] = m_ui.actionRecentFile2;
+    m_recentFileActions[3] = m_ui.actionRecentFile3;
+    m_recentFileActions[4] = m_ui.actionRecentFile4;
 
     for (int i = 0; i < MaxRecentFiles; ++i) {
-        recentFileActions[i]->setVisible(false);
-        connect(recentFileActions[i], SIGNAL(triggered()),
+        m_recentFileActions[i]->setVisible(false);
+        connect(m_recentFileActions[i], SIGNAL(triggered()),
                 this, SLOT(openRecentFile()));
     }
 
-    recentFileSeparator = ui.menuFile->insertSeparator(ui.actionCloseTab);
+    m_recentFileSeparator = m_ui.menuFile->insertSeparator(m_ui.actionCloseTab);
 
     // menu and shortcuts
-    connect(ui.menuEdit, SIGNAL(aboutToShow()),
+    connect(m_ui.menuEdit, SIGNAL(aboutToShow()),
             this, SLOT(editMenuAboutToShow()));
-    connect(ui.menuEdit, SIGNAL(aboutToHide()),
+    connect(m_ui.menuEdit, SIGNAL(aboutToHide()),
             this, SLOT(editMenuAboutToHide()));
 
     QList<QKeySequence> shortcuts;
     shortcuts.push_back(QKeySequence("Ctrl++"));
     shortcuts.push_back(QKeySequence("Ctrl+="));
-    ui.actionZoomIn->setShortcuts(shortcuts);
+    m_ui.actionZoomIn->setShortcuts(shortcuts);
 
     // settings
     GtApplication *application = GtApplication::instance();
@@ -73,8 +74,8 @@ GtMainWindow::GtMainWindow()
         restoreGeometry(settings->geometry());
     }
 
-    recentFiles = settings->recentFiles();
-    lastOpenPath = settings->lastOpenPath();
+    m_recentFiles = settings->recentFiles();
+    m_lastOpenPath = settings->lastOpenPath();
     updateRecentFileActions();
 
     setCurrentFile("");
@@ -89,9 +90,9 @@ GtMainWindow::~GtMainWindow()
 GtTabView* GtMainWindow::tabView(int index)
 {
     if (-1 == index)
-        index = ui.tabWidget->currentIndex();
+        index = m_ui.tabWidget->currentIndex();
 
-    return qobject_cast<GtTabView*>(ui.tabWidget->widget(index));
+    return qobject_cast<GtTabView*>(m_ui.tabWidget->widget(index));
 }
 
 GtTabView* GtMainWindow::newTab()
@@ -104,9 +105,9 @@ GtTabView* GtMainWindow::newTab()
 void GtMainWindow::showTabContextMenu(const QPoint &pos)
 {
     QMenu menu;
-    QTabBar *tabBar = ui.tabWidget->tabBar();
+    QTabBar *tabBar = m_ui.tabWidget->tabBar();
 
-    menu.addAction(ui.actionNewTab);
+    menu.addAction(m_ui.actionNewTab);
     int index = tabBar->tabAt(pos);
     if (index != -1) {
         menu.addSeparator();
@@ -130,7 +131,7 @@ void GtMainWindow::showTabContextMenu(const QPoint &pos)
 
 void GtMainWindow::closeTab(int index)
 {
-    QTabBar *tabBar = ui.tabWidget->tabBar();
+    QTabBar *tabBar = m_ui.tabWidget->tabBar();
 
     if (index < 0)
         index = tabBar->currentIndex();
@@ -142,11 +143,16 @@ void GtMainWindow::closeTab(int index)
 
     GtTabView *view = tabView(index);
     if (view) {
+        if (view == m_oldTabView) {
+            m_oldTabView->loseActive();
+            m_oldTabView = 0;
+        }
+
         hasFocus = view->hasFocus();
         view->deleteLater();
     }
 
-    ui.tabWidget->removeTab(index);
+    m_ui.tabWidget->removeTab(index);
 
     if (tabBar->count() < 2)
         tabBar->hide();
@@ -171,7 +177,7 @@ void GtMainWindow::closeOtherTabs()
     if (action && !action->data().isNull())
         index = action->data().toInt();
 
-    QTabBar *tabBar = ui.tabWidget->tabBar();
+    QTabBar *tabBar = m_ui.tabWidget->tabBar();
 
     if (index < 0)
         index = tabBar->currentIndex();
@@ -202,13 +208,13 @@ void GtMainWindow::on_actionOpenFile_triggered()
 {
     if (okToContinue()) {
         QString fileName = QFileDialog::getOpenFileName(
-            this, tr("Open Document"), lastOpenPath,
+            this, tr("Open Document"), m_lastOpenPath,
             tr("Document Files (*.pdf *.txt);;All Files (*.*)"));
 
         if (fileName.isEmpty())
             return;
 
-        lastOpenPath = QFileInfo(fileName).path();
+        m_lastOpenPath = QFileInfo(fileName).path();
         loadFile(fileName);
     }
 }
@@ -229,57 +235,17 @@ void GtMainWindow::on_actionQuit_triggered()
     close();
 }
 
-void GtMainWindow::on_actionCut_triggered()
-{
-    tabView()->onCut();
-}
-
-void GtMainWindow::on_actionCopy_triggered()
-{
-    tabView()->onCopy();
-}
-
-void GtMainWindow::on_actionPaste_triggered()
-{
-    tabView()->onPaste();
-}
-
-void GtMainWindow::on_actionDelete_triggered()
-{
-    tabView()->onDelete();
-}
-
-void GtMainWindow::on_actionZoomIn_triggered()
-{
-    tabView()->onZoomIn();
-}
-
-void GtMainWindow::on_actionZoomOut_triggered()
-{
-    tabView()->onZoomOut();
-}
-
-void GtMainWindow::on_actionRotateLeft_triggered()
-{
-    tabView()->onRotateLeft();
-}
-
-void GtMainWindow::on_actionRotateRight_triggered()
-{
-    tabView()->onRotateRight();
-}
-
 void GtMainWindow::on_actionAboutGather_triggered()
 {
 }
 
 void GtMainWindow::openTab(GtTabView *tab)
 {
-    int index = ui.tabWidget->addTab(tab, tr("New Tab"));
-    ui.tabWidget->setTabToolTip(index, tr("New Tab"));
-    ui.tabWidget->setCurrentWidget(tab);
+    int index = m_ui.tabWidget->addTab(tab, tr("New Tab"));
+    m_ui.tabWidget->setTabToolTip(index, tr("New Tab"));
+    m_ui.tabWidget->setCurrentWidget(tab);
 
-    QTabBar *tabBar = ui.tabWidget->tabBar();
+    QTabBar *tabBar = m_ui.tabWidget->tabBar();
     if (tabBar->count() == 2)
         tabBar->show();
 }
@@ -313,10 +279,10 @@ bool GtMainWindow::loadFile(const QString &fileName)
         docView = new GtDocTabView(this);
         view = docView;
 
-        int index = ui.tabWidget->currentIndex();
-        ui.tabWidget->removeTab(index);
-        ui.tabWidget->insertTab(index, view, tr("New Tab"));
-        ui.tabWidget->setCurrentWidget(view);
+        int index = m_ui.tabWidget->currentIndex();
+        m_ui.tabWidget->removeTab(index);
+        m_ui.tabWidget->insertTab(index, view, tr("New Tab"));
+        m_ui.tabWidget->setCurrentWidget(view);
     }
 
     docView->setDocModel(docModel);
@@ -324,6 +290,10 @@ bool GtMainWindow::loadFile(const QString &fileName)
     GtDocManager *docManager = GtApplication::instance()->docManager();
     docModel = docManager->loadDocument(fileName);
     docView->setDocModel(docModel);
+
+    QUndoStack *undoStack = docManager->undoStack(docModel.data());
+    docView->setUndoStack(undoStack);
+
     setCurrentFile(fileName);
     statusBar()->showMessage(tr("File loaded"), 2000);
     return true;
@@ -331,36 +301,37 @@ bool GtMainWindow::loadFile(const QString &fileName)
 
 void GtMainWindow::setCurrentFile(const QString &fileName)
 {
-    curFile = fileName;
+    m_curFile = fileName;
 
-    if (!curFile.isEmpty()) {
-        recentFiles.removeAll(curFile);
-        recentFiles.prepend(curFile);
+    if (!m_curFile.isEmpty()) {
+        m_recentFiles.removeAll(m_curFile);
+        m_recentFiles.prepend(m_curFile);
         updateRecentFileActions();
     }
 }
 
 void GtMainWindow::updateRecentFileActions()
 {
-    QMutableStringListIterator i(recentFiles);
-    while (i.hasNext()) {
-        if (!QFile::exists(i.next()))
-            i.remove();
+    QMutableStringListIterator it(m_recentFiles);
+    while (it.hasNext()) {
+        if (!QFile::exists(it.next()))
+            it.remove();
     }
-    for (int j = 0; j < MaxRecentFiles; ++j) {
-        if (j < recentFiles.count()) {
+
+    for (int i = 0; i < MaxRecentFiles; ++i) {
+        if (i < m_recentFiles.count()) {
             QString text = tr("&%1 %2")
-                           .arg(j + 1)
-                           .arg(strippedName(recentFiles[j]));
-            recentFileActions[j]->setText(text);
-            recentFileActions[j]->setData(recentFiles[j]);
-            recentFileActions[j]->setVisible(true);
+                           .arg(i + 1)
+                           .arg(strippedName(m_recentFiles[i]));
+            m_recentFileActions[i]->setText(text);
+            m_recentFileActions[i]->setData(m_recentFiles[i]);
+            m_recentFileActions[i]->setVisible(true);
         } else {
-            recentFileActions[j]->setVisible(false);
+            m_recentFileActions[i]->setVisible(false);
         }
     }
 
-    recentFileSeparator->setVisible(!recentFiles.isEmpty());
+    m_recentFileSeparator->setVisible(!m_recentFiles.isEmpty());
 }
 
 QString GtMainWindow::strippedName(const QString &fullFileName)
@@ -379,8 +350,18 @@ void GtMainWindow::openRecentFile()
 
 void GtMainWindow::currentTabChanged(int index)
 {
+    if (m_oldTabView) {
+        if (tabView(index) == m_oldTabView)
+            return;
+
+        m_oldTabView->loseActive();
+        m_oldTabView = 0;
+    }
+
     if (index != -1) {
-        setWindowTitle(ui.tabWidget->tabText(index));
+        m_oldTabView = tabView(index);
+        m_oldTabView->gainActive();
+        setWindowTitle(m_ui.tabWidget->tabText(index));
     }
 }
 
@@ -400,7 +381,7 @@ void GtMainWindow::changeEvent(QEvent *event)
 
     switch (event->type()) {
     case QEvent::LanguageChange:
-        ui.retranslateUi(this);
+        m_ui.retranslateUi(this);
         break;
 
     default:
@@ -415,14 +396,12 @@ void GtMainWindow::closeEvent(QCloseEvent *event)
         if (application->mainWindows().size() == 1) {
             GtMainSettings *settings = application->settings();
             settings->setGeometry(saveGeometry());
-            settings->setRecentFiles(recentFiles);
-            settings->setLastOpenPath(lastOpenPath);
+            settings->setRecentFiles(m_recentFiles);
+            settings->setLastOpenPath(m_lastOpenPath);
 
-            // notify opening tabs of close event
-            GtTabView *current = tabView();
-            for (int i = 0; i < ui.tabWidget->count(); ++i) {
-                GtTabView *tab = tabView(i);
-                tab->mainWindowClose(current);
+            // save opening tabs's settings
+            for (int i = 0; i < m_ui.tabWidget->count(); ++i) {
+                tabView(i)->saveSettings(settings);
             }
         }
 

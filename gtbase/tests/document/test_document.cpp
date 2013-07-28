@@ -55,8 +55,6 @@ void test_document::testDocument()
     page = doc->page(0);
     QVERIFY(page->length() == 2998);
     QVERIFY(page->text()->length() == 2998);
-    QVERIFY(doc->page(-1) == 0);
-    QVERIFY(doc->page(doc->pageCount()) == 0);
 
     GtBookmark bm;
     QVERIFY(doc->loadOutline(&bm) == 32);

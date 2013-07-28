@@ -22,7 +22,7 @@ class GT_BASE_EXPORT GtDocument : public QObject, public GtObject
     Q_OBJECT
 
 public:
-    explicit GtDocument(GtAbstractDocument *ad, QObject *parent = 0);
+    explicit GtDocument(GtAbstractDocument *a, QObject *parent = 0);
     ~GtDocument();
 
 public:

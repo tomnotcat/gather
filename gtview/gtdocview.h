@@ -5,13 +5,17 @@
 #define __GT_DOC_VIEW_H__
 
 #include "gtobject.h"
-#include "gtdocrange.h"
-#include <QtWidgets/qabstractscrollarea.h>
+#include <QtWidgets/QAbstractScrollArea>
+
+class QUndoStack;
 
 GT_BEGIN_NAMESPACE
 
 class GtDocModel;
+class GtDocPoint;
+class GtDocRange;
 class GtBookmarks;
+class GtDocNote;
 class GtDocNotes;
 class GtDocument;
 class GtDocViewPrivate;
@@ -28,6 +32,9 @@ public:
     GtDocModel* model() const;
     void setModel(GtDocModel *model);
 
+    QUndoStack* undoStack() const;
+    void setUndoStack(QUndoStack *undoStack);
+
     void setRenderThread(QThread *thread);
     void setRenderCacheSize(int size);
 
@@ -35,31 +42,36 @@ public:
     void unlockPageUpdate(bool update=true);
 
     bool canZoomIn() const;
-    void zoomIn();
-
     bool canZoomOut() const;
-    void zoomOut();
 
     QRect pageExtents(int page, QRect *border = 0) const;
 
     QPoint scrollPoint() const;
     void scrollTo(int x, int y);
 
+    void select(const GtDocPoint &begin, const GtDocPoint &end);
+    void deselect();
     GtDocRange selectedRange() const;
     GtDocPoint docPointFromViewPoint(const QPoint &p, bool inside);
     QPoint viewPointFromDocPoint(const GtDocPoint &p);
 
 public Q_SLOTS:
-    void copy();
     void highlight();
+    void copy();
+    void rotateLeft();
+    void rotateRight();
+    void zoomIn();
+    void zoomOut();
 
 private Q_SLOTS:
     void renderFinished(int page);
     void modelDestroyed(QObject *object);
+    void undoStackDestroyed(QObject *object);
     void documentChanged(GtDocument *document);
     void documentLoaded(GtDocument *document);
     void bookmarksChanged(GtBookmarks *bookmarks);
     void notesChanged(GtDocNotes *notes);
+    void noteUpdated(GtDocNote *note);
     void pageChanged(int page);
     void scaleChanged(double scale);
     void rotationChanged(int rotation);

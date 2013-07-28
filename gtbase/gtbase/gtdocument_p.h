@@ -21,7 +21,8 @@ class GtDocumentPrivate
     Q_DECLARE_PUBLIC(GtDocument)
 
 public:
-    explicit GtDocumentPrivate(GtAbstractDocument *ad);
+    explicit GtDocumentPrivate(GtAbstractDocument *a,
+                               GtDocument *q);
     virtual ~GtDocumentPrivate();
 
 public:
@@ -29,7 +30,7 @@ public:
     GtAbstractPage* lockPage(int index);
     void unlockPage(int index);
     void cacheText(int index, const GtDocTextPointer &text);
-    inline QMutex* mutex() { return &_mutex; }
+    inline QMutex* mutex() { return &m_mutex; }
 
 protected:
     int loadOutline(GtAbstractOutline *outline,
@@ -37,22 +38,22 @@ protected:
 
 protected:
     GtDocument *q_ptr;
-    QIODevice *device;
-    GtDocPage **pages;
-    QString fileId;
-    QString title;
-    int pageCount;
-    double maxWidth;
-    double maxHeight;
-    double minWidth;
-    double minHeight;
-    bool uniform;
-    bool loaded;
-    bool destroyed;
-    QMutex _mutex;
-    QList<int> cachedPage;
-    QList<int> cachedText;
-    QScopedPointer<GtAbstractDocument> abstractDoc;
+    QIODevice *m_device;
+    GtDocPage **m_pages;
+    QString m_fileId;
+    QString m_title;
+    int m_pageCount;
+    double m_maxWidth;
+    double m_maxHeight;
+    double m_minWidth;
+    double m_minHeight;
+    bool m_uniform;
+    bool m_loaded;
+    bool m_destroyed;
+    QMutex m_mutex;
+    QList<int> m_cachedPage;
+    QList<int> m_cachedText;
+    QScopedPointer<GtAbstractDocument> m_abstractDoc;
 };
 
 GT_END_NAMESPACE

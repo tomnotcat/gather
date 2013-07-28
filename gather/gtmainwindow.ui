@@ -105,6 +105,9 @@
      <addaction name="actionRotateRight"/>
     </widget>
     <widget class="QMenu" name="menuPageNavigation">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="title">
       <string>Page &amp;Navigation</string>
      </property>
@@ -143,6 +146,9 @@
    </property>
   </action>
   <action name="actionCut">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Cu&amp;t</string>
    </property>
@@ -151,6 +157,9 @@
    </property>
   </action>
   <action name="actionCopy">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Co&amp;py</string>
    </property>
@@ -159,6 +168,9 @@
    </property>
   </action>
   <action name="actionPaste">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>P&amp;aste</string>
    </property>
@@ -167,6 +179,9 @@
    </property>
   </action>
   <action name="actionDelete">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>&amp;Delete</string>
    </property>
@@ -175,6 +190,9 @@
    </property>
   </action>
   <action name="actionRotateLeft">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Rotate &amp;Left</string>
    </property>
@@ -183,6 +201,9 @@
    </property>
   </action>
   <action name="actionRotateRight">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Rotate &amp;Right</string>
    </property>
@@ -252,28 +273,15 @@
     <string>Ctrl+W</string>
    </property>
   </action>
-  <action name="actionUndo">
-   <property name="text">
-    <string>&amp;Undo</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Z</string>
-   </property>
-  </action>
-  <action name="actionRedo">
-   <property name="text">
-    <string>&amp;Redo</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Y</string>
-   </property>
-  </action>
   <action name="actionFirstPage">
    <property name="text">
     <string>&amp;First Page</string>
    </property>
   </action>
   <action name="actionZoomIn">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Zoom &amp;In</string>
    </property>
@@ -282,6 +290,9 @@
    </property>
   </action>
   <action name="actionZoomOut">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Zoom &amp;Out</string>
    </property>
@@ -290,6 +301,9 @@
    </property>
   </action>
   <action name="actionZoomTo">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Zoom &amp;To</string>
    </property>
@@ -297,9 +311,26 @@
     <string>Ctrl+M</string>
    </property>
   </action>
-  <action name="actionRegister">
+  <action name="actionRedo">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
-    <string>&amp;Register</string>
+    <string>&amp;Redo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Y</string>
+   </property>
+  </action>
+  <action name="actionUndo">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Undo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Z</string>
    </property>
   </action>
  </widget>

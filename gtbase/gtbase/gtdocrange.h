@@ -31,7 +31,7 @@ public:
     inline void setRange(const GtDocPoint &begin, const GtDocPoint &end);
     inline void setType(RangeType type) { _type = type; }
     inline bool contains(const GtDocPoint &point) const;
-    QPoint intersectedText(GtDocPage *page);
+    QPoint intersectedText(GtDocPage *page) const;
 
 private:
     GtDocPoint _begin;

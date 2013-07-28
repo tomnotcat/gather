@@ -5,6 +5,7 @@
 #include "gtapplication.h"
 #include "gtbookmark.h"
 #include "gtdocpage.h"
+#include "gtdocrange.h"
 #include "gtdocument.h"
 #include "gtdocview.h"
 #include "gtmainsettings.h"
@@ -15,12 +16,16 @@
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QSplitter>
 #include <QtWidgets/QTreeView>
+#include <QtWidgets/QUndoStack>
 #include <QtWidgets/QVBoxLayout>
 
 GT_BEGIN_NAMESPACE
 
 GtDocTabView::GtDocTabView(QWidget *parent)
     : GtTabView(parent)
+    , m_undoStack(0)
+    , m_undoAction(0)
+    , m_redoAction(0)
 {
     // model
     m_tocModel = new GtTocModel(this);
@@ -76,11 +81,6 @@ GtDocTabView::~GtDocTabView()
     m_tocModel->setDocModel(0);
 }
 
-GtDocModelPointer GtDocTabView::docModel() const
-{
-    return m_docModel;
-}
-
 void GtDocTabView::setDocModel(GtDocModelPointer docModel)
 {
     m_tocModel->setDocModel(0);
@@ -101,63 +101,132 @@ void GtDocTabView::setDocModel(GtDocModelPointer docModel)
     if (0 == m_docModel)
         return;
 
-    if (m_docModel->document()->isLoaded()) {
-        documentLoaded(m_docModel->document());
-    }
-    else {
+    if (!m_docModel->document()->isLoaded()) {
         connect(m_docModel->document(), SIGNAL(loaded(GtDocument*)),
                 this, SLOT(documentLoaded(GtDocument*)));
     }
+
+    if (m_docModel->document()->isLoaded())
+        documentLoaded(m_docModel->document());
 }
 
-void GtDocTabView::onCut()
+void GtDocTabView::setUndoStack(QUndoStack *undoStack)
 {
+    m_undoStack = undoStack;
+    m_docView->setUndoStack(undoStack);
+
+    QAction *undoAction = m_undoStack->createUndoAction(this);
+    undoAction->setShortcuts(QKeySequence::Undo);
+
+    QAction *redoAction = m_undoStack->createRedoAction(this);
+    redoAction->setShortcuts(QKeySequence::Redo);
+
+    if (isActive()) {
+        Ui_MainWindow &ui = mainWindow()->m_ui;
+
+        if (m_undoAction && m_redoAction) {
+            ui.menuEdit->insertAction(m_undoAction, redoAction);
+            ui.menuEdit->insertAction(redoAction, undoAction);
+
+            ui.menuEdit->removeAction(m_undoAction);
+            ui.menuEdit->removeAction(m_redoAction);
+        }
+        else {
+            ui.menuEdit->insertAction(ui.actionUndo, redoAction);
+            ui.menuEdit->insertAction(redoAction, undoAction);
+
+            ui.menuEdit->removeAction(ui.actionUndo);
+            ui.menuEdit->removeAction(ui.actionRedo);
+        }
+    }
+
+    delete m_undoAction;
+    delete m_redoAction;
+    m_undoAction = undoAction;
+    m_redoAction = redoAction;
 }
 
-void GtDocTabView::onCopy()
+void GtDocTabView::gainActive()
 {
-    m_docView->copy();
+    Ui_MainWindow &ui = mainWindow()->m_ui;
+
+    if (m_undoAction && m_redoAction)  {
+        ui.menuEdit->insertAction(ui.actionUndo, m_redoAction);
+        ui.menuEdit->insertAction(m_redoAction, m_undoAction);
+
+        ui.menuEdit->removeAction(ui.actionUndo);
+        ui.menuEdit->removeAction(ui.actionRedo);
+    }
+
+    ui.actionCut->setEnabled(true);
+    ui.actionCopy->setEnabled(true);
+    ui.actionPaste->setEnabled(true);
+    ui.actionDelete->setEnabled(true);
+
+    ui.actionRotateLeft->setEnabled(true);
+    ui.actionRotateRight->setEnabled(true);
+    ui.actionZoomIn->setEnabled(true);
+    ui.actionZoomOut->setEnabled(true);
+    ui.actionZoomTo->setEnabled(true);
+
+    connect(ui.actionCopy, SIGNAL(triggered()),
+            m_docView, SLOT(copy()));
+
+    connect(ui.actionRotateLeft, SIGNAL(triggered()),
+            m_docView, SLOT(rotateLeft()));
+    connect(ui.actionRotateRight, SIGNAL(triggered()),
+            m_docView, SLOT(rotateRight()));
+    connect(ui.actionZoomIn, SIGNAL(triggered()),
+            m_docView, SLOT(zoomIn()));
+    connect(ui.actionZoomOut, SIGNAL(triggered()),
+            m_docView, SLOT(zoomOut()));
+
+    GtTabView::gainActive();
 }
 
-void GtDocTabView::onPaste()
+void GtDocTabView::loseActive()
 {
+    GtTabView::loseActive();
+
+    Ui_MainWindow &ui = mainWindow()->m_ui;
+
+    if (m_undoAction && m_redoAction)  {
+        ui.menuEdit->insertAction(m_undoAction, ui.actionRedo);
+        ui.menuEdit->insertAction(ui.actionRedo, ui.actionUndo);
+
+        ui.menuEdit->removeAction(m_undoAction);
+        ui.menuEdit->removeAction(m_redoAction);
+    }
+
+    ui.actionCut->setEnabled(false);
+    ui.actionCopy->setEnabled(false);
+    ui.actionPaste->setEnabled(false);
+    ui.actionDelete->setEnabled(false);
+
+    ui.actionRotateLeft->setEnabled(false);
+    ui.actionRotateRight->setEnabled(false);
+    ui.actionZoomIn->setEnabled(false);
+    ui.actionZoomOut->setEnabled(false);
+    ui.actionZoomTo->setEnabled(false);
+
+    disconnect(ui.actionCopy, SIGNAL(triggered()),
+               m_docView, SLOT(copy()));
+
+    disconnect(ui.actionRotateLeft, SIGNAL(triggered()),
+               m_docView, SLOT(rotateLeft()));
+    disconnect(ui.actionRotateRight, SIGNAL(triggered()),
+               m_docView, SLOT(rotateRight()));
+    disconnect(ui.actionZoomIn, SIGNAL(triggered()),
+               m_docView, SLOT(zoomIn()));
+    disconnect(ui.actionZoomOut, SIGNAL(triggered()),
+               m_docView, SLOT(zoomOut()));
 }
 
-void GtDocTabView::onDelete()
+void GtDocTabView::saveSettings(GtMainSettings *settings)
 {
-}
-
-void GtDocTabView::onZoomIn()
-{
-    m_docView->zoomIn();
-}
-
-void GtDocTabView::onZoomOut()
-{
-    m_docView->zoomOut();
-}
-
-void GtDocTabView::onRotateLeft()
-{
-    m_docModel->setRotation(m_docModel->rotation() - 90);
-}
-
-void GtDocTabView::onRotateRight()
-{
-    m_docModel->setRotation(m_docModel->rotation() + 90);
-}
-
-void GtDocTabView::currentChanged(GtTabView *old, GtTabView *now)
-{
-}
-
-void GtDocTabView::mainWindowClose(GtTabView *current)
-{
-    if (this != current)
+    if (mainWindow()->tabView() != this)
         return;
 
-    GtApplication *application = GtApplication::instance();
-    GtMainSettings *settings = application->settings();
     settings->setDocSplitter(m_splitter->saveState());
 }
 
@@ -171,15 +240,18 @@ void GtDocTabView::showDocViewContextMenu(const QPoint &pos)
         menu.addAction(tr("Ha&nd Tool"), m_docView, SLOT(highlight()));
     }
     else {
-        menu.addAction(m_mainWindow->ui.actionCopy);
+        menu.addAction(mainWindow()->m_ui.actionCopy);
         menu.addSeparator();
-        menu.addAction(tr("&Highlight Text"), m_docView, SLOT(highlight()));
-        menu.addAction(tr("&Add Bookmark"), this, SLOT(addBookmark()));
+        menu.addAction(tr("&Highlight Text"),
+                       m_docView, SLOT(highlight()));
+        menu.addAction(tr("&Add Bookmark"),
+                       this, SLOT(addBookmark()));
         menu.addSeparator();
-        menu.addAction(tr("&Search"), this, SLOT(searchSelectedText()));
+        menu.addAction(tr("&Search"),
+                       this, SLOT(searchSelectedText()));
     }
 
-    menu.exec(QCursor::pos());
+    menu.exec(m_docView->mapToGlobal(pos));
 }
 
 void GtDocTabView::documentLoaded(GtDocument *document)
@@ -196,12 +268,12 @@ void GtDocTabView::documentLoaded(GtDocument *document)
         m_docView->setFocus();
 
         // set tab text with document title
-        QTabWidget *tabWidget = m_mainWindow->ui.tabWidget;
+        QTabWidget *tabWidget = mainWindow()->m_ui.tabWidget;
         int index = tabWidget->indexOf(this);
         tabWidget->setTabText(index, document->title());
         tabWidget->setTabToolTip(index, document->title());
 
-        m_mainWindow->setWindowTitle(document->title());
+        mainWindow()->setWindowTitle(document->title());
     }
     else {
         Q_ASSERT(0);

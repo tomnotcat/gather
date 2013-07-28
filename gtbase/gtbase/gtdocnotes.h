@@ -26,6 +26,11 @@ public:
     QList<GtDocNote*> allNotes() const;
 
     void addNote(GtDocNote *note);
+    bool removeNote(GtDocNote *note);
+
+Q_SIGNALS:
+    void noteAdded(GtDocNote *note);
+    void noteRemoved(GtDocNote *note);
 
 protected:
     QScopedPointer<GtDocNotesPrivate> d_ptr;

@@ -3,6 +3,7 @@
  */
 #include "gtdocview.h"
 #include "gtbookmarks.h"
+#include "gtdoccommand.h"
 #include "gtdocmodel.h"
 #include "gtdocnote.h"
 #include "gtdocnotes.h"
@@ -17,6 +18,7 @@
 #include <QtGui/QPaintEvent>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QScrollBar>
+#include <QtWidgets/QUndoStack>
 #include <math.h>
 
 GT_BEGIN_NAMESPACE
@@ -106,10 +108,10 @@ public:
     void zoomForSizeSinglePage(int width, int height);
 
     void fillRegion(QPainter &p, const QRegion &r, const QColor &c);
-    bool drawPage(QPainter &p, int index, const QRect &pageArea,
-                  const QRect &border, const QColor &backColor);
+    void drawPage(QPainter &p, int index, const QRect &pageArea,
+                  const QRect &border, const GtDocRange &selRange);
     QRegion textRegion(GtDocPage *page, int begin, int end) const;
-    QRegion selectedRegion(GtDocRange &range, GtDocPage *page) const;
+    QRegion rangeRegion(const GtDocRange &range, GtDocPage *page) const;
     int pageDistance(int page, const QPoint &point, QPointF *ppoint);
     QTransform pageAreaToView(GtDocPage *page) const;
     QPoint pageViewToView(int index);
@@ -117,11 +119,13 @@ public:
     QPoint viewPointFromDocPoint(const GtDocPoint &p);
     void updateCursor(const QPoint &p);
     void relayoutPagesLater();
+    void repaintDocRange(const GtDocRange &range);
     void repaintOldAndNewSelection(const GtDocRange &oldRange);
 
 private:
     GtDocView *q_ptr;
     GtDocModel *m_model;
+    QUndoStack *m_undoStack;
     GtDocument *m_document;
     GtBookmarks *m_bookmarks;
     GtDocNotes *m_notes;
@@ -144,6 +148,10 @@ private:
     // selection
     GtDocPoint m_selectBegin;
     GtDocPoint m_selectEnd;
+    QColor m_paperColor;
+    QColor m_backColor;
+    QColor m_highlightColor;
+    QColor m_selBgColor;
 
     // prevent update visible pages
     int m_lockPageUpdate;
@@ -302,6 +310,7 @@ void GtDocViewPrivate::HeightCache::rebuild()
 GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     : q_ptr(parent)
     , m_model(0)
+    , m_undoStack(0)
     , m_document(0)
     , m_bookmarks(0)
     , m_notes(0)
@@ -317,6 +326,9 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     , m_sizingMode(GtDocModel::FitWidth)
     , m_mouseMode(GtDocModel::BrowseMode)
     , m_renderCache(new GtDocRenderCache(), &QObject::deleteLater)
+    , m_paperColor(255, 255, 255)
+    , m_highlightColor(255, 255, 0, 120)
+    , m_selBgColor(30, 76, 100, 120)
     , m_lockPageUpdate(0)
     , m_lockPageNeedUpdate(false)
     , m_verticalScrollBarVisible(false)
@@ -325,6 +337,8 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
 
 {
     Q_Q(GtDocView);
+
+    m_backColor = q->viewport()->palette().color(QPalette::Dark);
 
     q->connect(m_renderCache.data(), SIGNAL(finished(int)),
                q, SLOT(renderFinished(int)));
@@ -346,11 +360,13 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     // the apparently "magic" value of 20 is the same used internally in QScrollArea
     QScrollBar *sb = q->verticalScrollBar();
     sb->setSingleStep(20);
-    q->connect(sb, SIGNAL(valueChanged(int)), q, SLOT(updateVisiblePages(int)));
+    q->connect(sb, SIGNAL(valueChanged(int)),
+               q, SLOT(updateVisiblePages(int)));
 
     sb = q->horizontalScrollBar();
     sb->setSingleStep(20);
-    q->connect(sb, SIGNAL(valueChanged(int)), q, SLOT(updateVisiblePages(int)));
+    q->connect(sb, SIGNAL(valueChanged(int)),
+               q, SLOT(updateVisiblePages(int)));
 
     q->setAttribute(Qt::WA_InputMethodEnabled, true);
 }
@@ -685,9 +701,10 @@ void GtDocViewPrivate::fillRegion(QPainter &p, const QRegion &r, const QColor &c
         p.fillRect(rects[i], c);
 }
 
-bool GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
-                                const QRect &border, const QColor &backColor)
+void GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
+                                const QRect &border, const GtDocRange &selRange)
 {
+    GtDocPage *page = m_document->page(index);
     QRect realArea(pageArea.x() + border.left(),
                    pageArea.y() + border.top(),
                    pageArea.width() - border.left() - border.right(),
@@ -704,16 +721,16 @@ bool GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
     p.drawRect(x - 1, y - 1, width + 1, height + 1);
 
     // draw bottom/right gradient
-    int r = backColor.red() / (levels + 2) + 6;
-    int g = backColor.green() / (levels + 2) + 6;
-    int b = backColor.blue() / (levels + 2) + 6;
+    int r = m_backColor.red() / (levels + 2) + 6;
+    int g = m_backColor.green() / (levels + 2) + 6;
+    int b = m_backColor.blue() / (levels + 2) + 6;
 
     p.translate(x, y);
     for (int i = 0; i < levels; i++) {
         p.setPen(QColor(r * (i+2), g * (i+2), b * (i+2)));
         p.drawLine(i, i + height + 1, i + width + 1, i + height + 1);
         p.drawLine(i + width + 1, i, i + width + 1, i + height);
-        p.setPen(backColor);
+        p.setPen(m_backColor);
         p.drawLine(-1, i + height + 1, i - 1, i + height + 1);
         p.drawLine(i + width + 1, -1, i + width + 1, i - 1);
     }
@@ -723,12 +740,32 @@ bool GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
     // draw page contents
     QImage image = m_renderCache->image(index);
     if (image.isNull()) {
-        p.fillRect(realArea, QColor(255, 255, 255));
-        return false;
+        p.fillRect(realArea, m_paperColor);
+        return;
     }
 
     p.drawImage(realArea, image);
-    return true;
+
+    // draw notes
+    QList<GtDocNote*> notes = m_notes->pageNotes(index);
+    QList<GtDocNote*>::iterator it;
+
+    for (it = notes.begin(); it != notes.end(); ++it) {
+        QRegion noteRegion(rangeRegion((*it)->range(), page));
+
+        noteRegion.translate(pageArea.x() + border.left(),
+                             pageArea.y() + border.top());
+
+        fillRegion(p, noteRegion, m_highlightColor);
+    }
+
+    // highlight selected region
+    QRegion selRegion(rangeRegion(selRange, page));
+
+    selRegion.translate(pageArea.x() + border.left(),
+                        pageArea.y() + border.top());
+
+    fillRegion(p, selRegion, m_selBgColor);
 }
 
 QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end) const
@@ -792,7 +829,8 @@ QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end) const
     return region;
 }
 
-QRegion GtDocViewPrivate::selectedRegion(GtDocRange &range, GtDocPage *page) const
+QRegion GtDocViewPrivate::rangeRegion(const GtDocRange &range,
+                                      GtDocPage *page) const
 {
     QRegion region;
 
@@ -987,6 +1025,35 @@ void GtDocViewPrivate::relayoutPagesLater()
     }
 }
 
+void GtDocViewPrivate::repaintDocRange(const GtDocRange &range)
+{
+    Q_Q(GtDocView);
+
+    if (range.isEmpty())
+        return;
+
+    QRegion updateRegion;
+    int selBegin = range.begin().page()->index();
+    int selEnd = range.end().page()->index() + 1;
+
+    selBegin = MAX(m_beginPage, selBegin);
+    selEnd = MIN(m_endPage, selEnd);
+    for (int i = selBegin; i < selEnd; ++i) {
+        GtDocPage *page = m_document->page(i);
+        QRegion region = rangeRegion(range, page);
+        QRect pageArea, border;
+
+        pageArea = pageExtents(i, &border);
+        region.translate(pageArea.x() + border.left(),
+                         pageArea.y() + border.top());
+        updateRegion += region;
+    }
+
+    QPoint scrollPos(q->scrollPoint());
+    updateRegion.translate(-scrollPos.x(), -scrollPos.y());
+    q->viewport()->update(updateRegion);
+}
+
 void GtDocViewPrivate::repaintOldAndNewSelection(const GtDocRange &oldRange)
 {
     Q_Q(GtDocView);
@@ -1024,29 +1091,7 @@ void GtDocViewPrivate::repaintOldAndNewSelection(const GtDocRange &oldRange)
         }
     }
 
-    if (updateRange.isEmpty())
-        return;
-
-    QRegion updateRegion;
-    int selBegin = updateRange.begin().page()->index();
-    int selEnd = updateRange.end().page()->index() + 1;
-
-    selBegin = MAX(m_beginPage, selBegin);
-    selEnd = MIN(m_endPage, selEnd);
-    for (int i = selBegin; i < selEnd; ++i) {
-        GtDocPage *page = m_document->page(i);
-        QRegion region = selectedRegion(updateRange, page);
-        QRect pageArea, border;
-
-        pageArea = pageExtents(i, &border);
-        region.translate(pageArea.x() + border.left(),
-                         pageArea.y() + border.top());
-        updateRegion += region;
-    }
-
-    QPoint scrollPos(q->scrollPoint());
-    updateRegion.translate(-scrollPos.x(), -scrollPos.y());
-    q->viewport()->update(updateRegion);
+    repaintDocRange(updateRange);
 }
 
 GtDocView::GtDocView(QWidget *parent)
@@ -1122,6 +1167,9 @@ void GtDocView::setModel(GtDocModel *model)
                    SIGNAL(destroyed(QObject*)),
                    this,
                    SLOT(modelDestroyed(QObject*)));
+
+        if (d->m_model->parent() == this)
+            delete d->m_model;
     }
 
     GtDocument *newdoc = 0;
@@ -1194,6 +1242,38 @@ void GtDocView::setModel(GtDocModel *model)
     notesChanged(newnotes);
 }
 
+QUndoStack* GtDocView::undoStack() const
+{
+    Q_D(const GtDocView);
+    return d->m_undoStack;
+}
+
+void GtDocView::setUndoStack(QUndoStack *undoStack)
+{
+    Q_D(GtDocView);
+
+    if (undoStack == d->m_undoStack)
+        return;
+
+    if (d->m_undoStack) {
+        disconnect(d->m_undoStack,
+                   SIGNAL(destroyed(QObject*)),
+                   this,
+                   SLOT(undoStackDestroyed(QObject*)));
+
+        if (d->m_undoStack->parent() == this)
+            delete d->m_undoStack;
+    }
+
+    d->m_undoStack = undoStack;
+    if (d->m_undoStack) {
+        connect(d->m_undoStack,
+                SIGNAL(destroyed(QObject*)),
+                this,
+                SLOT(undoStackDestroyed(QObject*)));
+    }
+}
+
 void GtDocView::setRenderThread(QThread *thread)
 {
     Q_D(GtDocView);
@@ -1238,15 +1318,6 @@ bool GtDocView::canZoomIn() const
     return false;
 }
 
-void GtDocView::zoomIn()
-{
-    Q_D(GtDocView);
-
-    double scale = d->m_model->scale() * ZOOM_IN_FACTOR;
-    d->m_model->setSizingMode(GtDocModel::FreeSize);
-    d->m_model->setScale(scale);
-}
-
 bool GtDocView::canZoomOut() const
 {
     Q_D(const GtDocView);
@@ -1255,15 +1326,6 @@ bool GtDocView::canZoomOut() const
         return d->m_scale > d->m_model->minScale();
 
     return false;
-}
-
-void GtDocView::zoomOut()
-{
-    Q_D(GtDocView);
-
-    double scale = d->m_model->scale() * ZOOM_OUT_FACTOR;
-    d->m_model->setSizingMode(GtDocModel::FreeSize);
-    d->m_model->setScale(scale);
 }
 
 QRect GtDocView::pageExtents(int page, QRect *border) const
@@ -1282,6 +1344,21 @@ void GtDocView::scrollTo(int x, int y)
     horizontalScrollBar()->setValue(x);
     verticalScrollBar()->setValue(y);
     unlockPageUpdate();
+}
+
+void GtDocView::select(const GtDocPoint &begin, const GtDocPoint &end)
+{
+    Q_D(GtDocView);
+
+    GtDocRange oldRange(selectedRange());
+    d->m_selectBegin = begin;
+    d->m_selectEnd = end;
+    d->repaintOldAndNewSelection(oldRange);
+}
+
+void GtDocView::deselect()
+{
+    select(GtDocPoint(), GtDocPoint());
 }
 
 GtDocRange GtDocView::selectedRange() const
@@ -1337,6 +1414,20 @@ QPoint GtDocView::viewPointFromDocPoint(const GtDocPoint &p)
     return d->viewPointFromDocPoint(p);
 }
 
+void GtDocView::highlight()
+{
+    Q_D(GtDocView);
+
+    GtDocRange range(selectedRange());
+    if (range.isEmpty())
+        return;
+
+    QUndoCommand *command = new GtHighlightCommand(d->m_model, range);
+    d->m_undoStack->push(command);
+
+    deselect();
+}
+
 void GtDocView::copy()
 {
     Q_D(GtDocView);
@@ -1373,17 +1464,34 @@ void GtDocView::copy()
     }
 }
 
-void GtDocView::highlight()
+void GtDocView::rotateLeft()
+{
+    Q_D(GtDocView);
+    d->m_model->setRotation(d->m_rotation - 90);
+}
+
+void GtDocView::rotateRight()
+{
+    Q_D(GtDocView);
+    d->m_model->setRotation(d->m_rotation + 90);
+}
+
+void GtDocView::zoomIn()
 {
     Q_D(GtDocView);
 
-    GtDocRange selRange(selectedRange());
+    double scale = d->m_model->scale() * ZOOM_IN_FACTOR;
+    d->m_model->setSizingMode(GtDocModel::FreeSize);
+    d->m_model->setScale(scale);
+}
 
-    if (selRange.isEmpty())
-        return;
+void GtDocView::zoomOut()
+{
+    Q_D(GtDocView);
 
-    GtDocNote *note = new GtDocNote(selRange);
-    d->m_notes->addNote(note);
+    double scale = d->m_model->scale() * ZOOM_OUT_FACTOR;
+    d->m_model->setSizingMode(GtDocModel::FreeSize);
+    d->m_model->setScale(scale);
 }
 
 void GtDocView::renderFinished(int page)
@@ -1403,6 +1511,14 @@ void GtDocView::modelDestroyed(QObject *object)
 
     if (object == static_cast<QObject *>(d->m_model))
         setModel(0);
+}
+
+void GtDocView::undoStackDestroyed(QObject *object)
+{
+    Q_D(GtDocView);
+
+    if (object == static_cast<QObject *>(d->m_undoStack))
+        setUndoStack(0);
 }
 
 void GtDocView::documentChanged(GtDocument *document)
@@ -1465,10 +1581,29 @@ void GtDocView::notesChanged(GtDocNotes *notes)
 {
     Q_D(GtDocView);
 
+    if (d->m_notes) {
+        disconnect(d->m_notes, SIGNAL(noteAdded(GtDocNote*)),
+                   this, SLOT(noteUpdated(GtDocNote*)));
+        disconnect(d->m_notes, SIGNAL(noteRemoved(GtDocNote*)),
+                   this, SLOT(noteUpdated(GtDocNote*)));
+    }
+
     d->m_notes = notes;
+    if (d->m_notes) {
+        connect(d->m_notes, SIGNAL(noteAdded(GtDocNote*)),
+                this, SLOT(noteUpdated(GtDocNote*)));
+        connect(d->m_notes, SIGNAL(noteRemoved(GtDocNote*)),
+                this, SLOT(noteUpdated(GtDocNote*)));
+    }
 
     if (!d->m_pendingRelayoutPages)
         viewport()->update();
+}
+
+void GtDocView::noteUpdated(GtDocNote *note)
+{
+    Q_D(GtDocView);
+    d->repaintDocRange(note->range());
 }
 
 void GtDocView::pageChanged(int page)
@@ -1895,11 +2030,9 @@ void GtDocView::paintEvent(QPaintEvent *e)
     int scrollX = horizontalScrollBar()->value();
     int scrollY = verticalScrollBar()->value();
     QRegion remainingArea(contentsRect);
-    QColor backColor = viewport()->palette().color(QPalette::Dark);
 
     // draw page contents
     if (d->isDocLoaded()) {
-        QColor selBgColor = QColor(30, 76, 100, 120);
         QRect pageArea, border, overlap;
         GtDocRange selRange(selectedRange());
 
@@ -1911,17 +2044,7 @@ void GtDocView::paintEvent(QPaintEvent *e)
             if (!overlap.isValid())
                 continue;
 
-            if (d->drawPage(p, i, pageArea, border, backColor)) {
-                // highlight selected region
-                GtDocPage *page = d->m_document->page(i);
-                QRegion selRegion(d->selectedRegion(selRange, page));
-
-                selRegion.translate(pageArea.x() + border.left(),
-                                    pageArea.y() + border.top());
-
-                d->fillRegion(p, selRegion, selBgColor);
-            }
-
+            d->drawPage(p, i, pageArea, border, selRange);
             remainingArea -= pageArea;
         }
 
@@ -1930,7 +2053,7 @@ void GtDocView::paintEvent(QPaintEvent *e)
     }
 
     // fill with background color the unpainted area
-    d->fillRegion(p, remainingArea, backColor);
+    d->fillRegion(p, remainingArea, d->m_backColor);
 }
 
 void GtDocView::mouseMoveEvent(QMouseEvent *e)
@@ -1982,7 +2105,7 @@ void GtDocView::mousePressEvent(QMouseEvent *e)
 
             if (!selRange.isEmpty() && !docPoint.isNull()) {
                 GtDocPage *page = docPoint.page();
-                QRegion selRegion(d->selectedRegion(selRange, page));
+                QRegion selRegion(d->rangeRegion(selRange, page));
                 QPoint offset(d->pageViewToView(page->index()));
 
                 selRegion.translate(offset);
@@ -2030,7 +2153,7 @@ void GtDocView::mouseDoubleClickEvent(QMouseEvent *e)
     }
 }
 
-void GtDocView::timerEvent(QTimerEvent *e)
+void GtDocView::timerEvent(QTimerEvent *)
 {
     qDebug() << ">>>>>>>>>>>>>>>>>>>>>";
 }

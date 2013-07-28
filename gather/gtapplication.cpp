@@ -80,8 +80,7 @@ GtApplication::GtApplication(int &argc, char **argv)
 
     // documents
     m_docThread = new QThread(this);
-    m_docManager = new GtDocManager(this);
-    m_docManager->setDocThread(m_docThread);
+    m_docManager = new GtDocManager(m_docThread, this);
 
     QDir dir(QCoreApplication::applicationDirPath());
     if (dir.cd("loader"))

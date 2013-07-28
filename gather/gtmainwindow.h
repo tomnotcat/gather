@@ -34,14 +34,6 @@ private Q_SLOTS:
     void on_actionOpenFile_triggered();
     void on_actionCloseTab_triggered();
     void on_actionQuit_triggered();
-    void on_actionCut_triggered();
-    void on_actionCopy_triggered();
-    void on_actionPaste_triggered();
-    void on_actionDelete_triggered();
-    void on_actionZoomIn_triggered();
-    void on_actionZoomOut_triggered();
-    void on_actionRotateLeft_triggered();
-    void on_actionRotateRight_triggered();
     void on_actionAboutGather_triggered();
     void openRecentFile();
     void currentTabChanged(int index);
@@ -61,18 +53,19 @@ private:
     void closeEvent(QCloseEvent *event);
 
 public:
-    Ui_MainWindow ui;
+    Ui_MainWindow m_ui;
 
 private:
     // objects in GUI thread
-    QStringList recentFiles;
-    QString curFile;
-    QString lastOpenPath;
+    QStringList m_recentFiles;
+    QString m_curFile;
+    QString m_lastOpenPath;
+    GtTabView *m_oldTabView;
 
     // recent opened files
     enum { MaxRecentFiles = 5 };
-    QAction *recentFileActions[MaxRecentFiles];
-    QAction *recentFileSeparator;
+    QAction *m_recentFileActions[MaxRecentFiles];
+    QAction *m_recentFileSeparator;
 };
 
 GT_END_NAMESPACE

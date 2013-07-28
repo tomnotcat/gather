@@ -9,6 +9,7 @@
 
 class QSplitter;
 class QTreeView;
+class QUndoStack;
 class QVBoxLayout;
 
 GT_BEGIN_NAMESPACE
@@ -26,22 +27,16 @@ public:
     ~GtDocTabView();
 
 public:
-    GtDocModelPointer docModel() const;
+    inline GtDocModelPointer docModel() const { return m_docModel; }
     void setDocModel(GtDocModelPointer docModel);
 
-public Q_SLOTS:
-    void onCut();
-    void onCopy();
-    void onPaste();
-    void onDelete();
-    void onZoomIn();
-    void onZoomOut();
-    void onRotateLeft();
-    void onRotateRight();
+    inline QUndoStack* undoStack() const { return m_undoStack; }
+    void setUndoStack(QUndoStack *undoStack);
 
 protected:
-    void currentChanged(GtTabView *old, GtTabView *now);
-    void mainWindowClose(GtTabView *current);
+    void gainActive();
+    void loseActive();
+    void saveSettings(GtMainSettings *settings);
 
 private Q_SLOTS:
     void showDocViewContextMenu(const QPoint &pos);
@@ -54,12 +49,17 @@ private:
     // model
     GtDocModelPointer m_docModel;
     GtTocModel *m_tocModel;
+    QUndoStack *m_undoStack;
 
     // view
     QVBoxLayout *m_verticalLayout;
     QSplitter *m_splitter;
     GtDocView *m_docView;
     QTreeView *m_tocView;
+
+    // undo/redo
+    QAction *m_undoAction;
+    QAction *m_redoAction;
 };
 
 GT_END_NAMESPACE
