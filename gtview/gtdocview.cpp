@@ -108,9 +108,13 @@ public:
     void zoomForSizeSinglePage(int width, int height);
 
     void fillRegion(QPainter &p, const QRegion &r, const QColor &c);
+    void drawUnderline(QPainter &p, const QVector<QRect> &rs,
+                       const QPoint &offset);
+    void drawPageNote(QPainter &p, GtDocPage *page,
+                      GtDocNote *note, const QPoint &offset);
     void drawPage(QPainter &p, int index, const QRect &pageArea,
                   const QRect &border, const GtDocRange &selRange);
-    QRegion textRegion(GtDocPage *page, int begin, int end) const;
+    QVector<QRect> textRects(GtDocPage *page, int begin, int end) const;
     QRegion rangeRegion(const GtDocRange &range, GtDocPage *page) const;
     int pageDistance(int page, const QPoint &point, QPointF *ppoint);
     QTransform pageAreaToView(GtDocPage *page) const;
@@ -151,7 +155,9 @@ private:
     QColor m_paperColor;
     QColor m_backColor;
     QColor m_highlightColor;
+    QColor m_underlineColor;
     QColor m_selBgColor;
+    qreal m_underlineWidth;
 
     // prevent update visible pages
     int m_lockPageUpdate;
@@ -327,8 +333,10 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     , m_mouseMode(GtDocModel::BrowseMode)
     , m_renderCache(new GtDocRenderCache(), &QObject::deleteLater)
     , m_paperColor(255, 255, 255)
-    , m_highlightColor(255, 255, 0, 120)
+    , m_highlightColor(255, 255, 0)
+    , m_underlineColor(255, 64, 64)
     , m_selBgColor(30, 76, 100, 120)
+    , m_underlineWidth(2)
     , m_lockPageUpdate(0)
     , m_lockPageNeedUpdate(false)
     , m_verticalScrollBarVisible(false)
@@ -701,6 +709,83 @@ void GtDocViewPrivate::fillRegion(QPainter &p, const QRegion &r, const QColor &c
         p.fillRect(rects[i], c);
 }
 
+void GtDocViewPrivate::drawUnderline(QPainter &p, const QVector<QRect> &rs, const QPoint &offset)
+{
+    QPen pen;
+    pen.setColor(m_underlineColor);
+    pen.setWidthF(m_underlineWidth * m_scale);
+    p.setPen(pen);
+
+    QVector<QRect>::const_iterator it;
+    for (it = rs.begin(); it != rs.end(); ++it) {
+        QRect r = *it;
+        int x1, y1, x2, y2;
+
+        r.translate(offset);
+
+        if (90 == m_rotation) {
+            x1 = r.left();
+            y1 = r.top();
+            x2 = x1;
+            y2 = r.bottom();
+        }
+        else if (180 == m_rotation) {
+            x1 = r.left();
+            y1 = r.top();
+            x2 = r.right();
+            y2 = y1;
+        }
+        else if (270 == m_rotation) {
+            x1 = r.right();
+            y1 = r.top();
+            x2 = x1;
+            y2 = r.bottom();
+        }
+        else {
+            x1 = r.left();
+            y1 = r.bottom();
+            x2 = r.right();
+            y2 = y1;
+        }
+
+        p.drawLine(x1, y1, x2, y2);
+    }
+}
+
+void GtDocViewPrivate::drawPageNote(QPainter &p, GtDocPage *page,
+                                    GtDocNote *note, const QPoint &offset)
+{
+    switch (note->type()) {
+    case GtDocNote::Highlight:
+        {
+            QRegion noteRegion(rangeRegion(note->range(), page));
+
+            noteRegion.translate(offset);
+            p.setCompositionMode(QPainter::CompositionMode_Multiply);
+            fillRegion(p, noteRegion, m_highlightColor);
+            p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+        }
+        break;
+
+    case GtDocNote::Underline:
+        {
+            QPoint selText(note->range().intersectedText(page));
+
+            if (selText.y() > selText.x()) {
+                QVector<QRect> rects;
+
+                rects = textRects(page, selText.x(), selText.y());
+                drawUnderline(p, rects, offset);
+            }
+        }
+        break;
+
+    default:
+        qWarning() << "invalid doc note type:" << note->type();
+        break;
+    }
+}
+
 void GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
                                 const QRect &border, const GtDocRange &selRange)
 {
@@ -746,34 +831,28 @@ void GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
 
     p.drawImage(realArea, image);
 
-    // draw notes
+    // draw page notes
     QList<GtDocNote*> notes = m_notes->pageNotes(index);
     QList<GtDocNote*>::iterator it;
+    QPoint offset(pageArea.x() + border.left(),
+                  pageArea.y() + border.top());
 
     for (it = notes.begin(); it != notes.end(); ++it) {
-        QRegion noteRegion(rangeRegion((*it)->range(), page));
-
-        noteRegion.translate(pageArea.x() + border.left(),
-                             pageArea.y() + border.top());
-
-        fillRegion(p, noteRegion, m_highlightColor);
+        drawPageNote(p, page, (*it), offset);
     }
 
     // highlight selected region
     QRegion selRegion(rangeRegion(selRange, page));
-
-    selRegion.translate(pageArea.x() + border.left(),
-                        pageArea.y() + border.top());
-
+    selRegion.translate(offset);
     fillRegion(p, selRegion, m_selBgColor);
 }
 
-QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end) const
+QVector<QRect> GtDocViewPrivate::textRects(GtDocPage *page, int begin, int end) const
 {
     GtDocTextPointer text(page->text());
     const QRectF *rect = text->rects() + begin;
     QTransform m = pageAreaToView(page);
-    QRegion region;
+    QVector<QRect> rects;
     QRectF lineRect;
     QRectF temp;
     QRect real;
@@ -796,12 +875,8 @@ QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end) const
             {
                 lineRect.setLeft(rect->left());
             }
-            else {
-                lineDone = true;
-            }
-
-            if (rect->right() > lineRect.right() &&
-                rect->left() - lineRect.right() < diff)
+            else if (rect->right() > lineRect.right() &&
+                     rect->left() - lineRect.right() < diff)
             {
                 lineRect.setRight(rect->right());
             }
@@ -817,7 +892,7 @@ QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end) const
             temp = m.mapRect(lineRect);
             real.setCoords(temp.left(), temp.top(),
                            temp.right(), temp.bottom());
-            region += real;
+            rects.push_back(real);
             lineRect = *rect;
             lineDone = false;
         }
@@ -825,8 +900,8 @@ QRegion GtDocViewPrivate::textRegion(GtDocPage *page, int begin, int end) const
 
     temp = m.mapRect(lineRect);
     real.setCoords(temp.left(), temp.top(), temp.right(), temp.bottom());
-    region += real;
-    return region;
+    rects.push_back(real);
+    return rects;
 }
 
 QRegion GtDocViewPrivate::rangeRegion(const GtDocRange &range,
@@ -834,20 +909,28 @@ QRegion GtDocViewPrivate::rangeRegion(const GtDocRange &range,
 {
     QRegion region;
 
-    switch (m_mouseMode) {
-    case GtDocModel::SelectText:
+    switch (range.type()) {
+    case GtDocRange::TextRange:
         {
             QPoint selText(range.intersectedText(page));
 
-            if (selText.y() > selText.x())
-                region = textRegion(page, selText.x(), selText.y());
+            if (selText.y() > selText.x()) {
+                QVector<QRect> rects;
+
+                rects = (textRects(page, selText.x(), selText.y()));
+                QVector<QRect>::iterator it;
+                for (it = rects.begin(); it != rects.end(); ++it)
+                    region += *it;
+            }
         }
         break;
 
-    case GtDocModel::SelectRect:
+    case GtDocRange::GeomRange:
+        Q_ASSERT(0);
         break;
 
     default:
+        Q_ASSERT(0);
         break;
     }
 
@@ -1073,6 +1156,7 @@ void GtDocViewPrivate::repaintOldAndNewSelection(const GtDocRange &oldRange)
         GtDocPoint newBegin(newRange.begin());
         GtDocPoint newEnd(newRange.end());
 
+        updateRange.setType(newRange.type());
         if (newBegin == oldBegin) {
             if (newEnd < oldEnd)
                 updateRange.setRange(newEnd, oldEnd);
@@ -1422,7 +1506,27 @@ void GtDocView::highlight()
     if (range.isEmpty())
         return;
 
-    QUndoCommand *command = new GtHighlightCommand(d->m_model, range);
+    GtDocNote *note = new GtDocNote(GtDocNote::Highlight, range);
+    QUndoCommand *command = new GtNoteCommand(d->m_model, note);
+
+    command->setText(tr("\"Highlight\""));
+    d->m_undoStack->push(command);
+
+    deselect();
+}
+
+void GtDocView::underline()
+{
+    Q_D(GtDocView);
+
+    GtDocRange range(selectedRange());
+    if (range.isEmpty())
+        return;
+
+    GtDocNote *note = new GtDocNote(GtDocNote::Underline, range);
+    QUndoCommand *command = new GtNoteCommand(d->m_model, note);
+
+    command->setText(tr("\"Underline\""));
     d->m_undoStack->push(command);
 
     deselect();

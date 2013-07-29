@@ -57,6 +57,7 @@ public:
 
 public Q_SLOTS:
     void highlight();
+    void underline();
     void copy();
     void rotateLeft();
     void rotateRight();

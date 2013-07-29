@@ -15,7 +15,7 @@ GT_BEGIN_NAMESPACE
 class PdfOutline : public GtAbstractOutline
 {
 public:
-    PdfOutline(fz_context *c, fz_outline *o);
+    PdfOutline(fz_context *c, fz_document *d, fz_outline *o);
     ~PdfOutline();
 
 public:
@@ -27,6 +27,7 @@ public:
 
 private:
     fz_context *context;
+    fz_document *document;
     fz_outline *outline;
 };
 

@@ -162,6 +162,7 @@ void GtDocTabView::gainActive()
     ui.actionCopy->setEnabled(true);
     ui.actionPaste->setEnabled(true);
     ui.actionDelete->setEnabled(true);
+    ui.actionAddBookmark->setEnabled(true);
 
     ui.actionRotateLeft->setEnabled(true);
     ui.actionRotateRight->setEnabled(true);
@@ -171,6 +172,8 @@ void GtDocTabView::gainActive()
 
     connect(ui.actionCopy, SIGNAL(triggered()),
             m_docView, SLOT(copy()));
+    connect(ui.actionAddBookmark, SIGNAL(triggered()),
+            this, SLOT(addBookmark()));
 
     connect(ui.actionRotateLeft, SIGNAL(triggered()),
             m_docView, SLOT(rotateLeft()));
@@ -202,6 +205,7 @@ void GtDocTabView::loseActive()
     ui.actionCopy->setEnabled(false);
     ui.actionPaste->setEnabled(false);
     ui.actionDelete->setEnabled(false);
+    ui.actionAddBookmark->setEnabled(false);
 
     ui.actionRotateLeft->setEnabled(false);
     ui.actionRotateRight->setEnabled(false);
@@ -211,6 +215,8 @@ void GtDocTabView::loseActive()
 
     disconnect(ui.actionCopy, SIGNAL(triggered()),
                m_docView, SLOT(copy()));
+    disconnect(ui.actionAddBookmark, SIGNAL(triggered()),
+               this, SLOT(addBookmark()));
 
     disconnect(ui.actionRotateLeft, SIGNAL(triggered()),
                m_docView, SLOT(rotateLeft()));
@@ -233,6 +239,7 @@ void GtDocTabView::saveSettings(GtMainSettings *settings)
 void GtDocTabView::showDocViewContextMenu(const QPoint &pos)
 {
     GtDocRange selRange(m_docView->selectedRange());
+    Ui_MainWindow &ui = mainWindow()->m_ui;
     QMenu menu;
 
     if (selRange.isEmpty()) {
@@ -240,12 +247,14 @@ void GtDocTabView::showDocViewContextMenu(const QPoint &pos)
         menu.addAction(tr("Ha&nd Tool"), m_docView, SLOT(highlight()));
     }
     else {
-        menu.addAction(mainWindow()->m_ui.actionCopy);
+        menu.addAction(ui.actionCopy);
         menu.addSeparator();
-        menu.addAction(tr("&Highlight Text"),
+        menu.addAction(tr("&Highlight"),
                        m_docView, SLOT(highlight()));
-        menu.addAction(tr("&Add Bookmark"),
-                       this, SLOT(addBookmark()));
+        menu.addAction(tr("&Underline"),
+                       m_docView, SLOT(underline()));
+        menu.addSeparator();
+        menu.addAction(ui.actionAddBookmark);
         menu.addSeparator();
         menu.addAction(tr("&Search"),
                        this, SLOT(searchSelectedText()));

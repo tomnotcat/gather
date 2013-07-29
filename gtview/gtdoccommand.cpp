@@ -31,27 +31,25 @@ void GtDocCommand::redo()
     QUndoCommand::redo();
 }
 
-GtHighlightCommand::GtHighlightCommand(GtDocModel *model,
-                                       const GtDocRange &range)
+GtNoteCommand::GtNoteCommand(GtDocModel *model, GtDocNote *note)
     : GtDocCommand(model)
+    , m_note(note)
 {
-    m_note = new GtDocNote(range);
-    setText(QObject::tr("\"Highlight\""));
 }
 
-GtHighlightCommand::~GtHighlightCommand()
+GtNoteCommand::~GtNoteCommand()
 {
     if (!m_done)
         delete m_note;
 }
 
-void GtHighlightCommand::undo()
+void GtNoteCommand::undo()
 {
     GtDocCommand::undo();
     m_model->notes()->removeNote(m_note);
 }
 
-void GtHighlightCommand::redo()
+void GtNoteCommand::redo()
 {
     m_model->notes()->addNote(m_note);
     GtDocCommand::redo();

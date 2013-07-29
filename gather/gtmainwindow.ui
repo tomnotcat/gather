@@ -92,6 +92,8 @@
     <addaction name="actionCopy"/>
     <addaction name="actionPaste"/>
     <addaction name="actionDelete"/>
+    <addaction name="separator"/>
+    <addaction name="actionAddBookmark"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -331,6 +333,17 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Z</string>
+   </property>
+  </action>
+  <action name="actionAddBookmark">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Add Boo&amp;kmark</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+B</string>
    </property>
   </action>
  </widget>

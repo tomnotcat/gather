@@ -28,11 +28,11 @@ protected:
     bool m_done;
 };
 
-class GT_VIEW_EXPORT GtHighlightCommand : public GtDocCommand
+class GT_VIEW_EXPORT GtNoteCommand : public GtDocCommand
 {
 public:
-    GtHighlightCommand(GtDocModel *model, const GtDocRange &range);
-    ~GtHighlightCommand();
+    GtNoteCommand(GtDocModel *model, GtDocNote *note);
+    ~GtNoteCommand();
 
 public:
     void undo();

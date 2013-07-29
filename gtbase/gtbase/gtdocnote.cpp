@@ -1,67 +1,37 @@
 /*
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
-#include "gtdocnote_p.h"
+#include "gtdocnote.h"
 #include <QtCore/QDebug>
 
 GT_BEGIN_NAMESPACE
 
-GtDocNotePrivate::GtDocNotePrivate(GtDocNote *q)
-    : q_ptr(q)
+GtDocNote::GtDocNote(NoteType type, const GtDocRange &range)
+    : m_type(type)
+    , m_range(range)
 {
-}
-
-GtDocNotePrivate::~GtDocNotePrivate()
-{
-}
-
-GtDocNote::GtDocNote(QObject *parent)
-    : QObject(parent)
-    , d_ptr(new GtDocNotePrivate(this))
-{
-}
-
-GtDocNote::GtDocNote(const GtDocRange &range, QObject *parent)
-    : QObject(parent)
-    , d_ptr(new GtDocNotePrivate(this))
-{
-    setRange(range);
-}
-
-GtDocNote::GtDocNote(GtDocNotePrivate &dd, QObject* parent)
-    : QObject(parent)
-    , d_ptr(&dd)
-{
+    Q_ASSERT(isValid());
 }
 
 GtDocNote::~GtDocNote()
 {
 }
 
-GtDocRange GtDocNote::range() const
-{
-    Q_D(const GtDocNote);
-    return d->range;
-}
-
 void GtDocNote::setRange(const GtDocRange &range)
 {
-    Q_ASSERT(range.type() != GtDocRange::UnknownRange);
-
-    Q_D(GtDocNote);
-    d->range = range;
+    m_range = range;
+    Q_ASSERT(isValid());
 }
 
-QString GtDocNote::text() const
+bool GtDocNote::isValid() const
 {
-    Q_D(const GtDocNote);
-    return d->text;
-}
+    if (m_range.type() == GtDocRange::UnknownRange)
+        return false;
 
-void GtDocNote::setText(const QString &text)
-{
-    Q_D(GtDocNote);
-    d->text = text;
+    if (Underline == m_type)
+        return (m_range.type() == GtDocRange::TextRange);
+
+    return true;
 }
 
 GT_END_NAMESPACE

@@ -172,7 +172,7 @@ GtAbstractPage* PdfDocument::loadPage(int index)
 GtAbstractOutline* PdfDocument::loadOutline()
 {
     fz_outline *outline = fz_load_outline(document);
-    return new PdfOutline(_context, outline);
+    return new PdfOutline(_context, document, outline);
 }
 
 void PdfDocument::parseLabels(pdf_obj *tree)

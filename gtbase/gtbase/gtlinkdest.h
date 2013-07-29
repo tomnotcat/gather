@@ -5,6 +5,7 @@
 #define __GT_LINK_DEST_H__
 
 #include "gtobject.h"
+#include <QtCore/QPointF>
 
 GT_BEGIN_NAMESPACE
 
@@ -18,18 +19,24 @@ public:
 
 public:
     explicit GtLinkDest();
-    explicit GtLinkDest(int page);
+    GtLinkDest(int page, const QPointF &point, double zoom);
     ~GtLinkDest();
 
 public:
     inline LinkType type() const { return m_type; }
     inline int page() const { return m_data.gotor.page; }
+    inline QPointF point() const {
+        return QPointF(m_data.gotor.x, m_data.gotor.y); }
+    inline double zoom() const { return m_data.gotor.zoom; }
 
-public:
+private:
     LinkType m_type;
     union {
         struct {
             int page;
+            double x;
+            double y;
+            double zoom;
         }
         gotor;
     } m_data;
