@@ -62,7 +62,7 @@ void test_document::testDocument()
     QVERIFY(bm.children()[0]->children().size() == 0);
     QVERIFY(bm.children()[0]->title() == "SUMMARY");
     QVERIFY(bm.children()[0]->parent() == &bm);
-    QVERIFY(bm.children()[0]->dest().type() == GtLinkDest::LinkGoto);
+    QVERIFY(bm.children()[0]->dest().type() == GtLinkDest::ScrollTo);
     QVERIFY(bm.children()[0]->dest().page() == 0);
     QVERIFY(bm.children()[3]->children().size() == 3);
     QVERIFY(bm.children()[4]->children().size() == 0);
@@ -71,7 +71,7 @@ void test_document::testDocument()
 
     GtBookmark *it = bm.children()[9]->children()[0]->children()[0];
     QVERIFY(it->title() == "C CONCAT/GC");
-    QVERIFY(it->dest().type() == GtLinkDest::LinkGoto);
+    QVERIFY(it->dest().type() == GtLinkDest::ScrollTo);
     QVERIFY(it->dest().page() == 12);
     QVERIFY(it->parent() == bm.children()[9]->children()[0]);
 

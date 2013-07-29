@@ -6,6 +6,7 @@
 
 #include "gtobject.h"
 #include <QtCore/QPointF>
+#include <QtCore/QString>
 
 GT_BEGIN_NAMESPACE
 
@@ -14,7 +15,8 @@ class GT_BASE_EXPORT GtLinkDest : public GtObject
 public:
     enum LinkType {
         LinkNone,
-        LinkGoto
+        ScrollTo,
+        LaunchURI
     };
 
 public:
@@ -24,22 +26,17 @@ public:
 
 public:
     inline LinkType type() const { return m_type; }
-    inline int page() const { return m_data.gotor.page; }
-    inline QPointF point() const {
-        return QPointF(m_data.gotor.x, m_data.gotor.y); }
-    inline double zoom() const { return m_data.gotor.zoom; }
+    inline int page() const { Q_ASSERT(m_type == ScrollTo); return m_page; }
+    inline QPointF point() const { Q_ASSERT(m_type == ScrollTo); return m_point; }
+    inline double zoom() const { Q_ASSERT(m_type == ScrollTo); return m_zoom; }
+    inline QString uri() const { Q_ASSERT(m_type == LaunchURI); return m_uri; }
 
 private:
     LinkType m_type;
-    union {
-        struct {
-            int page;
-            double x;
-            double y;
-            double zoom;
-        }
-        gotor;
-    } m_data;
+    int m_page;
+    QPointF m_point;
+    double m_zoom;
+    QString m_uri;
 };
 
 GT_END_NAMESPACE

@@ -18,11 +18,25 @@ class GtBookmarks;
 class GtDocNote;
 class GtDocNotes;
 class GtDocument;
+class GtLinkDest;
 class GtDocViewPrivate;
 
 class GT_VIEW_EXPORT GtDocView : public QAbstractScrollArea, public GtObject
 {
     Q_OBJECT
+
+public:
+    enum SyncFlag {
+        SyncNone       = 0x00000000,
+        SyncScale      = 0x00000001,
+        SyncRotation   = 0x00000002,
+        SyncContinuous = 0x00000004,
+        SyncLayoutMode = 0x00000008,
+        SyncSizingMode = 0x00000010,
+        SyncMouseMode  = 0x00000020
+    };
+
+    Q_DECLARE_FLAGS(SyncFlags, SyncFlag)
 
 public:
     explicit GtDocView(QWidget *parent = 0);
@@ -32,6 +46,9 @@ public:
     GtDocModel* model() const;
     void setModel(GtDocModel *model);
 
+    SyncFlags syncFlags() const;
+    void setSyncFlags(SyncFlags flags);
+
     QUndoStack* undoStack() const;
     void setUndoStack(QUndoStack *undoStack);
 
@@ -39,7 +56,7 @@ public:
     void setRenderCacheSize(int size);
 
     void lockPageUpdate();
-    void unlockPageUpdate(bool update=true);
+    void unlockPageUpdate(bool update = true);
 
     bool canZoomIn() const;
     bool canZoomOut() const;
@@ -48,6 +65,7 @@ public:
 
     QPoint scrollPoint() const;
     void scrollTo(int x, int y);
+    void scrollTo(const GtLinkDest &dest);
 
     void select(const GtDocPoint &begin, const GtDocPoint &end);
     void deselect();
@@ -73,7 +91,6 @@ private Q_SLOTS:
     void bookmarksChanged(GtBookmarks *bookmarks);
     void notesChanged(GtDocNotes *notes);
     void noteUpdated(GtDocNote *note);
-    void pageChanged(int page);
     void scaleChanged(double scale);
     void rotationChanged(int rotation);
     void continuousChanged(bool continuous);
@@ -110,6 +127,8 @@ private:
     Q_DISABLE_COPY(GtDocView)
     Q_DECLARE_PRIVATE(GtDocView)
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(GtDocView::SyncFlags)
 
 GT_END_NAMESPACE
 

@@ -293,9 +293,7 @@ void GtDocTabView::tocChanged(const QModelIndex &index)
 {
     GtBookmark *bookmark = m_tocModel->bookmarkFromIndex(index);
     if (bookmark) {
-        // TODO: do not scroll when the page is already in viewport
-        QRect rect(m_docView->pageExtents(bookmark->dest().page()));
-        m_docView->scrollTo(rect.x(), rect.y());
+        m_docView->scrollTo(bookmark->dest());
     }
 }
 

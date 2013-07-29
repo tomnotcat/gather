@@ -8,16 +8,17 @@ GT_BEGIN_NAMESPACE
 
 GtLinkDest::GtLinkDest()
     : m_type(LinkNone)
+    , m_page(-1)
+    , m_zoom(0)
 {
 }
 
 GtLinkDest::GtLinkDest(int page, const QPointF &point, double zoom)
-    : m_type(LinkGoto)
+    : m_type(ScrollTo)
+    , m_page(page)
+    , m_point(point)
+    , m_zoom(zoom)
 {
-    m_data.gotor.page = page;
-    m_data.gotor.x = point.x();
-    m_data.gotor.y = point.y();
-    m_data.gotor.zoom = zoom;
 }
 
 GtLinkDest::~GtLinkDest()
