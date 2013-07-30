@@ -87,24 +87,6 @@ public:
         return m_document->page(index)->size(1.0, m_rotation);
     }
 
-    inline void setScale(double scale) {
-        m_syncSelf |= GtDocView::SyncScale;
-        m_model->setScale(scale);
-        m_syncSelf &= ~GtDocView::SyncScale;
-    }
-
-    inline void setRotation(int rotation) {
-        m_syncSelf |= GtDocView::SyncRotation;
-        m_model->setRotation(rotation);
-        m_syncSelf &= ~GtDocView::SyncRotation;
-    }
-
-    inline void setSizingMode(GtDocModel::SizingMode mode) {
-        m_syncSelf |= GtDocView::SyncSizingMode;
-        m_model->setSizingMode(mode);
-        m_syncSelf &= ~GtDocView::SyncSizingMode;
-    }
-
     inline double zoomForSizeFitWidth(const QSize &docSize,
                                       const QSize &viewSize) const
     {
@@ -627,10 +609,10 @@ void GtDocViewPrivate::zoomForSizeContinuousAndDualPage(int width, int height)
     QSize viewSize(width - q->verticalScrollBar()->width(), height);
 
     if (m_sizingMode == GtDocModel::FitWidth) {
-        setScale(zoomForSizeFitWidth(docSize, viewSize));
+        q->setScale(zoomForSizeFitWidth(docSize, viewSize));
     }
     else if (m_sizingMode == GtDocModel::BestFit) {
-        setScale(zoomForSizeBestFit(docSize, viewSize));
+        q->setScale(zoomForSizeBestFit(docSize, viewSize));
     }
     else {
         Q_ASSERT(0);
@@ -650,10 +632,10 @@ void GtDocViewPrivate::zoomForSizeContinuous(int width, int height)
     QSize viewSize(width - q->verticalScrollBar()->width(), height);
 
     if (m_sizingMode == GtDocModel::FitWidth) {
-        setScale(zoomForSizeFitWidth(docSize, viewSize));
+        q->setScale(zoomForSizeFitWidth(docSize, viewSize));
     }
     else if (m_sizingMode == GtDocModel::BestFit) {
-        setScale(zoomForSizeBestFit(docSize, viewSize));
+        q->setScale(zoomForSizeBestFit(docSize, viewSize));
     }
     else {
         Q_ASSERT(0);
@@ -686,11 +668,11 @@ void GtDocViewPrivate::zoomForSizeDualPage(int width, int height)
 
     if (m_sizingMode == GtDocModel::FitWidth) {
         QSize viewSize(width - q->verticalScrollBar()->width(), height);
-        setScale(zoomForSizeFitWidth(docSize, viewSize));
+        q->setScale(zoomForSizeFitWidth(docSize, viewSize));
     }
     else if (m_sizingMode == GtDocModel::BestFit) {
         QSize viewSize(width, height);
-        setScale(zoomForSizeBestFit(docSize, viewSize));
+        q->setScale(zoomForSizeBestFit(docSize, viewSize));
     }
     else {
         Q_ASSERT(0);
@@ -709,11 +691,11 @@ void GtDocViewPrivate::zoomForSizeSinglePage(int width, int height)
 
     if (m_sizingMode == GtDocModel::FitWidth) {
         QSize viewSize(width - q->verticalScrollBar()->width(), height);
-        setScale(zoomForSizeFitWidth(docSize, viewSize));
+        q->setScale(zoomForSizeFitWidth(docSize, viewSize));
     }
     else if (m_sizingMode == GtDocModel::BestFit) {
         QSize viewSize(width, height);
-        setScale(zoomForSizeBestFit(docSize, viewSize));
+        q->setScale(zoomForSizeBestFit(docSize, viewSize));
     }
     else {
         Q_ASSERT(0);
@@ -1422,6 +1404,51 @@ void GtDocView::unlockPageUpdate(bool update)
     }
 }
 
+double GtDocView::scale() const
+{
+    Q_D(const GtDocView);
+    return d->m_scale;
+}
+
+void GtDocView::setScale(double scale)
+{
+    Q_D(GtDocView);
+
+    d->m_syncSelf |= GtDocView::SyncScale;
+    d->m_model->setScale(scale);
+    d->m_syncSelf &= ~GtDocView::SyncScale;
+}
+
+int GtDocView::rotation() const
+{
+    Q_D(const GtDocView);
+    return d->m_rotation;
+}
+
+void GtDocView::setRotation(int rotation)
+{
+    Q_D(GtDocView);
+
+    d->m_syncSelf |= GtDocView::SyncRotation;
+    d->m_model->setRotation(rotation);
+    d->m_syncSelf &= ~GtDocView::SyncRotation;
+}
+
+int GtDocView::sizingMode() const
+{
+    Q_D(const GtDocView);
+    return d->m_sizingMode;
+}
+
+void GtDocView::setSizingMode(int mode)
+{
+    Q_D(GtDocView);
+
+    d->m_syncSelf |= GtDocView::SyncSizingMode;
+    d->m_model->setSizingMode((GtDocModel::SizingMode)mode);
+    d->m_syncSelf &= ~GtDocView::SyncSizingMode;
+}
+
 bool GtDocView::canZoomIn() const
 {
     Q_D(const GtDocView);
@@ -1460,6 +1487,11 @@ void GtDocView::scrollTo(int x, int y)
     unlockPageUpdate();
 }
 
+GtLinkDest GtDocView::scrollDest() const
+{
+    return GtLinkDest();
+}
+
 void GtDocView::scrollTo(const GtLinkDest &dest)
 {
     Q_D(GtDocView);
@@ -1468,7 +1500,7 @@ void GtDocView::scrollTo(const GtLinkDest &dest)
     double zoom = dest.zoom();
 
     if (zoom > 0) {
-        d->setScale(zoom);
+        setScale(zoom);
     }
     else {
         offset.rx() *= d->m_scale;
@@ -1620,31 +1652,31 @@ void GtDocView::copy()
 void GtDocView::rotateLeft()
 {
     Q_D(GtDocView);
-    d->setRotation(d->m_rotation - 90);
+    setRotation(d->m_rotation - 90);
 }
 
 void GtDocView::rotateRight()
 {
     Q_D(GtDocView);
-    d->setRotation(d->m_rotation + 90);
+    setRotation(d->m_rotation + 90);
 }
 
 void GtDocView::zoomIn()
 {
     Q_D(GtDocView);
 
-    double scale = d->m_model->scale() * ZOOM_IN_FACTOR;
-    d->setSizingMode(GtDocModel::FreeSize);
-    d->setScale(scale);
+    double scale = d->m_scale * ZOOM_IN_FACTOR;
+    setSizingMode(GtDocModel::FreeSize);
+    setScale(scale);
 }
 
 void GtDocView::zoomOut()
 {
     Q_D(GtDocView);
 
-    double scale = d->m_model->scale() * ZOOM_OUT_FACTOR;
-    d->setSizingMode(GtDocModel::FreeSize);
-    d->setScale(scale);
+    double scale = d->m_scale * ZOOM_OUT_FACTOR;
+    setSizingMode(GtDocModel::FreeSize);
+    setScale(scale);
 }
 
 void GtDocView::renderFinished(int page)

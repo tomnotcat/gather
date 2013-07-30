@@ -4,6 +4,7 @@
 #include "gtdoctabview.h"
 #include "gtapplication.h"
 #include "gtbookmark.h"
+#include "gtbookmarks.h"
 #include "gtdocpage.h"
 #include "gtdocrange.h"
 #include "gtdocument.h"
@@ -299,7 +300,20 @@ void GtDocTabView::tocChanged(const QModelIndex &index)
 
 void GtDocTabView::addBookmark()
 {
-    qDebug() << "add bookmark";
+    GtBookmarks *bookmarks = m_docModel->bookmarks();
+    GtBookmark *bookmark = new GtBookmark(m_docView->scrollDest());
+
+    QModelIndex index = m_tocView->currentIndex();
+    GtBookmark *prev = m_tocModel->bookmarkFromIndex(index);
+    GtBookmark *parent = bookmarks->root();
+
+    if (prev)
+        parent = prev->parent();
+    else
+        parent = bookmarks->root();
+
+    parent->insert(prev ? prev->next() : 0, bookmark);
+    emit bookmarks->inserted(bookmark);
 }
 
 void GtDocTabView::searchSelectedText()

@@ -24,6 +24,9 @@ public:
     const GtBookmark* root() const;
     GtBookmark* root();
 
+Q_SIGNALS:
+    void inserted(GtBookmark *bookmark);
+
 protected:
     QScopedPointer<GtBookmarksPrivate> d_ptr;
 

@@ -10,6 +10,7 @@
 GT_BEGIN_NAMESPACE
 
 class GtBookmark;
+class GtBookmarks;
 class GtDocModel;
 class GtTocModelPrivate;
 
@@ -24,7 +25,9 @@ public:
 public:
     GtDocModel* docModel() const;
     void setDocModel(GtDocModel *docModel);
+
     GtBookmark* bookmarkFromIndex(const QModelIndex &index) const;
+    QModelIndex indexFromBookmark(const GtBookmark* bookmark) const;
 
 public:
     QModelIndex index(int row, int column,
@@ -38,6 +41,8 @@ public:
                         int role = Qt::DisplayRole) const;
 
 private Q_SLOTS:
+    void bookmarksChanged(GtBookmarks *bookmarks);
+    void bookmarkInserted(GtBookmark *bookmark);
     void docModelDestroyed(QObject *object);
 
 private:

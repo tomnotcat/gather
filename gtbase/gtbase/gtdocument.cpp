@@ -125,7 +125,8 @@ int GtDocumentPrivate::loadOutline(GtAbstractOutline *outline,
     int count = 0;
 
     while (it) {
-        node = parent->addChild(outline->title(it), outline->dest(it));
+        node = new GtBookmark(outline->title(it), outline->dest(it));
+        parent->append(node);
         ++count;
 
         void *child = outline->childNode(it);

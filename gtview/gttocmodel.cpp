@@ -22,14 +22,14 @@ public:
 
 protected:
     GtTocModel *q_ptr;
-    GtDocModel *docModel;
-    GtBookmark *bookmark;
+    GtDocModel *m_docModel;
+    GtBookmarks *m_bookmarks;
 };
 
 GtTocModelPrivate::GtTocModelPrivate(GtTocModel *q)
     : q_ptr(q)
-    , docModel(0)
-    , bookmark(0)
+    , m_docModel(0)
+    , m_bookmarks(0)
 {
 }
 
@@ -50,33 +50,57 @@ GtTocModel::~GtTocModel()
 GtDocModel* GtTocModel::docModel() const
 {
     Q_D(const GtTocModel);
-    return d->docModel;
+    return d->m_docModel;
 }
 
 void GtTocModel::setDocModel(GtDocModel *docModel)
 {
     Q_D(GtTocModel);
 
-    if (docModel == d->docModel)
+    if (docModel == d->m_docModel)
         return;
 
-    if (d->docModel) {
-        disconnect(d->docModel,
+    if (d->m_docModel) {
+        disconnect(d->m_docModel,
+                   SIGNAL(bookmarksChanged(GtBookmarks*)),
+                   this,
+                   SLOT(bookmarksChanged(GtBookmarks*)));
+
+        disconnect(d->m_docModel,
                    SIGNAL(destroyed(QObject*)),
                    this,
                    SLOT(docModelDestroyed(QObject*)));
     }
 
-    d->docModel = docModel;
-    d->bookmark = 0;
+    if (d->m_bookmarks) {
+        disconnect(d->m_bookmarks,
+                   SIGNAL(inserted(GtBookmark*)),
+                   this,
+                   SLOT(bookmarkInserted(GtBookmark*)));
+    }
 
-    if (d->docModel) {
-        d->bookmark = docModel->bookmarks()->root();
+    d->m_docModel = docModel;
+    d->m_bookmarks = 0;
 
-        connect(d->docModel,
+    if (d->m_docModel) {
+        d->m_bookmarks = d->m_docModel->bookmarks();
+
+        connect(d->m_docModel,
+                SIGNAL(bookmarksChanged(GtBookmarks*)),
+                this,
+                SLOT(bookmarksChanged(GtBookmarks*)));
+
+        connect(d->m_docModel,
                 SIGNAL(destroyed(QObject*)),
                 this,
                 SLOT(docModelDestroyed(QObject*)));
+    }
+
+    if (d->m_bookmarks) {
+        connect(d->m_bookmarks,
+                SIGNAL(inserted(GtBookmark*)),
+                this,
+                SLOT(bookmarkInserted(GtBookmark*)));
     }
 }
 
@@ -86,6 +110,14 @@ GtBookmark* GtTocModel::bookmarkFromIndex(const QModelIndex &index) const
         return 0;
 
     return static_cast<GtBookmark*>(index.internalPointer());
+}
+
+QModelIndex GtTocModel::indexFromBookmark(const GtBookmark* bookmark) const
+{
+    if (!bookmark)
+        return QModelIndex();
+
+    return QModelIndex();
 }
 
 QModelIndex GtTocModel::index(int row, int column,
@@ -98,7 +130,7 @@ QModelIndex GtTocModel::index(int row, int column,
 
     GtBookmark *node;
     if (!parent.isValid())
-        node = d->bookmark;
+        node = d->m_bookmarks->root();
     else
         node = static_cast<GtBookmark*>(parent.internalPointer());
 
@@ -127,7 +159,7 @@ int GtTocModel::rowCount(const QModelIndex &parent) const
 {
     Q_D(const GtTocModel);
 
-    if (!d->bookmark)
+    if (!d->m_bookmarks)
         return 0;
 
     if (parent.column() > 0)
@@ -135,7 +167,7 @@ int GtTocModel::rowCount(const QModelIndex &parent) const
 
     GtBookmark *node;
     if (!parent.isValid())
-        node = d->bookmark;
+        node = d->m_bookmarks->root();
     else
         node = static_cast<GtBookmark*>(parent.internalPointer());
 
@@ -165,7 +197,7 @@ QVariant GtTocModel::data(const QModelIndex &index, int role) const
 
     case GtTocDelegate::PageLabel:
         {
-            GtDocument *document = d->docModel->document();
+            GtDocument *document = d->m_docModel->document();
             return QVariant(document->page(node->dest().page())->label());
         }
         break;
@@ -190,11 +222,42 @@ QVariant GtTocModel::headerData(int, Qt::Orientation, int) const
     return QVariant();
 }
 
+void GtTocModel::bookmarksChanged(GtBookmarks *bookmarks)
+{
+    Q_D(GtTocModel);
+
+    beginResetModel();
+
+    if (d->m_bookmarks) {
+        disconnect(d->m_bookmarks,
+                   SIGNAL(inserted(GtBookmark*)),
+                   this,
+                   SLOT(bookmarkInserted(GtBookmark*)));
+    }
+
+    d->m_bookmarks = bookmarks;
+
+    if (d->m_bookmarks) {
+        connect(d->m_bookmarks,
+                SIGNAL(inserted(GtBookmark*)),
+                this,
+                SLOT(bookmarkInserted(GtBookmark*)));
+    }
+
+    endResetModel();
+}
+
+void GtTocModel::bookmarkInserted(GtBookmark *bookmark)
+{
+    QModelIndex index = indexFromBookmark(bookmark);
+    qDebug() << index;
+}
+
 void GtTocModel::docModelDestroyed(QObject *object)
 {
     Q_D(GtTocModel);
 
-    if (object == static_cast<QObject *>(d->docModel))
+    if (object == static_cast<QObject *>(d->m_docModel))
         setDocModel(0);
 }
 

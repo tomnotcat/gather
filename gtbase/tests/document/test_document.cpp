@@ -58,15 +58,26 @@ void test_document::testDocument()
 
     GtBookmark bm;
     QVERIFY(doc->loadOutline(&bm) == 32);
+    QVERIFY(bm.index() == 0);
     QVERIFY(bm.children().size() == 10);
+    QVERIFY(bm.children()[0]->prev() == 0);
+    QVERIFY(bm.children()[0]->next() == bm.children()[1]);
+    QVERIFY(bm.children()[1]->prev() == bm.children()[0]);
     QVERIFY(bm.children()[0]->children().size() == 0);
     QVERIFY(bm.children()[0]->title() == "SUMMARY");
     QVERIFY(bm.children()[0]->parent() == &bm);
     QVERIFY(bm.children()[0]->dest().type() == GtLinkDest::ScrollTo);
     QVERIFY(bm.children()[0]->dest().page() == 0);
+    QVERIFY(bm.children()[0]->index() == 0);
     QVERIFY(bm.children()[3]->children().size() == 3);
+    QVERIFY(bm.children()[3]->index() == 3);
     QVERIFY(bm.children()[4]->children().size() == 0);
+    QVERIFY(bm.children()[4]->index() == 4);
     QVERIFY(bm.children()[9]->children().size() == 3);
+    QVERIFY(bm.children()[9]->index() == 9);
+    QVERIFY(bm.children()[9]->next() == 0);
+    QVERIFY(bm.children()[9]->prev() == bm.children()[8]);
+    QVERIFY(bm.children()[8]->next() == bm.children()[9]);
     QVERIFY(bm.children()[9]->children()[0]->children().size() == 5);
 
     GtBookmark *it = bm.children()[9]->children()[0]->children()[0];

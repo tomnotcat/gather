@@ -14,6 +14,7 @@ class GT_BASE_EXPORT GtBookmark : public GtObject
 {
 public:
     explicit GtBookmark();
+    explicit GtBookmark(const GtLinkDest &dest);
     GtBookmark(const QString &title, const GtLinkDest &dest);
     ~GtBookmark();
 
@@ -23,7 +24,10 @@ public:
     inline GtBookmark* parent() const { return m_parent; }
     inline int index() { return m_parent ? m_parent->m_children.indexOf(this) : 0; }
     inline QList<GtBookmark*> children() const { return m_children; }
-    GtBookmark* addChild(const QString &title, const GtLinkDest &dest);
+    GtBookmark* prev();
+    GtBookmark* next();
+    void insert(GtBookmark *before, GtBookmark *bookmark);
+    inline void append(GtBookmark *bookmark) { insert(0, bookmark); }
 
 private:
     QString m_title;

@@ -58,6 +58,15 @@ public:
     void lockPageUpdate();
     void unlockPageUpdate(bool update = true);
 
+    double scale() const;
+    void setScale(double scale);
+
+    int rotation() const;
+    void setRotation(int rotation);
+
+    int sizingMode() const;
+    void setSizingMode(int mode);
+
     bool canZoomIn() const;
     bool canZoomOut() const;
 
@@ -65,6 +74,8 @@ public:
 
     QPoint scrollPoint() const;
     void scrollTo(int x, int y);
+
+    GtLinkDest scrollDest() const;
     void scrollTo(const GtLinkDest &dest);
 
     void select(const GtDocPoint &begin, const GtDocPoint &end);
