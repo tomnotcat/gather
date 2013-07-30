@@ -192,7 +192,7 @@ void GtDocRenderCache::setMaxSize(int maxSize)
     }
 }
 
-void GtDocRenderCache::setPageRange(int beginPage, int endPage)
+void GtDocRenderCache::setPageRange(int beginPage, int endPage, int currentPage)
 {
     Q_D(GtDocRenderCache);
 
@@ -201,6 +201,11 @@ void GtDocRenderCache::setPageRange(int beginPage, int endPage)
     int preloadBegin;
     int preloadEnd;
     int i, c;
+
+    if (863 == beginPage) {
+        i = 0;
+        c = 0;
+    }
 
     scale = d->model->scale();
     rotation = d->model->rotation();
@@ -239,7 +244,7 @@ void GtDocRenderCache::setPageRange(int beginPage, int endPage)
     }
 
     d->index = preloadBegin;
-    d->currentPage = d->model->page();
+    d->currentPage = currentPage;
 
     c = d->caches.size();
     for (i = 0; i < c; ++i) {
@@ -303,8 +308,8 @@ next:
 
         c = d->caches.size();
         i = d->currentPage - d->index;
-        i = CLAMP(i, 0, c);
-        for (j = i; i > 0 || j < c; --i, ++j) {
+        i = CLAMP(i, 0, c - 1);
+        for (j = i + 1; i >= 0 || j < c; --i, ++j) {
             if (i >= 0 && !d->caches[i].rendered) {
                 info = &d->caches[i];
                 break;

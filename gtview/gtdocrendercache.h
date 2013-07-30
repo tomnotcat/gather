@@ -23,7 +23,7 @@ public:
 public:
     void setModel(GtDocModel *model);
     void setMaxSize(int maxSize);
-    void setPageRange(int beginPage, int endPage);
+    void setPageRange(int beginPage, int endPage, int currentPage);
     QImage image(int index);
     void clear();
 

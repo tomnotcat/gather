@@ -11,14 +11,34 @@
 
 GT_BEGIN_NAMESPACE
 
-GtDocManager::GtDocManager(QThread *thread, QObject *parent)
-    : QObject(parent)
-    , m_docThread(thread)
+class GtDocManagerPrivate
 {
-    m_docLoader = new GtDocLoader(this);
+    Q_DECLARE_PUBLIC(GtDocManager)
+
+public:
+    GtDocManagerPrivate(GtDocManager *q);
+    ~GtDocManagerPrivate();
+
+public:
+    void clearDocuments();
+
+protected:
+    GtDocManager *q_ptr;
+    GtDocLoader *m_docLoader;
+    QThread *m_docThread;
+    QHash<GtDocument*, GtDocModel*> m_loadingDocs;
+    QHash<GtDocModel*, QUndoStack*> m_undoStatcks;
+    QHash<QString, GtDocModelPointer> m_docModels;
+};
+
+GtDocManagerPrivate::GtDocManagerPrivate(GtDocManager *q)
+    : q_ptr(q)
+    , m_docThread(0)
+{
+    m_docLoader = new GtDocLoader(q);
 }
 
-GtDocManager::~GtDocManager()
+GtDocManagerPrivate::~GtDocManagerPrivate()
 {
     clearDocuments();
 
@@ -27,88 +47,7 @@ GtDocManager::~GtDocManager()
     Q_ASSERT(m_docModels.size() == 0);
 }
 
-int GtDocManager::registerLoaders(const QString &loaderDir)
-{
-    return m_docLoader->registerLoaders(loaderDir);
-}
-
-GtDocModelPointer GtDocManager::loadDocument(const QString &fileName)
-{
-    QHash<QString, GtDocModelPointer>::iterator it;
-
-    it = m_docModels.find(fileName);
-    if (it != m_docModels.end())
-        return it.value();
-
-    clearDocuments();
-
-    GtDocument *document;
-    GtDocModelPointer model(new GtDocModel());
-
-    document = m_docLoader->loadDocument(fileName, m_docThread, model.data());
-    if (document) {
-        model->setDocument(document);
-        model->setMinScale(0.1);
-        model->setMaxScale(4.0);
-        model->setMouseMode(GtDocModel::SelectText);
-
-        GtDocNotes *notes = new GtDocNotes(model.data());
-        model->setNotes(notes);
-
-        GtBookmarks *bookmarks = new GtBookmarks(model.data());
-        model->setBookmarks(bookmarks);
-
-        m_docModels.insert(fileName, model);
-        m_loadingDocs.insert(document, model.data());
-
-        if (!document->isLoaded()) {
-            connect(document,
-                    SIGNAL(loaded(GtDocument*)),
-                    this,
-                    SLOT(documentLoaded(GtDocument*)));
-        }
-
-        if (document->isLoaded())
-            documentLoaded(document);
-    }
-
-    return model;
-}
-
-QUndoStack* GtDocManager::undoStack(GtDocModel *docModel)
-{
-    QHash<GtDocModel*, QUndoStack*>::iterator it;
-
-    it = m_undoStatcks.find(docModel);
-    if (it != m_undoStatcks.end())
-        return it.value();
-
-    QUndoStack *undoStack = new QUndoStack(this);
-    m_undoStatcks.insert(docModel, undoStack);
-    return undoStack;
-}
-
-void GtDocManager::documentLoaded(GtDocument *document)
-{
-    QHash<GtDocument*, GtDocModel*>::iterator it;
-
-    it = m_loadingDocs.find(document);
-    if (it == m_loadingDocs.end()) {
-        qWarning() << "invalid loading document:"
-                   << document->title();
-        return;
-    }
-
-    GtDocModel *docModel = it.value();
-    m_loadingDocs.erase(it);
-
-    if (document->isLoaded()) {
-        GtBookmarks *bookmarks = docModel->bookmarks();
-        document->loadOutline(bookmarks->root());
-    }
-}
-
-void GtDocManager::clearDocuments()
+void GtDocManagerPrivate::clearDocuments()
 {
     // clear up any unreferenced documents
     QHash<QString, GtDocModelPointer>::iterator it;
@@ -128,6 +67,105 @@ void GtDocManager::clearDocuments()
         else {
             ++it;
         }
+    }
+}
+
+GtDocManager::GtDocManager(QThread *thread, QObject *parent)
+    : QObject(parent)
+    , d_ptr(new GtDocManagerPrivate(this))
+{
+    d_ptr->m_docThread = thread;
+}
+
+GtDocManager::~GtDocManager()
+{
+}
+
+int GtDocManager::registerLoaders(const QString &loaderDir)
+{
+    Q_D(GtDocManager);
+    return d->m_docLoader->registerLoaders(loaderDir);
+}
+
+GtDocModelPointer GtDocManager::loadDocument(const QString &fileName)
+{
+    Q_D(GtDocManager);
+
+    QHash<QString, GtDocModelPointer>::iterator it;
+
+    it = d->m_docModels.find(fileName);
+    if (it != d->m_docModels.end())
+        return it.value();
+
+    d->clearDocuments();
+
+    GtDocument *document;
+    GtDocModelPointer model(new GtDocModel());
+
+    document = d->m_docLoader->loadDocument(fileName, d->m_docThread, model.data());
+    if (document) {
+        model->setDocument(document);
+        model->setMinScale(0.1);
+        model->setMaxScale(4.0);
+        model->setMouseMode(GtDocModel::SelectText);
+
+        GtDocNotes *notes = new GtDocNotes(model.data());
+        model->setNotes(notes);
+
+        GtBookmarks *bookmarks = new GtBookmarks(model.data());
+        model->setBookmarks(bookmarks);
+
+        d->m_docModels.insert(fileName, model);
+        d->m_loadingDocs.insert(document, model.data());
+
+        if (!document->isLoaded()) {
+            connect(document,
+                    SIGNAL(loaded(GtDocument*)),
+                    this,
+                    SLOT(documentLoaded(GtDocument*)));
+        }
+
+        if (document->isLoaded())
+            documentLoaded(document);
+    }
+
+    return model;
+}
+
+QUndoStack* GtDocManager::undoStack(GtDocModel *docModel)
+{
+    Q_D(GtDocManager);
+
+    QHash<GtDocModel*, QUndoStack*>::iterator it;
+
+    it = d->m_undoStatcks.find(docModel);
+    if (it != d->m_undoStatcks.end())
+        return it.value();
+
+    QUndoStack *undoStack = new QUndoStack(this);
+    d->m_undoStatcks.insert(docModel, undoStack);
+    return undoStack;
+}
+
+void GtDocManager::documentLoaded(GtDocument *document)
+{
+    Q_D(GtDocManager);
+
+    QHash<GtDocument*, GtDocModel*>::iterator it;
+
+    it = d->m_loadingDocs.find(document);
+    if (it == d->m_loadingDocs.end()) {
+        qWarning() << "invalid loading document:"
+                   << document->title();
+        return;
+    }
+
+    GtDocModel *docModel = it.value();
+    d->m_loadingDocs.erase(it);
+
+    if (document->isLoaded()) {
+        GtBookmarks *bookmarks = docModel->bookmarks();
+        document->loadOutline(bookmarks->root());
     }
 }
 

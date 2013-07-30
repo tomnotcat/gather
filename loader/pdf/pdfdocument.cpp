@@ -54,7 +54,7 @@ PdfDocument::LabelRange::LabelRange(pdf_obj *d, int b)
 
     o = pdf_dict_gets(d, "P");
     if (pdf_is_string(o))
-        prefix = QString((QChar *)pdf_to_str_buf(o), pdf_to_str_len(o));
+        prefix = PdfDocument::objToString(o);
 
     o = pdf_dict_gets(d, "St");
     if (pdf_is_int(o))
@@ -296,6 +296,13 @@ void PdfDocument::closePdfStream(fz_context*, void *state)
 {
     QIODevice *device = static_cast<QIODevice*>(state);
     device->close();
+}
+
+QString PdfDocument::objToString(pdf_obj *obj)
+{
+    QString buffer(pdf_to_str_len(obj) + 1, 0);
+    pdf_to_ucs2_buf((unsigned short *)buffer.data(), obj);
+    return buffer;
 }
 
 QString PdfDocument::toRoman(int number, bool uppercase)

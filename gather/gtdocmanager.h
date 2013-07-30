@@ -5,13 +5,12 @@
 #define __GT_DOC_MANAGER_H__
 
 #include "gtdocmodel.h"
-#include <QtCore/QHash>
 
 class QUndoStack;
 
 GT_BEGIN_NAMESPACE
 
-class GtDocLoader;
+class GtDocManagerPrivate;
 
 class GtDocManager : public QObject, public GtObject
 {
@@ -30,14 +29,11 @@ private Q_SLOTS:
     void documentLoaded(GtDocument *document);
 
 private:
-    void clearDocuments();
+    QScopedPointer<GtDocManagerPrivate> d_ptr;
 
 private:
-    GtDocLoader *m_docLoader;
-    QThread *m_docThread;
-    QHash<GtDocument*, GtDocModel*> m_loadingDocs;
-    QHash<GtDocModel*, QUndoStack*> m_undoStatcks;
-    QHash<QString, GtDocModelPointer> m_docModels;
+    Q_DISABLE_COPY(GtDocManager)
+    Q_DECLARE_PRIVATE(GtDocManager)
 };
 
 GT_END_NAMESPACE

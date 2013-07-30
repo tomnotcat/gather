@@ -74,6 +74,7 @@ public:
 
     QPoint scrollPoint() const;
     void scrollTo(int x, int y);
+    void scrollTo(const QPoint &pos);
 
     GtLinkDest scrollDest() const;
     void scrollTo(const GtLinkDest &dest);

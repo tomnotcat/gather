@@ -57,6 +57,8 @@ public:
     ~GtDocViewPrivate();
 
 public:
+    void connectSyncSignals();
+    void disconnectSyncSignals();
     void resizeContentArea(const QSize &size);
 
     inline bool isDocLoaded() const {
@@ -64,7 +66,7 @@ public:
     }
 
     inline bool hasSyncFlags(GtDocView::SyncFlags flags) const {
-        return ((m_syncFlags & flags) | (m_syncSelf & flags)) == flags;
+        return (m_syncFlags & flags) == flags;
     }
 
     inline int evenPageLeft() const {
@@ -138,7 +140,6 @@ private:
     GtBookmarks *m_bookmarks;
     GtDocNotes *m_notes;
     GtDocView::SyncFlags m_syncFlags;
-    GtDocView::SyncFlags m_syncSelf;
     int m_beginPage;
     int m_endPage;
     int m_currentPage;
@@ -327,7 +328,6 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     , m_bookmarks(0)
     , m_notes(0)
     , m_syncFlags(GtDocView::SyncNone)
-    , m_syncSelf(GtDocView::SyncNone)
     , m_beginPage(-1)
     , m_endPage(-1)
     , m_currentPage(-1)
@@ -389,6 +389,100 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
 
 GtDocViewPrivate::~GtDocViewPrivate()
 {
+}
+
+void GtDocViewPrivate::connectSyncSignals()
+{
+    Q_Q(GtDocView);
+
+    if (hasSyncFlags(GtDocView::SyncScale)) {
+        q->connect(m_model,
+                   SIGNAL(scaleChanged(double)),
+                   q,
+                   SLOT(scaleChanged(double)));
+    }
+
+    if (hasSyncFlags(GtDocView::SyncRotation)) {
+        q->connect(m_model,
+                   SIGNAL(rotationChanged(int)),
+                   q,
+                   SLOT(rotationChanged(int)));
+    }
+
+    if (hasSyncFlags(GtDocView::SyncContinuous)) {
+        q->connect(m_model,
+                   SIGNAL(continuousChanged(bool)),
+                   q,
+                   SLOT(continuousChanged(bool)));
+    }
+
+    if (hasSyncFlags(GtDocView::SyncLayoutMode)) {
+        q->connect(m_model,
+                   SIGNAL(layoutModeChanged(int)),
+                   q,
+                   SLOT(layoutModeChanged(int)));
+    }
+
+    if (hasSyncFlags(GtDocView::SyncSizingMode)) {
+        q->connect(m_model,
+                   SIGNAL(sizingModeChanged(int)),
+                   q,
+                   SLOT(sizingModeChanged(int)));
+    }
+
+    if (hasSyncFlags(GtDocView::SyncMouseMode)) {
+        q->connect(m_model,
+                   SIGNAL(mouseModeChanged(int)),
+                   q,
+                   SLOT(mouseModeChanged(int)));
+    }
+}
+
+void GtDocViewPrivate::disconnectSyncSignals()
+{
+    Q_Q(GtDocView);
+
+    if (hasSyncFlags(GtDocView::SyncScale)) {
+        q->disconnect(m_model,
+                      SIGNAL(scaleChanged(double)),
+                      q,
+                      SLOT(scaleChanged(double)));
+    }
+
+    if (hasSyncFlags(GtDocView::SyncRotation)) {
+        q->disconnect(m_model,
+                      SIGNAL(rotationChanged(int)),
+                      q,
+                      SLOT(rotationChanged(int)));
+    }
+
+    if (hasSyncFlags(GtDocView::SyncContinuous)) {
+        q->disconnect(m_model,
+                      SIGNAL(continuousChanged(bool)),
+                      q,
+                      SLOT(continuousChanged(bool)));
+    }
+
+    if (hasSyncFlags(GtDocView::SyncLayoutMode)) {
+        q->disconnect(m_model,
+                      SIGNAL(layoutModeChanged(int)),
+                      q,
+                      SLOT(layoutModeChanged(int)));
+    }
+
+    if (hasSyncFlags(GtDocView::SyncSizingMode)) {
+        q->disconnect(m_model,
+                      SIGNAL(sizingModeChanged(int)),
+                      q,
+                      SLOT(sizingModeChanged(int)));
+    }
+
+    if (hasSyncFlags(GtDocView::SyncMouseMode)) {
+        q->disconnect(m_model,
+                      SIGNAL(mouseModeChanged(int)),
+                      q,
+                      SLOT(mouseModeChanged(int)));
+    }
 }
 
 void GtDocViewPrivate::resizeContentArea(const QSize &size)
@@ -1223,39 +1317,11 @@ void GtDocView::setModel(GtDocModel *model)
                    SLOT(notesChanged(GtDocNotes*)));
 
         disconnect(d->m_model,
-                   SIGNAL(scaleChanged(double)),
-                   this,
-                   SLOT(scaleChanged(double)));
-
-        disconnect(d->m_model,
-                   SIGNAL(rotationChanged(int)),
-                   this,
-                   SLOT(rotationChanged(int)));
-
-        disconnect(d->m_model,
-                   SIGNAL(continuousChanged(bool)),
-                   this,
-                   SLOT(continuousChanged(bool)));
-
-        disconnect(d->m_model,
-                   SIGNAL(layoutModeChanged(int)),
-                   this,
-                   SLOT(layoutModeChanged(int)));
-
-        disconnect(d->m_model,
-                   SIGNAL(sizingModeChanged(int)),
-                   this,
-                   SLOT(sizingModeChanged(int)));
-
-        disconnect(d->m_model,
-                   SIGNAL(mouseModeChanged(int)),
-                   this,
-                   SLOT(mouseModeChanged(int)));
-
-        disconnect(d->m_model,
                    SIGNAL(destroyed(QObject*)),
                    this,
                    SLOT(modelDestroyed(QObject*)));
+
+        d->disconnectSyncSignals();
 
         if (d->m_model->parent() == this)
             delete d->m_model;
@@ -1287,39 +1353,11 @@ void GtDocView::setModel(GtDocModel *model)
                 SLOT(notesChanged(GtDocNotes*)));
 
         connect(d->m_model,
-                SIGNAL(scaleChanged(double)),
-                this,
-                SLOT(scaleChanged(double)));
-
-        connect(d->m_model,
-                SIGNAL(rotationChanged(int)),
-                this,
-                SLOT(rotationChanged(int)));
-
-        connect(d->m_model,
-                SIGNAL(continuousChanged(bool)),
-                this,
-                SLOT(continuousChanged(bool)));
-
-        connect(d->m_model,
-                SIGNAL(layoutModeChanged(int)),
-                this,
-                SLOT(layoutModeChanged(int)));
-
-        connect(d->m_model,
-                SIGNAL(sizingModeChanged(int)),
-                this,
-                SLOT(sizingModeChanged(int)));
-
-        connect(d->m_model,
-                SIGNAL(mouseModeChanged(int)),
-                this,
-                SLOT(mouseModeChanged(int)));
-
-        connect(d->m_model,
                 SIGNAL(destroyed(QObject*)),
                 this,
                 SLOT(modelDestroyed(QObject*)));
+
+        d->connectSyncSignals();
     }
 
     documentChanged(newdoc);
@@ -1335,7 +1373,10 @@ GtDocView::SyncFlags GtDocView::syncFlags() const
 void GtDocView::setSyncFlags(SyncFlags flags)
 {
     Q_D(GtDocView);
+
+    d->disconnectSyncSignals();
     d->m_syncFlags = flags;
+    d->connectSyncSignals();
 }
 
 QUndoStack* GtDocView::undoStack() const
@@ -1414,9 +1455,10 @@ void GtDocView::setScale(double scale)
 {
     Q_D(GtDocView);
 
-    d->m_syncSelf |= GtDocView::SyncScale;
     d->m_model->setScale(scale);
-    d->m_syncSelf &= ~GtDocView::SyncScale;
+
+    if (!d->hasSyncFlags(SyncScale))
+        scaleChanged(d->m_model->scale());
 }
 
 int GtDocView::rotation() const
@@ -1429,9 +1471,10 @@ void GtDocView::setRotation(int rotation)
 {
     Q_D(GtDocView);
 
-    d->m_syncSelf |= GtDocView::SyncRotation;
     d->m_model->setRotation(rotation);
-    d->m_syncSelf &= ~GtDocView::SyncRotation;
+
+    if (!d->hasSyncFlags(SyncRotation))
+        rotationChanged(d->m_model->rotation());
 }
 
 int GtDocView::sizingMode() const
@@ -1444,9 +1487,10 @@ void GtDocView::setSizingMode(int mode)
 {
     Q_D(GtDocView);
 
-    d->m_syncSelf |= GtDocView::SyncSizingMode;
     d->m_model->setSizingMode((GtDocModel::SizingMode)mode);
-    d->m_syncSelf &= ~GtDocView::SyncSizingMode;
+
+    if (!d->hasSyncFlags(SyncSizingMode))
+        sizingModeChanged(d->m_model->sizingMode());
 }
 
 bool GtDocView::canZoomIn() const
@@ -1487,28 +1531,28 @@ void GtDocView::scrollTo(int x, int y)
     unlockPageUpdate();
 }
 
+void GtDocView::scrollTo(const QPoint &pos)
+{
+    scrollTo(pos.x(), pos.y());
+}
+
 GtLinkDest GtDocView::scrollDest() const
 {
-    return GtLinkDest();
+    GtDocPoint dp(d_ptr->docPointFromViewPoint(QPoint(0, 0), false));
+    return GtLinkDest(dp.page()->index(), dp.point(), d_ptr->m_scale);
 }
 
 void GtDocView::scrollTo(const GtLinkDest &dest)
 {
     Q_D(GtDocView);
 
-    QPointF offset(dest.point());
-    double zoom = dest.zoom();
-
-    if (zoom > 0) {
-        setScale(zoom);
-    }
-    else {
-        offset.rx() *= d->m_scale;
-        offset.ry() *= d->m_scale;
+    if (dest.zoom() > 0) {
+        setScale(dest.zoom());
+        relayoutPages();
     }
 
-    QRect rect(pageExtents(dest.page()));
-    scrollTo(rect.x() + offset.x(), rect.y() + offset.y());
+    GtDocPoint dp(d->m_document->page(dest.page()), dest.point());
+    scrollTo(scrollPoint() + d->viewPointFromDocPoint(dp));
 }
 
 void GtDocView::select(const GtDocPoint &begin, const GtDocPoint &end)
@@ -1789,9 +1833,6 @@ void GtDocView::scaleChanged(double scale)
 {
     Q_D(GtDocView);
 
-    if (!d->hasSyncFlags(SyncScale))
-        return;
-
     if (ABS(d->m_scale - scale) < 0.0000001)
         return;
 
@@ -1805,9 +1846,6 @@ void GtDocView::rotationChanged(int rotation)
 {
     Q_D(GtDocView);
 
-    if (!d->hasSyncFlags(SyncRotation))
-        return;
-
     d->m_rotation = rotation;
     d->m_renderCache->clear();
     d->relayoutPagesLater();
@@ -1817,9 +1855,6 @@ void GtDocView::continuousChanged(bool continuous)
 {
     Q_D(GtDocView);
 
-    if (!d->hasSyncFlags(SyncContinuous))
-        return;
-
     d->m_continuous = continuous;
     d->relayoutPagesLater();
 }
@@ -1827,9 +1862,6 @@ void GtDocView::continuousChanged(bool continuous)
 void GtDocView::layoutModeChanged(int mode)
 {
     Q_D(GtDocView);
-
-    if (!d->hasSyncFlags(SyncLayoutMode))
-        return;
 
     d->m_layoutMode = static_cast<GtDocModel::LayoutMode>(mode);
 
@@ -1843,9 +1875,6 @@ void GtDocView::sizingModeChanged(int mode)
 {
     Q_D(GtDocView);
 
-    if (!d->hasSyncFlags(SyncSizingMode))
-        return;
-
     d->m_sizingMode = static_cast<GtDocModel::SizingMode>(mode);
 
     if (mode != GtDocModel::FreeSize)
@@ -1855,9 +1884,6 @@ void GtDocView::sizingModeChanged(int mode)
 void GtDocView::mouseModeChanged(int mode)
 {
     Q_D(GtDocView);
-
-    if (!d->hasSyncFlags(SyncMouseMode))
-        return;
 
     d->m_mouseMode = static_cast<GtDocModel::MouseMode>(mode);
 
@@ -2026,7 +2052,7 @@ void GtDocView::updateVisiblePages(int newValue)
     if (begin != d->m_beginPage || end != d->m_endPage) {
     }
 
-    d->m_renderCache->setPageRange(d->m_beginPage, d->m_endPage);
+    d->m_renderCache->setPageRange(d->m_beginPage, d->m_endPage, d->m_currentPage);
 
     if (-1 == newValue)
         viewport()->update();

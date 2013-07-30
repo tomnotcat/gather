@@ -11,43 +11,42 @@
 GT_BEGIN_NAMESPACE
 
 GtDocPoint::GtDocPoint(GtDocPage *page, const QPointF &point)
-    : _page(page)
-    , _text(-1)
-    , _x(point.x())
-    , _y(point.y())
+    : m_page(page)
+    , m_point(point)
+    , m_text(-1)
 {
 }
 
 GtDocPoint::GtDocPoint(GtDocPage *page, int text)
-    : _page(page)
-    , _text(text)
-    , _x(-1)
-    , _y(-1)
+    : m_page(page)
+    , m_point(-1, -1)
+    , m_text(text)
 {
     if (text != -1) {
-        GtDocTextPointer p(_page->text());
+        GtDocTextPointer p(m_page->text());
         const QRectF *rects = p->rects();
         int len = p->length();
 
         Q_ASSERT(len > 0 && text <= len);
 
         if (text < len) {
-            _x = rects[text].left();
-            _y = rects[text].top();
+            m_point.setX(rects[text].left());
+            m_point.setY(rects[text].top());
         }
         else {
-            _x = rects[len - 1].right();
-            _y = rects[len - 1].top();
+            m_point.setX(rects[len - 1].right());
+            m_point.setY(rects[len - 1].top());
         }
     }
 }
 
 bool GtDocPoint::isValid() const
 {
-    if (_page) {
+    if (m_page) {
         qreal w, h;
-        _page->size(&w, &h);
-        return _x >= 0 && _x <= w && _y >= 0 && _y <= h;
+        m_page->size(&w, &h);
+        return (m_point.x() >= 0 && m_point.x() <= w &&
+                m_point.y() >= 0 && m_point.y() <= h);
     }
 
     return false;
@@ -55,30 +54,30 @@ bool GtDocPoint::isValid() const
 
 void GtDocPoint::normalize()
 {
-    if (_page) {
+    if (m_page) {
         qreal w, h;
-        _page->size(&w, &h);
-        _x = CLAMP(_x, 0, w);
-        _y = CLAMP(_y, 0, h);
+        m_page->size(&w, &h);
+        m_point.setX(CLAMP(m_point.x(), 0, w));
+        m_point.setY(CLAMP(m_point.y(), 0, h));
     }
 }
 
 int GtDocPoint::text(bool inside) const
 {
-    if (_text != -1)
-        return _text;
+    if (m_text != -1)
+        return m_text;
 
-    if (!_page)
+    if (!m_page)
         return -1;
 
-    GtDocTextPointer text(_page->text());
+    GtDocTextPointer text(m_page->text());
     const QRectF *rect = text->rects();
     int i, result = -1;
 
     if (inside) {
         for (i = 0; i < text->length(); ++i, ++rect) {
-            if (_x >= rect->left() && _x < rect->right() &&
-                _y >= rect->top() && _y < rect->bottom())
+            if (m_point.x() >= rect->left() && m_point.x() < rect->right() &&
+                m_point.y() >= rect->top() && m_point.y() < rect->bottom())
             {
                 result = i;
                 break;
@@ -89,8 +88,8 @@ int GtDocPoint::text(bool inside) const
         double dist, maxDist = -1;
 
         for (i = 0; i < text->length(); ++i, ++rect) {
-            dist = hypot(_x - rect->x() - rect->width() / 2.0,
-                         _y - rect->y() - rect->height() / 2.0);
+            dist = hypot(m_point.x() - rect->x() - rect->width() / 2.0,
+                         m_point.y() - rect->y() - rect->height() / 2.0);
             if (maxDist < 0 || dist < maxDist) {
                 maxDist = dist;
                 result = i;
@@ -103,11 +102,11 @@ int GtDocPoint::text(bool inside) const
         if (text->texts()[result] != '\n') {
             rect = text->rects() + result;
 
-            if (_x > rect->x() + rect->width() / 2.0)
+            if (m_point.x() > rect->x() + rect->width() / 2.0)
                 ++result;
         }
 
-        *(int*)&_text = result;
+        *(int*)&m_text = result;
     }
 
     return result;
@@ -119,7 +118,7 @@ GtDocPoint GtDocPoint::beginOfWord(bool inside) const
     if (-1 == pos)
         return GtDocPoint();
 
-    GtDocTextPointer text(_page->text());
+    GtDocTextPointer text(m_page->text());
     const QChar *texts = text->texts();
     int len = text->length();
 
@@ -143,7 +142,7 @@ GtDocPoint GtDocPoint::beginOfWord(bool inside) const
         }
     }
 
-    return GtDocPoint(_page, pos);
+    return GtDocPoint(m_page, pos);
 }
 
 GtDocPoint GtDocPoint::endOfWord(bool inside) const
@@ -152,7 +151,7 @@ GtDocPoint GtDocPoint::endOfWord(bool inside) const
     if (-1 == pos)
         return GtDocPoint();
 
-    GtDocTextPointer text(_page->text());
+    GtDocTextPointer text(m_page->text());
     const QChar *texts = text->texts();
     int len = text->length();
 
@@ -178,29 +177,29 @@ GtDocPoint GtDocPoint::endOfWord(bool inside) const
         }
     }
 
-    return GtDocPoint(_page, pos);
+    return GtDocPoint(m_page, pos);
 }
 
 bool operator==(const GtDocPoint &p1, const GtDocPoint &p2)
 {
-    if (p1._page != p2._page)
+    if (p1.m_page != p2.m_page)
         return false;
 
-    if (p1._text != -1 && p2._text != -1)
-        return p1._text == p2._text;
+    if (p1.m_text != -1 && p2.m_text != -1)
+        return p1.m_text == p2.m_text;
 
-    return p1._x == p2._x && p1._y == p2._y;
+    return p1.m_point == p2.m_point;
 }
 
 bool operator!=(const GtDocPoint &p1, const GtDocPoint &p2)
 {
-    if (p1._page != p2._page)
+    if (p1.m_page != p2.m_page)
         return true;
 
-    if (p1._text != -1 && p2._text != -1)
-        return p1._text != p2._text;
+    if (p1.m_text != -1 && p2.m_text != -1)
+        return p1.m_text != p2.m_text;
 
-    return p1._x != p2._x || p1._y != p2._y;
+    return p1.m_point != p2.m_point;
 }
 
 bool operator>(const GtDocPoint &p1, const GtDocPoint &p2)
@@ -214,8 +213,8 @@ bool operator>(const GtDocPoint &p1, const GtDocPoint &p2)
     if (index1 != index2)
         return false;
 
-    if (p1._text != -1 && p2._text != -1)
-        return p1._text > p2._text;
+    if (p1.m_text != -1 && p2.m_text != -1)
+        return p1.m_text > p2.m_text;
 
     if (p1.y() > p2.y())
         return true;
@@ -237,8 +236,8 @@ bool operator<(const GtDocPoint &p1, const GtDocPoint &p2)
     if (index1 != index2)
         return false;
 
-    if (p1._text != -1 && p2._text != -1)
-        return p1._text < p2._text;
+    if (p1.m_text != -1 && p2.m_text != -1)
+        return p1.m_text < p2.m_text;
 
     if (p1.y() < p2.y())
         return true;
@@ -260,8 +259,8 @@ bool operator>=(const GtDocPoint &p1, const GtDocPoint &p2)
     if (index1 != index2)
         return false;
 
-    if (p1._text != -1 && p2._text != -1)
-        return p1._text >= p2._text;
+    if (p1.m_text != -1 && p2.m_text != -1)
+        return p1.m_text >= p2.m_text;
 
     if (p1.y() > p2.y())
         return true;
@@ -283,8 +282,8 @@ bool operator<=(const GtDocPoint &p1, const GtDocPoint &p2)
     if (index1 != index2)
         return false;
 
-    if (p1._text != -1 && p2._text != -1)
-        return p1._text <= p2._text;
+    if (p1.m_text != -1 && p2.m_text != -1)
+        return p1.m_text <= p2.m_text;
 
     if (p1.y() < p2.y())
         return true;

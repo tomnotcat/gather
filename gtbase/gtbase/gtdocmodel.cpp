@@ -213,9 +213,9 @@ void GtDocModel::setScale(double scale)
 {
     Q_D(GtDocModel);
 
-    double realScale = CLAMP (scale,
-                              d->sizingMode == FreeSize ?
-                              d->minScale : 0, d->maxScale);
+    double realScale = CLAMP(scale,
+                             d->sizingMode == FreeSize ?
+                             d->minScale : 0, d->maxScale);
     if (realScale == d->scale)
         return;
 

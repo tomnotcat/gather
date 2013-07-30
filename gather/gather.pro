@@ -2,11 +2,12 @@ TEMPLATE = app
 TARGET = gather
 CONFIG += qt debug
 QT += widgets network
-HEADERS += gtapplication.h gtdocmanager.h gtmainwindow.h \
-    gttabview.h gthometabview.h gtdoctabview.h gtmainsettings.h \
-    gtlogindialog.h
+HEADERS += gtapplication.h gtdocmanager.h gtbookmarkmanager.h \
+    gtnotemanager.h gtmainwindow.h gttabview.h gthometabview.h \
+    gtdoctabview.h gtmainsettings.h gtlogindialog.h
 SOURCES += gtmain.cpp gtapplication.cpp gtdocmanager.cpp \
-    gtmainwindow.cpp gttabview.cpp gthometabview.cpp gtdoctabview.cpp \
+    gtbookmarkmanager.cpp gtnotemanager.cpp gtmainwindow.cpp \
+    gttabview.cpp gthometabview.cpp gtdoctabview.cpp \
     gtmainsettings.cpp gtlogindialog.cpp
 FORMS += gtmainwindow.ui gthometabview.ui gtlogindialog.ui
 RESOURCES = gather.qrc

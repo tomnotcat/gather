@@ -34,6 +34,7 @@ protected:
     static int readPdfStream(fz_stream *stm, unsigned char *buf, int len);
     static void seekPdfStream(fz_stream *stm, int offset, int whence);
     static void closePdfStream(fz_context *ctx, void *state);
+    static QString objToString(pdf_obj *obj);
     static QString toRoman(int number, bool uppercase);
     static QString toLatin(int number, bool uppercase);
 

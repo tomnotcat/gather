@@ -112,12 +112,12 @@ GtBookmark* GtTocModel::bookmarkFromIndex(const QModelIndex &index) const
     return static_cast<GtBookmark*>(index.internalPointer());
 }
 
-QModelIndex GtTocModel::indexFromBookmark(const GtBookmark* bookmark) const
+QModelIndex GtTocModel::indexFromBookmark(GtBookmark* bookmark) const
 {
     if (!bookmark)
         return QModelIndex();
 
-    return QModelIndex();
+    return createIndex(bookmark->index(), 0, static_cast<void *>(bookmark));
 }
 
 QModelIndex GtTocModel::index(int row, int column,
@@ -190,7 +190,15 @@ QVariant GtTocModel::data(const QModelIndex &index, int role) const
     switch (role) {
     case Qt::DisplayRole:
     case Qt::ToolTipRole:
-        return QVariant(node->title());
+        {
+            QString title = node->title();
+
+            if (title.isEmpty())
+                title = tr("Untitled");
+
+            return QVariant(title);
+        }
+        break;
 
     case GtTocDelegate::PageIndex:
         return QVariant(node->dest().page() + 1);
@@ -247,10 +255,9 @@ void GtTocModel::bookmarksChanged(GtBookmarks *bookmarks)
     endResetModel();
 }
 
-void GtTocModel::bookmarkInserted(GtBookmark *bookmark)
+void GtTocModel::bookmarkInserted(GtBookmark *)
 {
-    QModelIndex index = indexFromBookmark(bookmark);
-    qDebug() << index;
+    emit layoutChanged();
 }
 
 void GtTocModel::docModelDestroyed(QObject *object)

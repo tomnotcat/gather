@@ -27,7 +27,7 @@ public:
     void setDocModel(GtDocModel *docModel);
 
     GtBookmark* bookmarkFromIndex(const QModelIndex &index) const;
-    QModelIndex indexFromBookmark(const GtBookmark* bookmark) const;
+    QModelIndex indexFromBookmark(GtBookmark* bookmark) const;
 
 public:
     QModelIndex index(int row, int column,
