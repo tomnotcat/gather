@@ -4,6 +4,7 @@
 #include "gtdocmanager.h"
 #include "gtbookmarks.h"
 #include "gtdocloader.h"
+#include "gtdocmodel.h"
 #include "gtdocnotes.h"
 #include "gtdocument.h"
 #include <QtCore/QDebug>
@@ -28,7 +29,7 @@ protected:
     QThread *m_docThread;
     QHash<GtDocument*, GtDocModel*> m_loadingDocs;
     QHash<GtDocModel*, QUndoStack*> m_undoStatcks;
-    QHash<QString, GtDocModelPointer> m_docModels;
+    QHash<QString, GtDocModel*> m_docModels;
 };
 
 GtDocManagerPrivate::GtDocManagerPrivate(GtDocManager *q)
@@ -50,18 +51,19 @@ GtDocManagerPrivate::~GtDocManagerPrivate()
 void GtDocManagerPrivate::clearDocuments()
 {
     // clear up any unreferenced documents
-    QHash<QString, GtDocModelPointer>::iterator it;
+    QHash<QString, GtDocModel*>::iterator it;
     QHash<GtDocModel*, QUndoStack*>::iterator us;
 
     for (it = m_docModels.begin(); it != m_docModels.end();) {
         if (it.value()->ref.load() <= 1) {
-            us = m_undoStatcks.find(it.value().data());
+            us = m_undoStatcks.find(it.value());
             if (us != m_undoStatcks.end()) {
                 delete us.value();
                 m_undoStatcks.erase(us);
             }
 
             m_loadingDocs.remove(it.value()->document());
+            delete it.value();
             it = m_docModels.erase(it);
         }
         else {
@@ -87,11 +89,11 @@ int GtDocManager::registerLoaders(const QString &loaderDir)
     return d->m_docLoader->registerLoaders(loaderDir);
 }
 
-GtDocModelPointer GtDocManager::loadDocument(const QString &fileName)
+GtDocModel* GtDocManager::loadDocument(const QString &fileName)
 {
     Q_D(GtDocManager);
 
-    QHash<QString, GtDocModelPointer>::iterator it;
+    QHash<QString, GtDocModel*>::iterator it;
 
     it = d->m_docModels.find(fileName);
     if (it != d->m_docModels.end())
@@ -100,23 +102,24 @@ GtDocModelPointer GtDocManager::loadDocument(const QString &fileName)
     d->clearDocuments();
 
     GtDocument *document;
-    GtDocModelPointer model(new GtDocModel());
+    GtDocModel *model = new GtDocModel();
 
-    document = d->m_docLoader->loadDocument(fileName, d->m_docThread, model.data());
+    document = d->m_docLoader->loadDocument(fileName, d->m_docThread, model);
     if (document) {
         model->setDocument(document);
         model->setMinScale(0.1);
         model->setMaxScale(4.0);
         model->setMouseMode(GtDocModel::SelectText);
 
-        GtDocNotes *notes = new GtDocNotes(model.data());
+        GtDocNotes *notes = new GtDocNotes(model);
         model->setNotes(notes);
 
-        GtBookmarks *bookmarks = new GtBookmarks(model.data());
+        GtBookmarks *bookmarks = new GtBookmarks(model);
         model->setBookmarks(bookmarks);
 
+        model->ref.ref();
         d->m_docModels.insert(fileName, model);
-        d->m_loadingDocs.insert(document, model.data());
+        d->m_loadingDocs.insert(document, model);
 
         if (!document->isLoaded()) {
             connect(document,

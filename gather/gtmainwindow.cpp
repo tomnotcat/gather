@@ -270,8 +270,6 @@ bool GtMainWindow::okToContinue()
 
 bool GtMainWindow::loadFile(const QString &fileName)
 {
-    GtDocModelPointer docModel;
-
     GtTabView *view = tabView();
     GtDocTabView *docView = qobject_cast<GtDocTabView*>(tabView());
     if (!docView) {
@@ -285,13 +283,13 @@ bool GtMainWindow::loadFile(const QString &fileName)
         m_ui.tabWidget->setCurrentWidget(view);
     }
 
-    docView->setDocModel(docModel);
+    docView->setDocModel(0);
 
     GtDocManager *docManager = GtApplication::instance()->docManager();
-    docModel = docManager->loadDocument(fileName);
+    GtDocModel *docModel = docManager->loadDocument(fileName);
     docView->setDocModel(docModel);
 
-    QUndoStack *undoStack = docManager->undoStack(docModel.data());
+    QUndoStack *undoStack = docManager->undoStack(docModel);
     docView->setUndoStack(undoStack);
 
     setCurrentFile(fileName);

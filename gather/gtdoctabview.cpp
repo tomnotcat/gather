@@ -5,6 +5,7 @@
 #include "gtapplication.h"
 #include "gtbookmark.h"
 #include "gtbookmarks.h"
+#include "gtdocmodel.h"
 #include "gtdocpage.h"
 #include "gtdocrange.h"
 #include "gtdocument.h"
@@ -24,6 +25,7 @@ GT_BEGIN_NAMESPACE
 
 GtDocTabView::GtDocTabView(QWidget *parent)
     : GtTabView(parent)
+    , m_docModel(0)
     , m_undoStack(0)
     , m_undoAction(0)
     , m_redoAction(0)
@@ -31,6 +33,7 @@ GtDocTabView::GtDocTabView(QWidget *parent)
     // model
     m_tocModel = new GtTocModel(this);
 
+    GtDocModel a;
     // view
     m_verticalLayout = new QVBoxLayout(this);
     m_verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
@@ -80,9 +83,12 @@ GtDocTabView::~GtDocTabView()
     m_docView->setModel(0);
     m_tocView->setModel(0);
     m_tocModel->setDocModel(0);
+
+    if (m_docModel)
+        m_docModel->release();
 }
 
-void GtDocTabView::setDocModel(GtDocModelPointer docModel)
+void GtDocTabView::setDocModel(GtDocModel *docModel)
 {
     m_tocModel->setDocModel(0);
     m_tocView->setModel(0);
@@ -93,15 +99,17 @@ void GtDocTabView::setDocModel(GtDocModelPointer docModel)
                    SIGNAL(loaded(GtDocument*)),
                    this,
                    SLOT(documentLoaded(GtDocument*)));
+        m_docModel->release();
         m_docModel = 0;
     }
 
     m_docModel = docModel;
-    m_docView->setModel(docModel.data());
+    m_docView->setModel(docModel);
 
     if (0 == m_docModel)
         return;
 
+    m_docModel->ref.ref();
     if (!m_docModel->document()->isLoaded()) {
         connect(m_docModel->document(), SIGNAL(loaded(GtDocument*)),
                 this, SLOT(documentLoaded(GtDocument*)));
@@ -273,7 +281,7 @@ void GtDocTabView::documentLoaded(GtDocument *document)
     }
 
     if (document->isLoaded()) {
-        m_tocModel->setDocModel(m_docModel.data());
+        m_tocModel->setDocModel(m_docModel);
         m_tocView->setModel(m_tocModel);
         m_docView->setFocus();
 

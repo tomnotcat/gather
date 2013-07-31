@@ -53,7 +53,7 @@ public:
     };
 
 public:
-    explicit GtDocViewPrivate(GtDocView *parent);
+    explicit GtDocViewPrivate(GtDocView *q);
     ~GtDocViewPrivate();
 
 public:
@@ -320,8 +320,8 @@ void GtDocViewPrivate::HeightCache::rebuild()
     }
 }
 
-GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
-    : q_ptr(parent)
+GtDocViewPrivate::GtDocViewPrivate(GtDocView *q)
+    : q_ptr(q)
     , m_model(0)
     , m_undoStack(0)
     , m_document(0)
@@ -339,7 +339,7 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     , m_layoutMode(GtDocModel::SinglePage)
     , m_sizingMode(GtDocModel::FitWidth)
     , m_mouseMode(GtDocModel::BrowseMode)
-    , m_renderCache(new GtDocRenderCache(), &QObject::deleteLater)
+    , m_renderCache(new GtDocRenderCache(q), &QObject::deleteLater)
     , m_paperColor(255, 255, 255)
     , m_highlightColor(255, 255, 0)
     , m_underlineColor(255, 64, 64)
@@ -352,8 +352,6 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *parent)
     , m_selectWordOnDoubleClick(false)
 
 {
-    Q_Q(GtDocView);
-
     m_backColor = q->viewport()->palette().color(QPalette::Dark);
 
     q->connect(m_renderCache.data(), SIGNAL(finished(int)),
@@ -1330,7 +1328,7 @@ void GtDocView::setModel(GtDocModel *model)
     GtDocument *newdoc = 0;
     GtDocNotes *newnotes = 0;
     d->m_model = model;
-    d->m_renderCache->setModel(d->m_model);
+    d->m_renderCache->clear();
 
     if (d->m_model) {
         newdoc = model->document();

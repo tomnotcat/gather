@@ -6,7 +6,6 @@
 
 #include "gtobject.h"
 #include <QtCore/QObject>
-#include <QtCore/QSharedDataPointer>
 
 GT_BEGIN_NAMESPACE
 
@@ -15,10 +14,7 @@ class GtBookmarks;
 class GtDocNotes;
 class GtDocModelPrivate;
 
-class GT_BASE_EXPORT GtDocModel
-    : public QObject
-    , public QSharedData
-    , public GtObject
+class GT_BASE_EXPORT GtDocModel : public QObject, public GtSharedObject
 {
     Q_OBJECT
 
@@ -105,8 +101,6 @@ private:
     Q_DISABLE_COPY(GtDocModel)
     Q_DECLARE_PRIVATE(GtDocModel)
 };
-
-typedef QExplicitlySharedDataPointer<GtDocModel> GtDocModelPointer;
 
 GT_END_NAMESPACE
 

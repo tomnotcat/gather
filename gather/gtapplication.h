@@ -12,10 +12,12 @@ class QLocalServer;
 
 GT_BEGIN_NAMESPACE
 
+class GtBookmarkManager;
 class GtDocManager;
 class GtUserClient;
 class GtMainSettings;
 class GtMainWindow;
+class GtNoteManager;
 
 class GtApplication : public QApplication, public GtObject
 {
@@ -63,6 +65,8 @@ private:
     GtMainSettings *m_settings;
     QThread *m_docThread;
 
+    GtNoteManager *m_noteManager;
+    GtBookmarkManager *m_bookmarkManager;
     GtDocManager *m_docManager;
 
     // Network

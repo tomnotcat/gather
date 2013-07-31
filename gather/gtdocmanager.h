@@ -4,12 +4,15 @@
 #ifndef __GT_DOC_MANAGER_H__
 #define __GT_DOC_MANAGER_H__
 
-#include "gtdocmodel.h"
+#include "gtobject.h"
+#include <QtCore/QObject>
 
 class QUndoStack;
 
 GT_BEGIN_NAMESPACE
 
+class GtDocModel;
+class GtDocument;
 class GtDocManagerPrivate;
 
 class GtDocManager : public QObject, public GtObject
@@ -22,7 +25,7 @@ public:
 
 public:
     int registerLoaders(const QString &loaderDir);
-    GtDocModelPointer loadDocument(const QString &fileName);
+    GtDocModel* loadDocument(const QString &fileName);
     QUndoStack* undoStack(GtDocModel *docModel);
 
 private Q_SLOTS:

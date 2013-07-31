@@ -2,9 +2,11 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtapplication.h"
+#include "gtbookmarkmanager.h"
 #include "gtdocmanager.h"
 #include "gtmainsettings.h"
 #include "gtmainwindow.h"
+#include "gtnotemanager.h"
 #include "gtuserclient.h"
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
@@ -80,6 +82,8 @@ GtApplication::GtApplication(int &argc, char **argv)
 
     // documents
     m_docThread = new QThread(this);
+    m_noteManager = new GtNoteManager(this);
+    m_bookmarkManager = new GtBookmarkManager(this);
     m_docManager = new GtDocManager(m_docThread, this);
 
     QDir dir(QCoreApplication::applicationDirPath());

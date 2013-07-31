@@ -9,7 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
-class GtDocModel;
+class GtDocView;
 class GtDocRenderCachePrivate;
 
 class GtDocRenderCache : public QObject, public GtObject
@@ -17,11 +17,10 @@ class GtDocRenderCache : public QObject, public GtObject
     Q_OBJECT
 
 public:
-    explicit GtDocRenderCache(QObject *parent = 0);
+    explicit GtDocRenderCache(GtDocView *view, QObject *parent = 0);
     ~GtDocRenderCache();
 
 public:
-    void setModel(GtDocModel *model);
     void setMaxSize(int maxSize);
     void setPageRange(int beginPage, int endPage, int currentPage);
     QImage image(int index);
@@ -31,7 +30,6 @@ Q_SIGNALS:
     void finished(int index);
 
 private Q_SLOTS:
-    void modelDestroyed(QObject *object);
     void renderNext();
 
 private:

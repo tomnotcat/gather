@@ -5,7 +5,6 @@
 #define __GT_DOC_TAB_VIEW_H__
 
 #include "gttabview.h"
-#include "gtdocmodel.h"
 
 class QSplitter;
 class QTreeView;
@@ -15,6 +14,7 @@ class QVBoxLayout;
 GT_BEGIN_NAMESPACE
 
 class GtDocModel;
+class GtDocument;
 class GtDocView;
 class GtTocModel;
 
@@ -27,8 +27,8 @@ public:
     ~GtDocTabView();
 
 public:
-    inline GtDocModelPointer docModel() const { return m_docModel; }
-    void setDocModel(GtDocModelPointer docModel);
+    inline GtDocModel* docModel() const { return m_docModel; }
+    void setDocModel(GtDocModel *docModel);
 
     inline QUndoStack* undoStack() const { return m_undoStack; }
     void setUndoStack(QUndoStack *undoStack);
@@ -47,7 +47,7 @@ private Q_SLOTS:
 
 private:
     // model
-    GtDocModelPointer m_docModel;
+    GtDocModel *m_docModel;
     GtTocModel *m_tocModel;
     QUndoStack *m_undoStack;
 

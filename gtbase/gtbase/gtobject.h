@@ -5,6 +5,7 @@
 #define __GT_OBJECT_H__
 
 #include "gtcommon.h"
+#include <QtCore/qatomic.h>
 
 GT_BEGIN_NAMESPACE
 
@@ -18,6 +19,22 @@ public:
 public:
     static int dumpObjects();
 #endif  /* !GT_DEBUG */
+};
+
+class GT_BASE_EXPORT GtSharedObject : public GtObject
+{
+public:
+    mutable QAtomicInt ref;
+
+    inline GtSharedObject() : ref(0) { }
+    inline GtSharedObject(const GtSharedObject &) : ref(0) { }
+
+public:
+    inline void release() { if (!ref.deref()) delete this; }
+
+private:
+    // using the assignment operator would lead to corruption in the ref-counting
+    GtSharedObject &operator=(const GtSharedObject &);
 };
 
 GT_END_NAMESPACE
