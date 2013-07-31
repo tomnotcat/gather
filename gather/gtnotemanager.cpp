@@ -37,4 +37,8 @@ GtNoteManager::~GtNoteManager()
 {
 }
 
+GtDocNotes *GtNoteManager::loadNotes(const QString &id)
+{
+}
+
 GT_END_NAMESPACE

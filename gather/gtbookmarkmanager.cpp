@@ -37,4 +37,9 @@ GtBookmarkManager::~GtBookmarkManager()
 {
 }
 
+GtBookmarks *GtBookmarkManager::loadBookmarks(const QString &id)
+{
+    return 0;
+}
+
 GT_END_NAMESPACE

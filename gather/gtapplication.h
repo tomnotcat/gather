@@ -5,19 +5,16 @@
 #define __GT_APPLICATION_H__
 
 #include "gtobject.h"
-#include <QtCore/QPointer>
 #include <QtWidgets/QApplication>
 
-class QLocalServer;
+class QSqlDatabase;
 
 GT_BEGIN_NAMESPACE
 
-class GtBookmarkManager;
 class GtDocManager;
-class GtUserClient;
 class GtMainSettings;
 class GtMainWindow;
-class GtNoteManager;
+class GtApplicationPrivate;
 
 class GtApplication : public QApplication, public GtObject
 {
@@ -29,22 +26,21 @@ public:
 
 public:
     bool isTheOnlyReader() const;
-    GtMainWindow* mainWindow();
+    GtMainWindow *mainWindow();
     QList<GtMainWindow*> mainWindows();
-    inline GtMainSettings* settings() { return m_settings; }
-    inline QThread* docThread() { return m_docThread; }
-    inline GtDocManager* docManager() { return m_docManager; }
+    QSqlDatabase documentDatabase();
+    GtMainSettings *settings();
+    QThread *docThread();
+    GtDocManager *docManager();
 
 public:
     static GtApplication* instance();
+    static QString dataFilePath(const QString &fileName);
 
 protected:
 #if defined(Q_WS_MAC)
     bool event(QEvent *event);
 #endif
-
-private:
-    void clearWindows();
 
 public Q_SLOTS:
     GtMainWindow* newMainWindow();
@@ -59,18 +55,11 @@ private Q_SLOTS:
     void newLocalSocketConnection();
 
 private:
-    QList<QPointer<GtMainWindow> > m_mainWindows;
-    QLocalServer *m_localServer;
+    QScopedPointer<GtApplicationPrivate> d_ptr;
 
-    GtMainSettings *m_settings;
-    QThread *m_docThread;
-
-    GtNoteManager *m_noteManager;
-    GtBookmarkManager *m_bookmarkManager;
-    GtDocManager *m_docManager;
-
-    // Network
-    GtUserClient *m_userClient;
+private:
+    Q_DISABLE_COPY(GtApplication)
+    Q_DECLARE_PRIVATE(GtApplication)
 };
 
 GT_END_NAMESPACE

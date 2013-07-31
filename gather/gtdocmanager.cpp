@@ -2,12 +2,16 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtdocmanager.h"
+#include "gtapplication.h"
 #include "gtbookmarks.h"
 #include "gtdocloader.h"
+#include "gtdocmeta.h"
 #include "gtdocmodel.h"
 #include "gtdocnotes.h"
 #include "gtdocument.h"
 #include <QtCore/QDebug>
+#include <QtSql/QSqlError>
+#include <QtSql/QSqlQuery>
 #include <QtWidgets/QUndoStack>
 
 GT_BEGIN_NAMESPACE
@@ -21,7 +25,8 @@ public:
     ~GtDocManagerPrivate();
 
 public:
-    void clearDocuments();
+    int clearDocMetas();
+    int clearDocuments();
 
 protected:
     GtDocManager *q_ptr;
@@ -29,7 +34,9 @@ protected:
     QThread *m_docThread;
     QHash<GtDocument*, GtDocModel*> m_loadingDocs;
     QHash<GtDocModel*, QUndoStack*> m_undoStatcks;
+    QHash<QString, GtDocMeta*> m_docMetas;
     QHash<QString, GtDocModel*> m_docModels;
+    QSqlDatabase m_docDatabase;
 };
 
 GtDocManagerPrivate::GtDocManagerPrivate(GtDocManager *q)
@@ -37,22 +44,46 @@ GtDocManagerPrivate::GtDocManagerPrivate(GtDocManager *q)
     , m_docThread(0)
 {
     m_docLoader = new GtDocLoader(q);
+    m_docDatabase = GtApplication::instance()->documentDatabase();
 }
 
 GtDocManagerPrivate::~GtDocManagerPrivate()
 {
-    clearDocuments();
+    if (clearDocuments() > 0)
+        clearDocMetas();
 
     Q_ASSERT(m_undoStatcks.size() == 0);
     Q_ASSERT(m_loadingDocs.size() == 0);
     Q_ASSERT(m_docModels.size() == 0);
+    Q_ASSERT(m_docMetas.size() == 0);
 }
 
-void GtDocManagerPrivate::clearDocuments()
+int GtDocManagerPrivate::clearDocMetas()
+{
+    // clear up any unreferenced doc metas
+    QHash<QString, GtDocMeta*>::iterator it;
+    int count = 0;
+
+    for (it = m_docMetas.begin(); it != m_docMetas.end();) {
+        if (it.value()->ref.load() <= 1) {
+            delete it.value();
+            it = m_docMetas.erase(it);
+            ++count;
+        }
+        else {
+            ++it;
+        }
+    }
+
+    return count;
+}
+
+int GtDocManagerPrivate::clearDocuments()
 {
     // clear up any unreferenced documents
     QHash<QString, GtDocModel*>::iterator it;
     QHash<GtDocModel*, QUndoStack*>::iterator us;
+    int count = 0;
 
     for (it = m_docModels.begin(); it != m_docModels.end();) {
         if (it.value()->ref.load() <= 1) {
@@ -65,11 +96,14 @@ void GtDocManagerPrivate::clearDocuments()
             m_loadingDocs.remove(it.value()->document());
             delete it.value();
             it = m_docModels.erase(it);
+            ++count;
         }
         else {
             ++it;
         }
     }
+
+    return count;
 }
 
 GtDocManager::GtDocManager(QThread *thread, QObject *parent)
@@ -89,7 +123,41 @@ int GtDocManager::registerLoaders(const QString &loaderDir)
     return d->m_docLoader->registerLoaders(loaderDir);
 }
 
-GtDocModel* GtDocManager::loadDocument(const QString &fileName)
+GtDocMeta *GtDocManager::loadDocMeta(const QString &fileId)
+{
+    Q_D(GtDocManager);
+
+    QHash<QString, GtDocMeta*>::iterator it;
+
+    it = d->m_docMetas.find(fileId);
+    if (it != d->m_docMetas.end())
+        return it.value();
+
+    d->clearDocMetas();
+
+    QSqlQuery query(d->m_docDatabase);
+    query.prepare("SELECT * FROM document WHERE uuid=':fildid'");
+    if (query.exec()) {
+        if (query.next()) {
+            qDebug() << query.value(2).toString()
+                     << query.value(3).toString()
+                     << query.value(4).toString();
+        }
+    }
+
+    GtDocMeta *meta = new GtDocMeta(fileId);
+    meta->ref.ref();
+    d->m_docMetas.insert(fileId, meta);
+
+    return meta;
+}
+
+GtDocModel *GtDocManager::loadDocument(const QString &fileId)
+{
+    return 0;
+}
+
+GtDocModel *GtDocManager::loadLocalDocument(const QString &fileName)
 {
     Q_D(GtDocManager);
 
@@ -99,7 +167,8 @@ GtDocModel* GtDocManager::loadDocument(const QString &fileName)
     if (it != d->m_docModels.end())
         return it.value();
 
-    d->clearDocuments();
+    if (d->clearDocuments() > 0)
+        d->clearDocMetas();
 
     GtDocument *document;
     GtDocModel *model = new GtDocModel();
@@ -135,7 +204,7 @@ GtDocModel* GtDocManager::loadDocument(const QString &fileName)
     return model;
 }
 
-QUndoStack* GtDocManager::undoStack(GtDocModel *docModel)
+QUndoStack *GtDocManager::undoStack(GtDocModel *docModel)
 {
     Q_D(GtDocManager);
 

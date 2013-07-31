@@ -118,7 +118,6 @@ void GtMainWindow::showTabContextMenu(const QPoint &pos)
                                          QKeySequence::Close);
         action->setData(index);
 
-
         action = menu.addAction(tr("Close &Other Tabs"),
                                 this, SLOT(closeOtherTabs()));
         action->setData(index);
@@ -252,19 +251,6 @@ void GtMainWindow::openTab(GtTabView *tab)
 
 bool GtMainWindow::okToContinue()
 {
-    if (isWindowModified()) {
-        int r = QMessageBox::warning(this, tr("hello"),
-                                     tr("The document has been modified.\n"
-                                        "Do you want to save your changes?"),
-                                     QMessageBox::Yes | QMessageBox::No
-                                     | QMessageBox::Cancel);
-        if (r == QMessageBox::Yes) {
-            return true;
-        } else if (r == QMessageBox::Cancel) {
-            return false;
-        }
-    }
-
     return true;
 }
 
@@ -286,7 +272,7 @@ bool GtMainWindow::loadFile(const QString &fileName)
     docView->setDocModel(0);
 
     GtDocManager *docManager = GtApplication::instance()->docManager();
-    GtDocModel *docModel = docManager->loadDocument(fileName);
+    GtDocModel *docModel = docManager->loadLocalDocument(fileName);
     docView->setDocModel(docModel);
 
     QUndoStack *undoStack = docManager->undoStack(docModel);

@@ -9,6 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtDocNotes;
 class GtNoteManagerPrivate;
 
 class GtNoteManager : public QObject, public GtObject
@@ -18,6 +19,9 @@ class GtNoteManager : public QObject, public GtObject
 public:
     explicit GtNoteManager(QObject *parent = 0);
     ~GtNoteManager();
+
+public:
+    GtDocNotes *loadNotes(const QString &id);
 
 private:
     QScopedPointer<GtNoteManagerPrivate> d_ptr;

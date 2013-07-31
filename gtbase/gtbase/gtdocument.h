@@ -53,8 +53,8 @@ protected:
     QScopedPointer<GtDocumentPrivate> d_ptr;
 
 private:
+    Q_DISABLE_COPY(GtDocument)
     Q_DECLARE_PRIVATE(GtDocument)
-    GtDocument &operator=(const GtDocument &);
 };
 
 GT_END_NAMESPACE

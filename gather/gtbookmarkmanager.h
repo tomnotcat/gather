@@ -9,6 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtBookmarks;
 class GtBookmarkManagerPrivate;
 
 class GtBookmarkManager : public QObject, public GtObject
@@ -18,6 +19,9 @@ class GtBookmarkManager : public QObject, public GtObject
 public:
     explicit GtBookmarkManager(QObject *parent = 0);
     ~GtBookmarkManager();
+
+public:
+    GtBookmarks *loadBookmarks(const QString &id);
 
 private:
     QScopedPointer<GtBookmarkManagerPrivate> d_ptr;

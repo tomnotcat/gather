@@ -11,6 +11,7 @@ class QUndoStack;
 
 GT_BEGIN_NAMESPACE
 
+class GtDocMeta;
 class GtDocModel;
 class GtDocument;
 class GtDocManagerPrivate;
@@ -25,8 +26,10 @@ public:
 
 public:
     int registerLoaders(const QString &loaderDir);
-    GtDocModel* loadDocument(const QString &fileName);
-    QUndoStack* undoStack(GtDocModel *docModel);
+    GtDocMeta *loadDocMeta(const QString &fileId);
+    GtDocModel *loadDocument(const QString &fileId);
+    GtDocModel *loadLocalDocument(const QString &fileName);
+    QUndoStack *undoStack(GtDocModel *docModel);
 
 private Q_SLOTS:
     void documentLoaded(GtDocument *document);

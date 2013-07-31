@@ -10,6 +10,11 @@
 #include "gtuserclient.h"
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
+#include <QtCore/QPointer>
+#include <QtSql/QSqlDatabase>
+#include <QtSql/QSqlError>
+#include <QtSql/QSqlQuery>
+#include <QtCore/QStandardPaths>
 #include <QtCore/QStringList>
 #include <QtCore/QTextStream>
 #include <QtCore/QThread>
@@ -21,11 +26,45 @@
 
 GT_BEGIN_NAMESPACE
 
-GtApplication::GtApplication(int &argc, char **argv)
-    : QApplication(argc, argv)
-    , m_localServer(0)
+class GtApplicationPrivate
 {
-    QCoreApplication::setOrganizationName(QLatin1String("Clue Network"));
+    Q_DECLARE_PUBLIC(GtApplication)
+
+public:
+    GtApplicationPrivate(GtApplication *q);
+    ~GtApplicationPrivate();
+
+public:
+    void clearWindows();
+
+protected:
+    GtApplication *q_ptr;
+
+    QList<QPointer<GtMainWindow> > m_mainWindows;
+    QLocalServer *m_localServer;
+    QSqlDatabase m_docDatabase;
+
+    GtMainSettings *m_settings;
+    QThread *m_docThread;
+
+    GtNoteManager *m_noteManager;
+    GtBookmarkManager *m_bookmarkManager;
+    GtDocManager *m_docManager;
+
+    // Network
+    GtUserClient *m_userClient;
+};
+
+GtApplicationPrivate::GtApplicationPrivate(GtApplication *q)
+    : q_ptr(q)
+    , m_localServer(0)
+    , m_docThread(0)
+    , m_noteManager(0)
+    , m_bookmarkManager(0)
+    , m_docManager(0)
+    , m_userClient(0)
+{
+    QCoreApplication::setOrganizationName(QLatin1String("Clue"));
     QCoreApplication::setApplicationName(QLatin1String("Gather"));
     QCoreApplication::setApplicationVersion(QLatin1String("0.1"));
 
@@ -58,10 +97,10 @@ GtApplication::GtApplication(int &argc, char **argv)
     QApplication::setQuitOnLastWindowClosed(true);
 #endif
 
-    m_localServer = new QLocalServer(this);
-    connect(m_localServer,
-            SIGNAL(newConnection()),
-            this, SLOT(newLocalSocketConnection()));
+    m_localServer = new QLocalServer(q);
+    q->connect(m_localServer, SIGNAL(newConnection()),
+               q, SLOT(newLocalSocketConnection()));
+
     if (!m_localServer->listen(serverName)) {
         if (m_localServer->serverError() == QAbstractSocket::AddressInUseError
             && QFile::exists(m_localServer->serverName()))
@@ -77,31 +116,21 @@ GtApplication::GtApplication(int &argc, char **argv)
 #endif
 
     // settings
-    m_settings = new GtMainSettings(this);
+    m_settings = new GtMainSettings(q);
     m_settings->load();
 
-    // documents
-    m_docThread = new QThread(this);
-    m_noteManager = new GtNoteManager(this);
-    m_bookmarkManager = new GtBookmarkManager(this);
-    m_docManager = new GtDocManager(m_docThread, this);
-
-    QDir dir(QCoreApplication::applicationDirPath());
-    if (dir.cd("loader"))
-        m_docManager->registerLoaders(dir.absolutePath());
-
-    m_docThread->start();
-
     // network
-    m_userClient = new GtUserClient(this);
+    m_userClient = new GtUserClient(q);
 
-    QTimer::singleShot(0, this, SLOT(postLaunch()));
+    QTimer::singleShot(0, q, SLOT(postLaunch()));
 }
 
-GtApplication::~GtApplication()
+GtApplicationPrivate::~GtApplicationPrivate()
 {
-    m_docThread->quit();
-    m_docThread->wait();
+    if (m_docThread) {
+        m_docThread->quit();
+        m_docThread->wait();
+    }
 
     for (int i = 0; i < m_mainWindows.size(); ++i) {
         GtMainWindow *window = m_mainWindows.at(i);
@@ -109,37 +138,141 @@ GtApplication::~GtApplication()
     }
 
     m_settings->save();
+
+    if (m_docDatabase.isOpen())
+        m_docDatabase.close();
+}
+
+void GtApplicationPrivate::clearWindows()
+{
+    // clear up any deleted main windows
+    for (int i = m_mainWindows.count() - 1; i >= 0; --i) {
+        if (m_mainWindows.at(i).isNull())
+            m_mainWindows.removeAt(i);
+    }
+}
+
+GtApplication::GtApplication(int &argc, char **argv)
+    : QApplication(argc, argv)
+    , d_ptr(new GtApplicationPrivate(this))
+{
+}
+
+GtApplication::~GtApplication()
+{
 }
 
 bool GtApplication::isTheOnlyReader() const
 {
-    return (m_localServer != 0);
+    Q_D(const GtApplication);
+    return (d->m_localServer != 0);
 }
 
-GtMainWindow* GtApplication::mainWindow()
+GtMainWindow *GtApplication::mainWindow()
 {
-    clearWindows();
+    Q_D(GtApplication);
 
-    if (m_mainWindows.isEmpty())
+    d->clearWindows();
+
+    if (d->m_mainWindows.isEmpty())
         newMainWindow();
 
-    return m_mainWindows[0];
+    return d->m_mainWindows[0];
 }
 
 QList<GtMainWindow*> GtApplication::mainWindows()
 {
-    clearWindows();
+    Q_D(GtApplication);
+
+    d->clearWindows();
 
     QList<GtMainWindow*> list;
-    for (int i = 0; i < m_mainWindows.count(); ++i)
-        list.append(m_mainWindows.at(i));
+    for (int i = 0; i < d->m_mainWindows.count(); ++i)
+        list.append(d->m_mainWindows.at(i));
 
     return list;
+}
+
+QSqlDatabase GtApplication::documentDatabase()
+{
+    Q_D(GtApplication);
+
+    if (d->m_docDatabase.isOpen())
+        return d->m_docDatabase;
+
+    // find sqlite driver
+    d->m_docDatabase = QSqlDatabase::addDatabase("QSQLITE");
+
+    QString dbpath = GtApplication::dataFilePath("document.db");
+    d->m_docDatabase.setDatabaseName(dbpath);
+
+    if (d->m_docDatabase.open()) {
+        QString sql = "CREATE TABLE IF NOT EXISTS document "
+                      "(id integer primary key, "
+                      "uuid varchar(64), "
+                      "bookmarks varchar(64), "
+                      "notes varchar(64), "
+                      "path varchar(256))";
+
+        QSqlQuery query(d->m_docDatabase);
+        if (!query.exec(sql))
+            qWarning() << "create document table error:" << query.lastError();
+    }
+    else {
+        qWarning() << "open document database error:"
+                   << d->m_docDatabase.lastError();
+    }
+
+    return d->m_docDatabase;
+}
+
+GtMainSettings *GtApplication::settings()
+{
+    Q_D(GtApplication);
+    return d->m_settings;
+}
+
+QThread *GtApplication::docThread()
+{
+    Q_D(GtApplication);
+
+    if (!d->m_docThread) {
+        d->m_docThread = new QThread(this);
+        d->m_docThread->start();
+    }
+
+    return d->m_docThread;
+}
+
+GtDocManager *GtApplication::docManager()
+{
+    Q_D(GtApplication);
+
+    if (!d->m_docManager) {
+        QThread *thread = docThread();
+        d->m_docManager = new GtDocManager(thread, this);
+
+        QDir dir(QCoreApplication::applicationDirPath());
+        if (dir.cd("loader"))
+            d->m_docManager->registerLoaders(dir.absolutePath());
+        else
+            qWarning() << "can't access loaders directory";
+    }
+
+    return d->m_docManager;
 }
 
 GtApplication* GtApplication::instance()
 {
     return static_cast<GtApplication*>(QCoreApplication::instance());
+}
+
+QString GtApplication::dataFilePath(const QString &fileName)
+{
+    QDir dir(QStandardPaths::writableLocation(QStandardPaths::DataLocation));
+    dir.mkpath(".");
+
+    return dir.absoluteFilePath(fileName);
 }
 
 #if defined(Q_WS_MAC)
@@ -162,21 +295,14 @@ bool GtApplication::event(QEvent *event)
 }
 #endif
 
-void GtApplication::clearWindows()
-{
-    // clear up any deleted main windows
-    for (int i = m_mainWindows.count() - 1; i >= 0; --i) {
-        if (m_mainWindows.at(i).isNull())
-            m_mainWindows.removeAt(i);
-    }
-}
-
 GtMainWindow* GtApplication::newMainWindow()
 {
-    GtMainWindow *reader = new GtMainWindow();
-    m_mainWindows.prepend(reader);
-    reader->show();
-    return reader;
+    Q_D(GtApplication);
+
+    GtMainWindow *window = new GtMainWindow();
+    d->m_mainWindows.prepend(window);
+    window->show();
+    return window;
 }
 
 #if defined(Q_WS_MAC)
@@ -201,7 +327,9 @@ void GtApplication::postLaunch()
 
 void GtApplication::newLocalSocketConnection()
 {
-    QLocalSocket *socket = m_localServer->nextPendingConnection();
+    Q_D(GtApplication);
+
+    QLocalSocket *socket = d->m_localServer->nextPendingConnection();
     if (!socket)
         return;
 

@@ -1,7 +1,7 @@
 TEMPLATE = app
 TARGET = gather
 CONFIG += qt debug
-QT += widgets network
+QT += sql widgets network
 HEADERS += gtapplication.h gtdocmanager.h gtbookmarkmanager.h \
     gtnotemanager.h gtmainwindow.h gttabview.h gthometabview.h \
     gtdoctabview.h gtmainsettings.h gtlogindialog.h
