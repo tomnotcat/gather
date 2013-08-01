@@ -33,7 +33,6 @@ GtDocTabView::GtDocTabView(QWidget *parent)
     // model
     m_tocModel = new GtTocModel(this);
 
-    GtDocModel a;
     // view
     m_verticalLayout = new QVBoxLayout(this);
     m_verticalLayout->setObjectName(QStringLiteral("verticalLayout"));

@@ -17,15 +17,6 @@ class GT_SVCE_EXPORT GtUserClient : public QObject, public GtObject
     Q_OBJECT
 
 public:
-    explicit GtUserClient(QObject *parent = 0);
-    ~GtUserClient();
-
-public:
-    void login(const QHostAddress &address, quint16 port,
-               const QString &user, const QString &passwd);
-    void logout();
-
-public:
     enum LoginResult {
         LoginSuccess,
         InvalidUser,
@@ -38,6 +29,15 @@ public:
         LogoutRelogin,
         LogoutUnknown = -1
     };
+
+public:
+    explicit GtUserClient(QObject *parent = 0);
+    ~GtUserClient();
+
+public:
+    void login(const QHostAddress &address, quint16 port,
+               const QString &user, const QString &passwd);
+    void logout();
 
 Q_SIGNALS:
     void login(int result);

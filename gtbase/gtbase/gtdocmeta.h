@@ -28,6 +28,9 @@ public:
     QString notesId() const;
     void setNotesId(const QString &id);
 
+Q_SIGNALS:
+    void changed(GtDocMeta *meta);
+
 protected:
     QScopedPointer<GtDocMetaPrivate> d_ptr;
 

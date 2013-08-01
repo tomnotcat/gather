@@ -32,6 +32,9 @@ public:
 private:
     NoteType m_type;
     GtDocRange m_range;
+
+private:
+    Q_DISABLE_COPY(GtDocNote)
 };
 
 GT_END_NAMESPACE

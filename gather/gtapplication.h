@@ -7,8 +7,6 @@
 #include "gtobject.h"
 #include <QtWidgets/QApplication>
 
-class QSqlDatabase;
-
 GT_BEGIN_NAMESPACE
 
 class GtDocManager;
@@ -28,7 +26,6 @@ public:
     bool isTheOnlyReader() const;
     GtMainWindow *mainWindow();
     QList<GtMainWindow*> mainWindows();
-    QSqlDatabase documentDatabase();
     GtMainSettings *settings();
     QThread *docThread();
     GtDocManager *docManager();
@@ -36,6 +33,7 @@ public:
 public:
     static GtApplication* instance();
     static QString dataFilePath(const QString &fileName);
+    static QString generateUuid();
 
 protected:
 #if defined(Q_WS_MAC)

@@ -19,6 +19,7 @@ public:
 
 protected:
     GtDocNotes *q_ptr;
+    QString m_id;
     QList<GtDocNote*> m_notes;
     QVector<QList<GtDocNote*> > m_pages;
 };
@@ -33,14 +34,21 @@ GtDocNotesPrivate::~GtDocNotesPrivate()
     qDeleteAll(m_notes);
 }
 
-GtDocNotes::GtDocNotes(QObject *parent)
+GtDocNotes::GtDocNotes(const QString &id, QObject *parent)
     : QObject(parent)
     , d_ptr(new GtDocNotesPrivate(this))
 {
+    d_ptr->m_id = id;
 }
 
 GtDocNotes::~GtDocNotes()
 {
+}
+
+QString GtDocNotes::id() const
+{
+    Q_D(const GtDocNotes);
+    return d->m_id;
 }
 
 int GtDocNotes::pageCount() const

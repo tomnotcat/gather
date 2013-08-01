@@ -12,15 +12,17 @@ GT_BEGIN_NAMESPACE
 class GtBookmark;
 class GtBookmarksPrivate;
 
-class GT_BASE_EXPORT GtBookmarks : public QObject, public GtObject
+class GT_BASE_EXPORT GtBookmarks : public QObject, public GtSharedObject
 {
     Q_OBJECT
 
 public:
-    explicit GtBookmarks(QObject *parent = 0);
+    explicit GtBookmarks(const QString &id, QObject *parent = 0);
     ~GtBookmarks();
 
 public:
+    QString id() const;
+
     const GtBookmark* root() const;
     GtBookmark* root();
 

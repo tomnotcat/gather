@@ -2,18 +2,15 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtapplication.h"
-#include "gtbookmarkmanager.h"
 #include "gtdocmanager.h"
 #include "gtmainsettings.h"
 #include "gtmainwindow.h"
-#include "gtnotemanager.h"
 #include "gtuserclient.h"
+#include <QtCore/QCryptographicHash>
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
 #include <QtCore/QPointer>
-#include <QtSql/QSqlDatabase>
-#include <QtSql/QSqlError>
-#include <QtSql/QSqlQuery>
+#include <QtCore/QUuid>
 #include <QtCore/QStandardPaths>
 #include <QtCore/QStringList>
 #include <QtCore/QTextStream>
@@ -42,13 +39,9 @@ protected:
 
     QList<QPointer<GtMainWindow> > m_mainWindows;
     QLocalServer *m_localServer;
-    QSqlDatabase m_docDatabase;
 
     GtMainSettings *m_settings;
     QThread *m_docThread;
-
-    GtNoteManager *m_noteManager;
-    GtBookmarkManager *m_bookmarkManager;
     GtDocManager *m_docManager;
 
     // Network
@@ -59,8 +52,6 @@ GtApplicationPrivate::GtApplicationPrivate(GtApplication *q)
     : q_ptr(q)
     , m_localServer(0)
     , m_docThread(0)
-    , m_noteManager(0)
-    , m_bookmarkManager(0)
     , m_docManager(0)
     , m_userClient(0)
 {
@@ -138,9 +129,6 @@ GtApplicationPrivate::~GtApplicationPrivate()
     }
 
     m_settings->save();
-
-    if (m_docDatabase.isOpen())
-        m_docDatabase.close();
 }
 
 void GtApplicationPrivate::clearWindows()
@@ -193,39 +181,6 @@ QList<GtMainWindow*> GtApplication::mainWindows()
     return list;
 }
 
-QSqlDatabase GtApplication::documentDatabase()
-{
-    Q_D(GtApplication);
-
-    if (d->m_docDatabase.isOpen())
-        return d->m_docDatabase;
-
-    // find sqlite driver
-    d->m_docDatabase = QSqlDatabase::addDatabase("QSQLITE");
-
-    QString dbpath = GtApplication::dataFilePath("document.db");
-    d->m_docDatabase.setDatabaseName(dbpath);
-
-    if (d->m_docDatabase.open()) {
-        QString sql = "CREATE TABLE IF NOT EXISTS document "
-                      "(id integer primary key, "
-                      "uuid varchar(64), "
-                      "bookmarks varchar(64), "
-                      "notes varchar(64), "
-                      "path varchar(256))";
-
-        QSqlQuery query(d->m_docDatabase);
-        if (!query.exec(sql))
-            qWarning() << "create document table error:" << query.lastError();
-    }
-    else {
-        qWarning() << "open document database error:"
-                   << d->m_docDatabase.lastError();
-    }
-
-    return d->m_docDatabase;
-}
-
 GtMainSettings *GtApplication::settings()
 {
     Q_D(GtApplication);
@@ -273,6 +228,12 @@ QString GtApplication::dataFilePath(const QString &fileName)
     dir.mkpath(".");
 
     return dir.absoluteFilePath(fileName);
+}
+
+QString GtApplication::generateUuid()
+{
+    QUuid uuid(QUuid::createUuid());
+    return uuid.toString();
 }
 
 #if defined(Q_WS_MAC)

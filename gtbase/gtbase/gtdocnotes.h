@@ -12,15 +12,17 @@ GT_BEGIN_NAMESPACE
 class GtDocNote;
 class GtDocNotesPrivate;
 
-class GT_BASE_EXPORT GtDocNotes : public QObject, public GtObject
+class GT_BASE_EXPORT GtDocNotes : public QObject, public GtSharedObject
 {
     Q_OBJECT
 
 public:
-    explicit GtDocNotes(QObject *parent = 0);
+    explicit GtDocNotes(const QString &id, QObject *parent = 0);
     ~GtDocNotes();
 
 public:
+    QString id() const;
+
     int pageCount() const;
     QList<GtDocNote*> pageNotes(int page) const;
     QList<GtDocNote*> allNotes() const;

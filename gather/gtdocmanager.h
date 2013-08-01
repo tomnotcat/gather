@@ -11,8 +11,10 @@ class QUndoStack;
 
 GT_BEGIN_NAMESPACE
 
+class GtBookmarks;
 class GtDocMeta;
 class GtDocModel;
+class GtDocNotes;
 class GtDocument;
 class GtDocManagerPrivate;
 
@@ -29,10 +31,13 @@ public:
     GtDocMeta *loadDocMeta(const QString &fileId);
     GtDocModel *loadDocument(const QString &fileId);
     GtDocModel *loadLocalDocument(const QString &fileName);
+    GtBookmarks *loadBookmarks(const QString &bookmarksId);
+    GtDocNotes *loadNotes(const QString &notesId);
     QUndoStack *undoStack(GtDocModel *docModel);
 
 private Q_SLOTS:
     void documentLoaded(GtDocument *document);
+    void docMetaChanged(GtDocMeta *meta);
 
 private:
     QScopedPointer<GtDocManagerPrivate> d_ptr;

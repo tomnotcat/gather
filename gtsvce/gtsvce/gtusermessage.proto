@@ -19,3 +19,31 @@ message GtUserLoginResponse {
 message GtUserLogoutResponse {
     optional int32 reason = 1;
 }
+
+message GtUserLinkDest {
+    optional int32 type = 1;
+    optional int32 page = 2;
+    optional float x = 3;
+    optional float y = 4;
+    optional float zoom = 5;
+    optional string uri = 6;
+}
+
+message GtUserDocBookmark {
+    optional string title = 1;
+    optional GtUserLinkDest dest = 2;
+    repeated GtUserDocBookmark children = 3;
+}
+
+message GtUserDocRange {
+    optional int32 type = 1;
+    optional float begin_x = 2;
+    optional float begin_y = 3;
+    optional float end_x = 4;
+    optional float end_y = 5;
+}
+
+message GtUserDocNote {
+    optional int32 type = 1;
+    optional GtUserDocRange range = 2;
+}

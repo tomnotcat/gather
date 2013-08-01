@@ -25,8 +25,10 @@ public:
     ~GtDocManagerPrivate();
 
 public:
-    int clearDocMetas();
-    int clearDocuments();
+    int cleanDocMetas();
+    int cleanDocuments();
+    int cleanBookmarks();
+    int cleanNotes();
 
 protected:
     GtDocManager *q_ptr;
@@ -36,6 +38,8 @@ protected:
     QHash<GtDocModel*, QUndoStack*> m_undoStatcks;
     QHash<QString, GtDocMeta*> m_docMetas;
     QHash<QString, GtDocModel*> m_docModels;
+    QHash<QString, GtBookmarks*> m_bookmarks;
+    QHash<QString, GtDocNotes*> m_notes;
     QSqlDatabase m_docDatabase;
 };
 
@@ -44,23 +48,73 @@ GtDocManagerPrivate::GtDocManagerPrivate(GtDocManager *q)
     , m_docThread(0)
 {
     m_docLoader = new GtDocLoader(q);
-    m_docDatabase = GtApplication::instance()->documentDatabase();
+
+    // find sqlite driver
+    m_docDatabase = QSqlDatabase::addDatabase("QSQLITE");
+
+    QString dbpath = GtApplication::dataFilePath("document.db");
+    m_docDatabase.setDatabaseName(dbpath);
+
+    if (m_docDatabase.open()) {
+        QString sql = "CREATE TABLE IF NOT EXISTS document "
+                      "(id INTEGER PRIMARY KEY, "
+                      "uuid VARCHAR(64), "
+                      "bookmarks VARCHAR(64), "
+                      "notes VARCHAR(64), "
+                      "path VARCHAR(256))";
+
+        QSqlQuery query(m_docDatabase);
+        if (!query.exec(sql)) {
+            qWarning() << "create document table error:"
+                       << query.lastError();
+        }
+
+        sql = "CREATE TABLE IF NOT EXISTS bookmarks "
+              "(id integer primary key, "
+              "uuid VARCHAR(64), "
+              "data BLOB)";
+
+        if (!query.exec(sql)) {
+            qWarning() << "create bookmarks table error:"
+                       << query.lastError();
+        }
+
+        sql = "CREATE TABLE IF NOT EXISTS notes "
+              "(id integer primary key, "
+              "uuid VARCHAR(64), "
+              "data BLOB)";
+
+        if (!query.exec(sql)) {
+            qWarning() << "create notes table error:"
+                       << query.lastError();
+        }
+    }
+    else {
+        qWarning() << "open document database error:"
+                   << m_docDatabase.lastError();
+    }
 }
 
 GtDocManagerPrivate::~GtDocManagerPrivate()
 {
-    if (clearDocuments() > 0)
-        clearDocMetas();
+    cleanDocuments();
+    cleanDocMetas();
+    cleanBookmarks();
+    cleanNotes();
+
+    m_docDatabase.close();
 
     Q_ASSERT(m_undoStatcks.size() == 0);
     Q_ASSERT(m_loadingDocs.size() == 0);
     Q_ASSERT(m_docModels.size() == 0);
     Q_ASSERT(m_docMetas.size() == 0);
+    Q_ASSERT(m_bookmarks.size() == 0);
+    Q_ASSERT(m_notes.size() == 0);
 }
 
-int GtDocManagerPrivate::clearDocMetas()
+int GtDocManagerPrivate::cleanDocMetas()
 {
-    // clear up any unreferenced doc metas
+    // clean up any unreferenced doc metas
     QHash<QString, GtDocMeta*>::iterator it;
     int count = 0;
 
@@ -78,9 +132,9 @@ int GtDocManagerPrivate::clearDocMetas()
     return count;
 }
 
-int GtDocManagerPrivate::clearDocuments()
+int GtDocManagerPrivate::cleanDocuments()
 {
-    // clear up any unreferenced documents
+    // clean up any unreferenced documents
     QHash<QString, GtDocModel*>::iterator it;
     QHash<GtDocModel*, QUndoStack*>::iterator us;
     int count = 0;
@@ -96,6 +150,46 @@ int GtDocManagerPrivate::clearDocuments()
             m_loadingDocs.remove(it.value()->document());
             delete it.value();
             it = m_docModels.erase(it);
+            ++count;
+        }
+        else {
+            ++it;
+        }
+    }
+
+    return count;
+}
+
+int GtDocManagerPrivate::cleanBookmarks()
+{
+    // clean up any unreferenced bookmarks
+    QHash<QString, GtBookmarks*>::iterator it;
+    int count = 0;
+
+    for (it = m_bookmarks.begin(); it != m_bookmarks.end();) {
+        if (it.value()->ref.load() <= 1) {
+            delete it.value();
+            it = m_bookmarks.erase(it);
+            ++count;
+        }
+        else {
+            ++it;
+        }
+    }
+
+    return count;
+}
+
+int GtDocManagerPrivate::cleanNotes()
+{
+    // clean up any unreferenced notes
+    QHash<QString, GtDocNotes*>::iterator it;
+    int count = 0;
+
+    for (it = m_notes.begin(); it != m_notes.end();) {
+        if (it.value()->ref.load() <= 1) {
+            delete it.value();
+            it = m_notes.erase(it);
             ++count;
         }
         else {
@@ -133,8 +227,9 @@ GtDocMeta *GtDocManager::loadDocMeta(const QString &fileId)
     if (it != d->m_docMetas.end())
         return it.value();
 
-    d->clearDocMetas();
+    d->cleanDocMetas();
 
+    GtDocMeta *meta = 0;
     QSqlQuery query(d->m_docDatabase);
     query.prepare("SELECT * FROM document WHERE uuid=':fildid'");
     if (query.exec()) {
@@ -145,9 +240,16 @@ GtDocMeta *GtDocManager::loadDocMeta(const QString &fileId)
         }
     }
 
-    GtDocMeta *meta = new GtDocMeta(fileId);
-    meta->ref.ref();
-    d->m_docMetas.insert(fileId, meta);
+    if (!meta) {
+        meta = new GtDocMeta(fileId);
+        meta->ref.ref();
+        d->m_docMetas.insert(fileId, meta);
+    }
+
+    connect(meta,
+            SIGNAL(changed(GtDocMeta *)),
+            this,
+            SLOT(docMetaChanged(GtDocMeta *)));
 
     return meta;
 }
@@ -167,8 +269,8 @@ GtDocModel *GtDocManager::loadLocalDocument(const QString &fileName)
     if (it != d->m_docModels.end())
         return it.value();
 
-    if (d->clearDocuments() > 0)
-        d->clearDocMetas();
+    if (d->cleanDocuments() > 0)
+        d->cleanDocMetas();
 
     GtDocument *document;
     GtDocModel *model = new GtDocModel();
@@ -179,12 +281,6 @@ GtDocModel *GtDocManager::loadLocalDocument(const QString &fileName)
         model->setMinScale(0.1);
         model->setMaxScale(4.0);
         model->setMouseMode(GtDocModel::SelectText);
-
-        GtDocNotes *notes = new GtDocNotes(model);
-        model->setNotes(notes);
-
-        GtBookmarks *bookmarks = new GtBookmarks(model);
-        model->setBookmarks(bookmarks);
 
         model->ref.ref();
         d->m_docModels.insert(fileName, model);
@@ -202,6 +298,16 @@ GtDocModel *GtDocManager::loadLocalDocument(const QString &fileName)
     }
 
     return model;
+}
+
+GtBookmarks *GtDocManager::loadBookmarks(const QString &bookmarksId)
+{
+    return 0;
+}
+
+GtDocNotes *GtDocManager::loadNotes(const QString &notesId)
+{
+    return 0;
 }
 
 QUndoStack *GtDocManager::undoStack(GtDocModel *docModel)
@@ -232,13 +338,64 @@ void GtDocManager::documentLoaded(GtDocument *document)
         return;
     }
 
-    GtDocModel *docModel = it.value();
+    GtDocModel *model = it.value();
     d->m_loadingDocs.erase(it);
 
-    if (document->isLoaded()) {
-        GtBookmarks *bookmarks = docModel->bookmarks();
-        document->loadOutline(bookmarks->root());
+    if (!document->isLoaded())
+        return;
+
+    GtDocMeta *meta = loadDocMeta(document->fileId());
+    if (!meta) {
+        qWarning() << "load document meta failed:"
+                   << document->title();
+        return;
     }
+
+    bool metaChanged = false;
+
+    GtBookmarks *bookmarks = 0;
+    QString bookmarksId = meta->bookmarksId();
+    if (bookmarksId.isEmpty()) {
+        bookmarksId = GtApplication::generateUuid();
+        meta->setBookmarksId(bookmarksId);
+
+        bookmarks = new GtBookmarks(bookmarksId);
+        bookmarks->ref.ref();
+        document->loadOutline(bookmarks->root());
+        d->m_bookmarks.insert(bookmarksId, bookmarks);
+
+        metaChanged = true;
+    }
+    else {
+        bookmarks = loadBookmarks(bookmarksId);
+    }
+
+    GtDocNotes *notes = 0;
+    QString notesId = meta->notesId();
+    if (notesId.isEmpty()) {
+        notesId = GtApplication::generateUuid();
+        meta->setNotesId(notesId);
+
+        notes = new GtDocNotes(notesId);
+        notes->ref.ref();
+        d->m_notes.insert(notesId, notes);
+
+        metaChanged = true;
+    }
+    else {
+        notes = loadNotes(notesId);
+    }
+
+    model->setNotes(notes);
+    model->setBookmarks(bookmarks);
+
+    if (metaChanged)
+        emit meta->changed(meta);
+}
+
+void GtDocManager::docMetaChanged(GtDocMeta *meta)
+{
+    qDebug() << ">>>>>>>>>>>>>>>>>>>>>";
 }
 
 GT_END_NAMESPACE

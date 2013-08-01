@@ -17,7 +17,8 @@ public:
 
 protected:
     GtBookmarks *q_ptr;
-    GtBookmark root;
+    QString m_id;
+    GtBookmark m_root;
 };
 
 GtBookmarksPrivate::GtBookmarksPrivate(GtBookmarks *q)
@@ -29,26 +30,33 @@ GtBookmarksPrivate::~GtBookmarksPrivate()
 {
 }
 
-GtBookmarks::GtBookmarks(QObject *parent)
+GtBookmarks::GtBookmarks(const QString &id, QObject *parent)
     : QObject(parent)
     , d_ptr(new GtBookmarksPrivate(this))
 {
+    d_ptr->m_id = id;
 }
 
 GtBookmarks::~GtBookmarks()
 {
 }
 
+QString GtBookmarks::id() const
+{
+    Q_D(const GtBookmarks);
+    return d->m_id;
+}
+
 const GtBookmark* GtBookmarks::root() const
 {
     Q_D(const GtBookmarks);
-    return &d->root;
+    return &d->m_root;
 }
 
 GtBookmark* GtBookmarks::root()
 {
     Q_D(GtBookmarks);
-    return &d->root;
+    return &d->m_root;
 }
 
 GT_END_NAMESPACE

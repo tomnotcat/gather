@@ -7,4 +7,4 @@ CONFIG(debug, debug|release) {
     DESTDIR = ../../../build/release
 }
 
-unix: LIBS += -L$$DESTDIR -lgtbase -lprotobuf
+unix: LIBS += -L$$DESTDIR -lgtbase

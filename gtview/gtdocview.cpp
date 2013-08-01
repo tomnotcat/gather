@@ -896,6 +896,8 @@ void GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
                    pageArea.y() + border.top(),
                    pageArea.width() - border.left() - border.right(),
                    pageArea.height() - border.top() - border.bottom());
+    QPoint offset(pageArea.x() + border.left(),
+                  pageArea.y() + border.top());
 
     // draw border and background
     int levels = border.right() - border.left();
@@ -934,13 +936,13 @@ void GtDocViewPrivate::drawPage(QPainter &p, int index, const QRect &pageArea,
     p.drawImage(realArea, image);
 
     // draw page notes
-    QList<GtDocNote*> notes = m_notes->pageNotes(index);
-    QList<GtDocNote*>::iterator it;
-    QPoint offset(pageArea.x() + border.left(),
-                  pageArea.y() + border.top());
+    if (m_notes) {
+        QList<GtDocNote*> notes = m_notes->pageNotes(index);
+        QList<GtDocNote*>::iterator it;
 
-    for (it = notes.begin(); it != notes.end(); ++it) {
-        drawPageNote(p, page, (*it), offset);
+        for (it = notes.begin(); it != notes.end(); ++it) {
+            drawPageNote(p, page, (*it), offset);
+        }
     }
 
     // highlight selected region
