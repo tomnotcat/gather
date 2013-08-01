@@ -2,6 +2,10 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtuserclient.h"
+#include "gtbookmark.h"
+#include "gtbookmarks.h"
+#include "gtdocnote.h"
+#include "gtdocnotes.h"
 #include "gtrecvbuffer.h"
 #include "gtsvcutil.h"
 #include "gtusermessage.pb.h"
@@ -25,6 +29,16 @@ public:
 public:
     void handleMessage(const char *data, int size);
     void handleLogin(GtUserLoginResponse &msg);
+
+public:
+    static void convert(const GtDocRange &s, GtUserDocRange &d);
+    static void convert(const GtUserDocRange &s, GtDocRange &d);
+
+    static void convert(const GtLinkDest &s, GtUserLinkDest &d);
+    static void convert(const GtUserLinkDest &s, GtLinkDest &d);
+
+    static void convert(const GtBookmark *s, GtUserBookmark *d);
+    static void convert(const GtUserBookmark *s, GtBookmark *d);
 
 protected:
     GtUserClient *q_ptr;
@@ -121,6 +135,105 @@ void GtUserClientPrivate::handleLogin(GtUserLoginResponse &msg)
     emit q->login(msg.result());
 }
 
+void GtUserClientPrivate::convert(const GtDocRange &s, GtUserDocRange &d)
+{
+    GtDocPoint b(s.begin());
+    GtDocPoint e(s.end());
+
+    d.set_type(s.type());
+    d.set_begin_page(b.page());
+    d.set_begin_x(b.x());
+    d.set_begin_y(b.y());
+    d.set_end_page(e.page());
+    d.set_end_x(e.x());
+    d.set_end_y(e.y());
+}
+
+void GtUserClientPrivate::convert(const GtUserDocRange &s, GtDocRange &d)
+{
+    GtDocPoint b(s.begin_page(), s.begin_x(), s.begin_y());
+    GtDocPoint e(s.end_page(), s.end_x(), s.end_y());
+
+    switch (s.type()) {
+    case GtDocRange::TextRange:
+    case GtDocRange::GeomRange:
+        d.setType((GtDocRange::RangeType)s.type());
+        break;
+
+    default:
+        qWarning() << "invalid doc range type:" << s.type();
+        break;
+    }
+
+    d.setRange(b, e);
+}
+
+void GtUserClientPrivate::convert(const GtLinkDest &s, GtUserLinkDest &d)
+{
+    switch (s.type()) {
+    case GtLinkDest::ScrollTo:
+        d.set_type(s.type());
+        d.set_page(s.page());
+        d.set_x(s.point().x());
+        d.set_y(s.point().y());
+        d.set_zoom(s.zoom());
+        break;
+
+    case GtLinkDest::LaunchURI:
+        d.set_type(s.type());
+        d.set_uri(s.uri().toUtf8());
+        break;
+
+    default:
+        break;
+    }
+}
+
+void GtUserClientPrivate::convert(const GtUserLinkDest &s, GtLinkDest &d)
+{
+    switch (s.type()) {
+    case GtLinkDest::ScrollTo:
+        d.setScrollTo(s.page(), QPointF(s.x(), s.y()), s.zoom());
+        break;
+
+    case GtLinkDest::LaunchURI:
+        d.setLaunchUri(s.uri().c_str());
+        break;
+
+    default:
+        break;
+    }
+}
+
+void GtUserClientPrivate::convert(const GtBookmark *s, GtUserBookmark *d)
+{
+    d->set_title(s->title().toUtf8());
+    convert(s->dest(), *d->mutable_dest());
+
+    QList<GtBookmark*> l = s->children();
+    QList<GtBookmark*>::iterator i;
+
+    for (i = l.begin(); i != l.end(); ++i) {
+        convert(*i, d->add_children());
+    }
+}
+
+void GtUserClientPrivate::convert(const GtUserBookmark *s, GtBookmark *d)
+{
+    GtLinkDest dest;
+
+    d->setTitle(s->title().c_str());
+    convert(s->dest(), dest);
+    d->setDest(dest);
+
+    int count = s->children_size();
+    for (int i = 0; i < count; ++i) {
+        GtBookmark *b = new GtBookmark();
+        convert(&s->children(i), b);
+        d->append(b);
+    }
+}
+
 GtUserClient::GtUserClient(QObject *parent)
     : QObject(parent)
     , d_ptr(new GtUserClientPrivate(this))
@@ -158,6 +271,79 @@ void GtUserClient::logout()
     }
 
     emit logout(LogoutNormal);
+}
+
+bool GtUserClient::convert(const GtBookmarks &src, GtUserBookmarks &dest)
+{
+    dest.set_id(src.id().toUtf8());
+    GtUserClientPrivate::convert(src.root(), dest.mutable_root());
+    return true;
+}
+
+bool GtUserClient::convert(const GtUserBookmarks &src, GtBookmarks &dest)
+{
+    if (strcmp(dest.id().toUtf8().constData(), src.id().c_str()))
+        return false;
+
+    GtUserClientPrivate::convert(&src.root(), dest.root());
+    return true;
+}
+
+bool GtUserClient::convert(const GtDocNotes &src, GtUserDocNotes &dest)
+{
+    dest.set_id(src.id().toUtf8());
+
+    QList<GtDocNote*> l = src.allNotes();
+    QList<GtDocNote*>::iterator i;
+
+    for (i = l.begin(); i != l.end(); ++i) {
+        GtDocNote *n = *i;
+        GtUserDocNote *p = dest.add_notes();
+
+        switch (n->type()) {
+        case GtDocNote::Highlight:
+        case GtDocNote::Underline:
+            p->set_type(n->type());
+            break;
+
+        default:
+            qWarning() << "invalid doc note type:" << n->type();
+            break;
+        }
+
+        GtUserClientPrivate::convert(n->range(), *p->mutable_range());
+    }
+
+    return true;
+}
+
+bool GtUserClient::convert(const GtUserDocNotes &src, GtDocNotes &dest)
+{
+    if (strcmp(dest.id().toUtf8().constData(), src.id().c_str()))
+        return false;
+
+    int count = src.notes_size();
+    for (int i = 0; i < count; ++i) {
+        const GtUserDocNote &p = src.notes(i);
+        GtDocNote::NoteType type = GtDocNote::NullNote;
+        GtDocRange range;
+
+        switch (p.type()) {
+        case GtDocNote::Highlight:
+        case GtDocNote::Underline:
+            type = (GtDocNote::NoteType)p.type();
+            break;
+
+        default:
+            qWarning() << "invalid doc note type:" << p.type();
+            break;
+        }
+
+        GtUserClientPrivate::convert(p.range(), range);
+        dest.addNote(new GtDocNote(type, range));
+    }
+
+    return true;
 }
 
 void GtUserClient::handleRead()

@@ -9,6 +9,7 @@
 #include "gtdocmodel.h"
 #include "gtdocnotes.h"
 #include "gtdocument.h"
+#include "gtuserclient.h"
 #include <QtCore/QDebug>
 #include <QtSql/QSqlError>
 #include <QtSql/QSqlQuery>
@@ -56,12 +57,11 @@ GtDocManagerPrivate::GtDocManagerPrivate(GtDocManager *q)
     m_docDatabase.setDatabaseName(dbpath);
 
     if (m_docDatabase.open()) {
-        QString sql = "CREATE TABLE IF NOT EXISTS document "
-                      "(id INTEGER PRIMARY KEY, "
+        QString sql = "CREATE TABLE IF NOT EXISTS meta "
+                      "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
                       "uuid VARCHAR(64), "
                       "bookmarks VARCHAR(64), "
-                      "notes VARCHAR(64), "
-                      "path VARCHAR(256))";
+                      "notes VARCHAR(64))";
 
         QSqlQuery query(m_docDatabase);
         if (!query.exec(sql)) {
@@ -70,7 +70,7 @@ GtDocManagerPrivate::GtDocManagerPrivate(GtDocManager *q)
         }
 
         sql = "CREATE TABLE IF NOT EXISTS bookmarks "
-              "(id integer primary key, "
+              "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
               "uuid VARCHAR(64), "
               "data BLOB)";
 
@@ -80,7 +80,7 @@ GtDocManagerPrivate::GtDocManagerPrivate(GtDocManager *q)
         }
 
         sql = "CREATE TABLE IF NOT EXISTS notes "
-              "(id integer primary key, "
+              "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
               "uuid VARCHAR(64), "
               "data BLOB)";
 
@@ -229,27 +229,23 @@ GtDocMeta *GtDocManager::loadDocMeta(const QString &fileId)
 
     d->cleanDocMetas();
 
-    GtDocMeta *meta = 0;
     QSqlQuery query(d->m_docDatabase);
-    query.prepare("SELECT * FROM document WHERE uuid=':fildid'");
-    if (query.exec()) {
-        if (query.next()) {
-            qDebug() << query.value(2).toString()
-                     << query.value(3).toString()
-                     << query.value(4).toString();
-        }
-    }
+    query.prepare("SELECT * FROM meta WHERE uuid=:fileid");
+    query.bindValue(":fileid", fileId);
 
-    if (!meta) {
-        meta = new GtDocMeta(fileId);
-        meta->ref.ref();
-        d->m_docMetas.insert(fileId, meta);
+    GtDocMeta *meta = new GtDocMeta(fileId);
+    if (query.exec() && query.first()) {
+        meta->setBookmarksId(query.value(2).toString());
+        meta->setNotesId(query.value(3).toString());
     }
 
     connect(meta,
             SIGNAL(changed(GtDocMeta *)),
             this,
             SLOT(docMetaChanged(GtDocMeta *)));
+
+    meta->ref.ref();
+    d->m_docMetas.insert(fileId, meta);
 
     return meta;
 }
@@ -395,7 +391,43 @@ void GtDocManager::documentLoaded(GtDocument *document)
 
 void GtDocManager::docMetaChanged(GtDocMeta *meta)
 {
-    qDebug() << ">>>>>>>>>>>>>>>>>>>>>";
+    Q_D(GtDocManager);
+
+    QSqlQuery query(d->m_docDatabase);
+    query.prepare("SELECT * FROM meta WHERE uuid=:uuid");
+    query.bindValue(":uuid", meta->documentId());
+
+    if (!query.exec()) {
+        qWarning() << "select doc meta error:" << query.lastError();
+        return;
+    }
+
+    if (query.first()) {
+        query.prepare("UPDATE meta SET bookmarks=:bid, notes=:nid "
+                      "WHERE uuid=:uuid");
+        query.bindValue(":uuid", meta->documentId());
+        query.bindValue(":bid", meta->bookmarksId());
+        query.bindValue(":nid", meta->notesId());
+
+        if (!query.exec()) {
+            qWarning() << "update doc meta error:" << query.lastError();
+            return;
+        }
+    }
+    else {
+        query.prepare("INSERT INTO meta (uuid, bookmarks, notes) "
+                      "VALUES(:uuid, :bid, :nid)");
+        query.bindValue(":uuid", meta->documentId());
+        query.bindValue(":bid", meta->bookmarksId());
+        query.bindValue(":nid", meta->notesId());
+
+        if (!query.exec()) {
+            qWarning() << "insert doc meta error:" << query.lastError();
+            return;
+        }
+    }
+
+    qDebug() << ">>>>:" << query.lastQuery();
 }
 
 GT_END_NAMESPACE

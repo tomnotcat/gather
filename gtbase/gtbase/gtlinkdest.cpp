@@ -13,6 +13,14 @@ GtLinkDest::GtLinkDest()
 {
 }
 
+GtLinkDest::GtLinkDest(const QString &uri)
+    : m_type(LaunchURI)
+    , m_page(-1)
+    , m_zoom(0)
+    , m_uri(uri)
+{
+}
+
 GtLinkDest::GtLinkDest(int page, const QPointF &point, double zoom)
     : m_type(ScrollTo)
     , m_page(page)
@@ -23,6 +31,20 @@ GtLinkDest::GtLinkDest(int page, const QPointF &point, double zoom)
 
 GtLinkDest::~GtLinkDest()
 {
+}
+
+void GtLinkDest::setScrollTo(int page, const QPointF &point, double zoom)
+{
+    m_type = ScrollTo;
+    m_page = page;
+    m_point = point;
+    m_zoom = zoom;
+}
+
+void GtLinkDest::setLaunchUri(const QString &uri)
+{
+    m_type = LaunchURI;
+    m_uri = uri;
 }
 
 GT_END_NAMESPACE

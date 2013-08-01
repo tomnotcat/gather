@@ -3,6 +3,7 @@
  */
 #include "gtdocpoint.h"
 #include "gtdocpage.h"
+#include "gtdocument.h"
 #include <QtCore/QDebug>
 #include <QtCore/QPoint>
 #include <QtCore/QRect>
@@ -10,20 +11,20 @@
 
 GT_BEGIN_NAMESPACE
 
-GtDocPoint::GtDocPoint(GtDocPage *page, const QPointF &point)
+GtDocPoint::GtDocPoint(int page, const QPointF &point)
     : m_page(page)
-    , m_point(point)
     , m_text(-1)
+    , m_point(point)
 {
 }
 
 GtDocPoint::GtDocPoint(GtDocPage *page, int text)
-    : m_page(page)
-    , m_point(-1, -1)
+    : m_page(page->index())
     , m_text(text)
+    , m_point(-1, -1)
 {
     if (text != -1) {
-        GtDocTextPointer p(m_page->text());
+        GtDocTextPointer p(page->text());
         const QRectF *rects = p->rects();
         int len = p->length();
 
@@ -40,37 +41,16 @@ GtDocPoint::GtDocPoint(GtDocPage *page, int text)
     }
 }
 
-bool GtDocPoint::isValid() const
-{
-    if (m_page) {
-        qreal w, h;
-        m_page->size(&w, &h);
-        return (m_point.x() >= 0 && m_point.x() <= w &&
-                m_point.y() >= 0 && m_point.y() <= h);
-    }
-
-    return false;
-}
-
-void GtDocPoint::normalize()
-{
-    if (m_page) {
-        qreal w, h;
-        m_page->size(&w, &h);
-        m_point.setX(CLAMP(m_point.x(), 0, w));
-        m_point.setY(CLAMP(m_point.y(), 0, h));
-    }
-}
-
-int GtDocPoint::text(bool inside) const
+int GtDocPoint::text(GtDocument *document, bool inside) const
 {
     if (m_text != -1)
         return m_text;
 
-    if (!m_page)
+    if (-1 == m_page)
         return -1;
 
-    GtDocTextPointer text(m_page->text());
+    GtDocPage *page = document->page(m_page);
+    GtDocTextPointer text(page->text());
     const QRectF *rect = text->rects();
     int i, result = -1;
 
@@ -112,13 +92,14 @@ int GtDocPoint::text(bool inside) const
     return result;
 }
 
-GtDocPoint GtDocPoint::beginOfWord(bool inside) const
+GtDocPoint GtDocPoint::beginOfWord(GtDocument *document, bool inside) const
 {
-    int pos = text(inside);
+    int pos = text(document, inside);
     if (-1 == pos)
         return GtDocPoint();
 
-    GtDocTextPointer text(m_page->text());
+    GtDocPage *page = document->page(m_page);
+    GtDocTextPointer text(page->text());
     const QChar *texts = text->texts();
     int len = text->length();
 
@@ -142,16 +123,17 @@ GtDocPoint GtDocPoint::beginOfWord(bool inside) const
         }
     }
 
-    return GtDocPoint(m_page, pos);
+    return GtDocPoint(page, pos);
 }
 
-GtDocPoint GtDocPoint::endOfWord(bool inside) const
+GtDocPoint GtDocPoint::endOfWord(GtDocument *document, bool inside) const
 {
-    int pos = text(inside);
+    int pos = text(document, inside);
     if (-1 == pos)
         return GtDocPoint();
 
-    GtDocTextPointer text(m_page->text());
+    GtDocPage *page = document->page(m_page);
+    GtDocTextPointer text(page->text());
     const QChar *texts = text->texts();
     int len = text->length();
 
@@ -177,7 +159,7 @@ GtDocPoint GtDocPoint::endOfWord(bool inside) const
         }
     }
 
-    return GtDocPoint(m_page, pos);
+    return GtDocPoint(page, pos);
 }
 
 bool operator==(const GtDocPoint &p1, const GtDocPoint &p2)
@@ -204,8 +186,8 @@ bool operator!=(const GtDocPoint &p1, const GtDocPoint &p2)
 
 bool operator>(const GtDocPoint &p1, const GtDocPoint &p2)
 {
-    int index1 = p1.page() ? p1.page()->index() : -1;
-    int index2 = p2.page() ? p2.page()->index() : -1;
+    int index1 = p1.page();
+    int index2 = p2.page();
 
     if (index1 > index2)
         return true;
@@ -227,8 +209,8 @@ bool operator>(const GtDocPoint &p1, const GtDocPoint &p2)
 
 bool operator<(const GtDocPoint &p1, const GtDocPoint &p2)
 {
-    int index1 = p1.page() ? p1.page()->index() : -1;
-    int index2 = p2.page() ? p2.page()->index() : -1;
+    int index1 = p1.page();
+    int index2 = p2.page();
 
     if (index1 < index2)
         return true;
@@ -250,8 +232,8 @@ bool operator<(const GtDocPoint &p1, const GtDocPoint &p2)
 
 bool operator>=(const GtDocPoint &p1, const GtDocPoint &p2)
 {
-    int index1 = p1.page() ? p1.page()->index() : -1;
-    int index2 = p2.page() ? p2.page()->index() : -1;
+    int index1 = p1.page();
+    int index2 = p2.page();
 
     if (index1 > index2)
         return true;
@@ -273,8 +255,8 @@ bool operator>=(const GtDocPoint &p1, const GtDocPoint &p2)
 
 bool operator<=(const GtDocPoint &p1, const GtDocPoint &p2)
 {
-    int index1 = p1.page() ? p1.page()->index() : -1;
-    int index2 = p2.page() ? p2.page()->index() : -1;
+    int index1 = p1.page();
+    int index2 = p2.page();
 
     if (index1 < index2)
         return true;
@@ -356,8 +338,7 @@ bool GtDocPoint::isWordSeparator(const QChar &c)
 
 #ifndef QT_NO_DEBUG_STREAM
 QDebug operator<<(QDebug dbg, const GtDocPoint &r) {
-    int index = r.page() ? r.page()->index() : -1;
-    dbg.nospace() << "GtDocPoint(" << index << ' ' << r.x() << ',' << r.y() << ')';
+    dbg.nospace() << "GtDocPoint(" << r.page() << ' ' << r.x() << ',' << r.y() << ')';
     return dbg.space();
 }
 #endif

@@ -82,8 +82,8 @@ void GtDocNotes::addNote(GtDocNote *note)
 
     // add to pages
     GtDocRange range(note->range());
-    int beginPage = range.begin().page()->index();
-    int endPage = range.end().page()->index() + 1;
+    int beginPage = range.begin().page();
+    int endPage = range.end().page() + 1;
 
     if (endPage > d->m_pages.size())
         d->m_pages.resize(endPage);
@@ -104,8 +104,8 @@ bool GtDocNotes::removeNote(GtDocNote *note)
 
     // remove from pages
     GtDocRange range(note->range());
-    int beginPage = range.begin().page()->index();
-    int endPage = range.end().page()->index() + 1;
+    int beginPage = range.begin().page();
+    int endPage = range.end().page() + 1;
 
     for (int i = beginPage; i < endPage; ++i)
         d->m_pages[i].removeOne(note);
@@ -119,6 +119,15 @@ bool GtDocNotes::removeNote(GtDocNote *note)
 
     emit noteRemoved(note);
     return true;
+}
+
+void GtDocNotes::clearAll()
+{
+    Q_D(GtDocNotes);
+
+    qDeleteAll(d->m_notes);
+    d->m_notes.clear();
+    d->m_pages.clear();
 }
 
 GT_END_NAMESPACE

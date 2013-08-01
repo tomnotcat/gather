@@ -68,4 +68,10 @@ void GtBookmark::insert(GtBookmark *before, GtBookmark *bookmark)
     }
 }
 
+void GtBookmark::clearChildren()
+{
+    qDeleteAll(m_children);
+    m_children.clear();
+}
+
 GT_END_NAMESPACE

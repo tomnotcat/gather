@@ -1174,18 +1174,17 @@ GtDocPoint GtDocViewPrivate::docPointFromViewPoint(const QPoint &p, bool inside)
     QTransform m = pageAreaToView(page);
     m = m.inverted();
 
-    return GtDocPoint(page, m.map(bestPoint));
+    return GtDocPoint(bestPage, m.map(bestPoint));
 }
 
 QPoint GtDocViewPrivate::viewPointFromDocPoint(const GtDocPoint &p)
 {
     QPointF point(p.x(), p.y());
-    QTransform m = pageAreaToView(p.page());
+    QTransform m = pageAreaToView(m_document->page(p.page()));
     point = m.map(point);
 
-    QPoint offset(pageViewToView(p.page()->index()));
-    return QPoint(point.x() + offset.x(),
-                  point.y() + offset.y());
+    QPoint offset(pageViewToView(p.page()));
+    return QPoint(point.x() + offset.x(), point.y() + offset.y());
 }
 
 void GtDocViewPrivate::updateCursor(const QPoint &p)
@@ -1195,7 +1194,7 @@ void GtDocViewPrivate::updateCursor(const QPoint &p)
     if (GtDocModel::SelectText == m_mouseMode) {
         GtDocPoint docPoint(docPointFromViewPoint(p, true));
 
-        if (docPoint.text(true) != -1)
+        if (docPoint.text(m_document, true) != -1)
             q->setCursor(Qt::IBeamCursor);
         else
             q->setCursor(Qt::ArrowCursor);
@@ -1220,8 +1219,8 @@ void GtDocViewPrivate::repaintDocRange(const GtDocRange &range)
         return;
 
     QRegion updateRegion;
-    int selBegin = range.begin().page()->index();
-    int selEnd = range.end().page()->index() + 1;
+    int selBegin = range.begin().page();
+    int selEnd = range.end().page() + 1;
 
     selBegin = MAX(m_beginPage, selBegin);
     selEnd = MIN(m_endPage, selEnd);
@@ -1539,7 +1538,7 @@ void GtDocView::scrollTo(const QPoint &pos)
 GtLinkDest GtDocView::scrollDest() const
 {
     GtDocPoint dp(d_ptr->docPointFromViewPoint(QPoint(0, 0), false));
-    return GtLinkDest(dp.page()->index(), dp.point(), d_ptr->m_scale);
+    return GtLinkDest(dp.page(), dp.point(), d_ptr->m_scale);
 }
 
 void GtDocView::scrollTo(const GtLinkDest &dest)
@@ -1551,7 +1550,7 @@ void GtDocView::scrollTo(const GtLinkDest &dest)
         relayoutPages();
     }
 
-    GtDocPoint dp(d->m_document->page(dest.page()), dest.point());
+    GtDocPoint dp(dest.page(), dest.point());
     scrollTo(scrollPoint() + d->viewPointFromDocPoint(dp));
 }
 
@@ -1578,8 +1577,8 @@ GtDocRange GtDocView::selectedRange() const
 
     bool selText = (GtDocModel::SelectText == d->m_mouseMode);
     if (selText) {
-        d->m_selectBegin.text(true);
-        d->m_selectEnd.text(false);
+        d->m_selectBegin.text(d->m_document, true);
+        d->m_selectEnd.text(d->m_document, false);
         selRange.setType(GtDocRange::TextRange);
     }
     else {
@@ -1594,8 +1593,8 @@ GtDocRange GtDocView::selectedRange() const
     }
 
     if (d->m_selectWordOnDoubleClick) {
-        return GtDocRange(selRange.begin().beginOfWord(false),
-                          selRange.end().endOfWord(false),
+        return GtDocRange(selRange.begin().beginOfWord(d->m_document, false),
+                          selRange.end().endOfWord(d->m_document, false),
                           selRange.type());
     }
 
@@ -1670,8 +1669,8 @@ void GtDocView::copy()
     switch (selRange.type()) {
     case GtDocRange::TextRange:
         {
-            int selBegin = selRange.begin().page()->index();
-            int selEnd = selRange.end().page()->index() + 1;
+            int selBegin = selRange.begin().page();
+            int selEnd = selRange.end().page() + 1;
             QString selText;
 
             for (int i = selBegin; i < selEnd; ++i) {
@@ -1887,11 +1886,12 @@ void GtDocView::mouseModeChanged(int mode)
 
     d->m_mouseMode = static_cast<GtDocModel::MouseMode>(mode);
 
-    if (d->m_selectBegin.isValid() || d->m_selectEnd.isValid()) {
-        d->m_selectBegin = GtDocPoint();
-        d->m_selectEnd = GtDocPoint();
-        viewport()->update();
-    }
+    if (d->m_selectBegin.isNull() && d->m_selectEnd.isNull())
+        return;
+
+    d->m_selectBegin = GtDocPoint();
+    d->m_selectEnd = GtDocPoint();
+    viewport()->update();
 }
 
 void GtDocView::relayoutPages()
@@ -2203,7 +2203,7 @@ void GtDocView::wheelEvent(QWheelEvent *e)
         }
 
         // scroll to cursor pos
-        if (docPoint.isValid()) {
+        if (!docPoint.isNull()) {
             relayoutPages();
 
             QPoint point(d->viewPointFromDocPoint(docPoint));
@@ -2264,9 +2264,6 @@ void GtDocView::paintEvent(QPaintEvent *e)
             d->drawPage(p, i, pageArea, border, selRange);
             remainingArea -= pageArea;
         }
-
-        if (d->m_selectBegin.isValid() && d->m_selectEnd.isValid()) {
-        }
     }
 
     // fill with background color the unpainted area
@@ -2278,7 +2275,7 @@ void GtDocView::mouseMoveEvent(QMouseEvent *e)
     Q_D(GtDocView);
 
     if (e->buttons() == Qt::LeftButton) {
-        if (d->m_selectBegin.isValid()) {
+        if (!d->m_selectBegin.isNull()) {
             GtDocPoint docPoint = d->docPointFromViewPoint(e->pos(), false);
             if (docPoint != d->m_selectEnd) {
                 GtDocRange oldRange(selectedRange());
@@ -2303,7 +2300,7 @@ void GtDocView::mousePressEvent(QMouseEvent *e)
             if (GtDocModel::SelectText == d->m_mouseMode) {
                 GtDocPoint docPoint(docPointFromViewPoint(e->pos(), true));
 
-                if (docPoint.text(true) != -1)
+                if (docPoint.text(d->m_document, true) != -1)
                     d->m_selectBegin = docPoint;
                 else
                     d->m_selectBegin = GtDocPoint();
@@ -2321,7 +2318,7 @@ void GtDocView::mousePressEvent(QMouseEvent *e)
             GtDocPoint docPoint(d->docPointFromViewPoint(e->pos(), true));
 
             if (!selRange.isEmpty() && !docPoint.isNull()) {
-                GtDocPage *page = docPoint.page();
+                GtDocPage *page = d->m_document->page(docPoint.page());
                 QRegion selRegion(d->rangeRegion(selRange, page));
                 QPoint offset(d->pageViewToView(page->index()));
 
@@ -2358,7 +2355,7 @@ void GtDocView::mouseDoubleClickEvent(QMouseEvent *e)
             GtDocRange oldRange(selectedRange());
             GtDocPoint docPoint(docPointFromViewPoint(e->pos(), true));
 
-            if (docPoint.text(true) != -1)
+            if (docPoint.text(d->m_document, true) != -1)
                 d->m_selectBegin = docPoint;
             else
                 d->m_selectBegin = GtDocPoint();

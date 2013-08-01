@@ -12,31 +12,28 @@ class QChar;
 GT_BEGIN_NAMESPACE
 
 class GtDocPage;
+class GtDocument;
 
 class GT_BASE_EXPORT GtDocPoint : public GtObject
 {
 public:
-    Q_DECL_CONSTEXPR GtDocPoint() : m_page(0), m_text(-1) {}
-    GtDocPoint(GtDocPage *page, const QPointF &point);
+    Q_DECL_CONSTEXPR GtDocPoint() : m_page(-1), m_text(-1) {}
+    GtDocPoint(int page, const QPointF &point);
     GtDocPoint(GtDocPage *page, int text);
-    GtDocPoint(GtDocPage *page, qreal x, qreal y) : m_page(page), m_point(x, y), m_text(-1) {}
+    GtDocPoint(int page, qreal x, qreal y) : m_page(page), m_text(-1), m_point(x, y) {}
 
     inline bool isNull() const;
-    bool isValid() const;
-    void normalize();
+    inline int page() const { return m_page; }
+    inline QPointF point() const { return m_point; }
+    inline qreal x() const { return m_point.x(); }
+    inline qreal y() const { return m_point.y(); }
+    int text(GtDocument *document, bool inside) const;
+    GtDocPoint beginOfWord(GtDocument *document, bool inside) const;
+    GtDocPoint endOfWord(GtDocument *document, bool inside) const;
 
-    inline GtDocPage* page() const;
-    inline QPointF point() const;
-    inline qreal x() const;
-    inline qreal y() const;
-    int text(bool inside) const;
-    GtDocPoint beginOfWord(bool inside) const;
-    GtDocPoint endOfWord(bool inside) const;
-
-    inline void setPage(GtDocPage *page);
-    inline void moveTo(qreal x, qreal y);
-    inline void setX(qreal x);
-    inline void setY(qreal y);
+    inline void setPage(int page) { m_page = page; }
+    inline void setX(qreal x) { m_point.setX(x); }
+    inline void setY(qreal y) { m_point.setY(y); }
 
     friend bool operator==(const GtDocPoint &, const GtDocPoint &);
     friend bool operator!=(const GtDocPoint &, const GtDocPoint &);
@@ -50,37 +47,13 @@ public:
     static bool isWordSeparator(const QChar &c);
 
 private:
-    GtDocPage *m_page;
-    QPointF m_point;
+    int m_page;
     int m_text;
+    QPointF m_point;
 };
 
 inline bool GtDocPoint::isNull() const
-{ return m_page == 0 && m_point.isNull(); }
-
-inline GtDocPage* GtDocPoint::page() const
-{ return m_page; }
-
-inline QPointF GtDocPoint::point() const
-{ return m_point; }
-
-inline qreal GtDocPoint::x() const
-{ return m_point.x(); }
-
-inline qreal GtDocPoint::y() const
-{ return m_point.y(); }
-
-inline void GtDocPoint::setPage(GtDocPage *page)
-{ m_page = page; }
-
-inline void GtDocPoint::moveTo(qreal x, qreal y)
-{ m_point.setX(x); m_point.setY(y); }
-
-inline void GtDocPoint::setX(qreal x)
-{ m_point.setX(x); }
-
-inline void GtDocPoint::setY(qreal y)
-{ m_point.setY(y); }
+{ return m_page == -1 && m_text == -1 && m_point.isNull(); }
 
 #ifndef QT_NO_DEBUG_STREAM
 GT_BASE_EXPORT QDebug operator<<(QDebug, const GtDocPoint &);

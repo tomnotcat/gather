@@ -1,6 +1,6 @@
 CONFIG += testcase
-TARGET = test_login
+TARGET = test_user
 QT = core testlib
-SOURCES = test_login.cpp
+SOURCES = test_user.cpp
 
 include(../tests.pri)

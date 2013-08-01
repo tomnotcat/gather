@@ -20,13 +20,20 @@ public:
 
 public:
     inline QString title() const { return m_title; }
+    inline void setTitle(const QString &title) { m_title = title; }
+
     inline GtLinkDest dest() const { return m_dest; }
+    inline void setDest(const GtLinkDest &dest) { m_dest = dest; }
+
     inline GtBookmark* parent() const { return m_parent; }
     inline int index() { return m_parent ? m_parent->m_children.indexOf(this) : 0; }
     inline QList<GtBookmark*> children() const { return m_children; }
+
     GtBookmark* prev();
     GtBookmark* next();
+
     void insert(GtBookmark *before, GtBookmark *bookmark);
+    void clearChildren();
     inline void append(GtBookmark *bookmark) { insert(0, bookmark); }
 
 private:

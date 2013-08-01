@@ -10,6 +10,10 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtBookmarks;
+class GtDocNotes;
+class GtUserBookmarks;
+class GtUserDocNotes;
 class GtUserClientPrivate;
 
 class GT_SVCE_EXPORT GtUserClient : public QObject, public GtObject
@@ -38,6 +42,12 @@ public:
     void login(const QHostAddress &address, quint16 port,
                const QString &user, const QString &passwd);
     void logout();
+
+public:
+    static bool convert(const GtBookmarks &src, GtUserBookmarks &dest);
+    static bool convert(const GtUserBookmarks &src, GtBookmarks &dest);
+    static bool convert(const GtDocNotes &src, GtUserDocNotes &dest);
+    static bool convert(const GtUserDocNotes &src, GtDocNotes &dest);
 
 Q_SIGNALS:
     void login(int result);

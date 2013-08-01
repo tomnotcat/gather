@@ -29,21 +29,33 @@ message GtUserLinkDest {
     optional string uri = 6;
 }
 
-message GtUserDocBookmark {
+message GtUserBookmark {
     optional string title = 1;
     optional GtUserLinkDest dest = 2;
-    repeated GtUserDocBookmark children = 3;
+    repeated GtUserBookmark children = 3;
+}
+
+message GtUserBookmarks {
+    optional string id = 1;
+    optional GtUserBookmark root = 2;
 }
 
 message GtUserDocRange {
     optional int32 type = 1;
-    optional float begin_x = 2;
-    optional float begin_y = 3;
-    optional float end_x = 4;
-    optional float end_y = 5;
+    optional int32 begin_page = 2;
+    optional float begin_x = 3;
+    optional float begin_y = 4;
+    optional int32 end_page = 5;
+    optional float end_x = 6;
+    optional float end_y = 7;
 }
 
 message GtUserDocNote {
     optional int32 type = 1;
     optional GtUserDocRange range = 2;
+}
+
+message GtUserDocNotes {
+    optional string id = 1;
+    repeated GtUserDocNote notes = 2;
 }

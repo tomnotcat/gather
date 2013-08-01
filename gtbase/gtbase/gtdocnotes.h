@@ -29,6 +29,7 @@ public:
 
     void addNote(GtDocNote *note);
     bool removeNote(GtDocNote *note);
+    void clearAll();
 
 Q_SIGNALS:
     void noteAdded(GtDocNote *note);

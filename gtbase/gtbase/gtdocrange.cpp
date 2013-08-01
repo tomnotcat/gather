@@ -9,14 +9,15 @@ GT_BEGIN_NAMESPACE
 
 QPoint GtDocRange::intersectedText(GtDocPage *page) const
 {
-    int beginText = _begin.text(false);
-    int endText = _end.text(false);
+    GtDocument *document = page->document();
+    int beginText = _begin.text(document, false);
+    int endText = _end.text(document, false);
 
     if (-1 == beginText || -1 == endText)
         return QPoint();
 
-    int beginIndex = _begin.page()->index();
-    int endIndex = _end.page()->index();
+    int beginIndex = _begin.page();
+    int endIndex = _end.page();
     int index = page->index();
 
     if (index < beginIndex || index > endIndex)
