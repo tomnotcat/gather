@@ -2,7 +2,6 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtdocmanager.h"
-#include "gtapplication.h"
 #include "gtbookmarks.h"
 #include "gtdocloader.h"
 #include "gtdocmeta.h"
@@ -11,6 +10,7 @@
 #include "gtdocument.h"
 #include "gtuserclient.h"
 #include <QtCore/QDebug>
+#include <QtCore/QUuid>
 #include <QtSql/QSqlError>
 #include <QtSql/QSqlQuery>
 #include <QtWidgets/QUndoStack>
@@ -26,6 +26,7 @@ public:
     ~GtDocManagerPrivate();
 
 public:
+    void openDatabase(const QString &dbpath);
     void updateDocMetaToDB(GtDocMeta *meta);
     int cleanDocMetas();
     int cleanDocuments();
@@ -37,6 +38,7 @@ protected:
     GtDocLoader *m_docLoader;
     QThread *m_docThread;
 
+    QHash<QString, QString> m_path2id;
     QHash<QString, GtDocModel*> m_docModels;
     QHash<GtDocument*, GtDocModel*> m_loadingDocs;
     QHash<GtDocModel*, QUndoStack*> m_undoStatcks;
@@ -48,57 +50,15 @@ protected:
     QHash<QString, GtDocMeta*> m_initBmNotes;
 
     QSqlDatabase m_docDatabase;
+    bool m_hasDatabase;
 };
 
 GtDocManagerPrivate::GtDocManagerPrivate(GtDocManager *q)
     : q_ptr(q)
     , m_docThread(0)
+    , m_hasDatabase(false)
 {
     m_docLoader = new GtDocLoader(q);
-
-    // find sqlite driver
-    m_docDatabase = QSqlDatabase::addDatabase("QSQLITE");
-
-    QString dbpath = GtApplication::dataFilePath("document.db");
-    m_docDatabase.setDatabaseName(dbpath);
-
-    if (m_docDatabase.open()) {
-        QString sql = "CREATE TABLE IF NOT EXISTS meta "
-                      "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                      "uuid VARCHAR(64), "
-                      "bookmarks VARCHAR(64), "
-                      "notes VARCHAR(64))";
-
-        QSqlQuery query(m_docDatabase);
-        if (!query.exec(sql)) {
-            qWarning() << "create document table error:"
-                       << query.lastError();
-        }
-
-        sql = "CREATE TABLE IF NOT EXISTS bookmarks "
-              "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "uuid VARCHAR(64), "
-              "data BLOB)";
-
-        if (!query.exec(sql)) {
-            qWarning() << "create bookmarks table error:"
-                       << query.lastError();
-        }
-
-        sql = "CREATE TABLE IF NOT EXISTS notes "
-              "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "uuid VARCHAR(64), "
-              "data BLOB)";
-
-        if (!query.exec(sql)) {
-            qWarning() << "create notes table error:"
-                       << query.lastError();
-        }
-    }
-    else {
-        qWarning() << "open document database error:"
-                   << m_docDatabase.lastError();
-    }
 }
 
 GtDocManagerPrivate::~GtDocManagerPrivate()
@@ -108,7 +68,8 @@ GtDocManagerPrivate::~GtDocManagerPrivate()
     cleanBookmarks();
     cleanNotes();
 
-    m_docDatabase.close();
+    if (m_hasDatabase)
+        m_docDatabase.close();
 
     Q_ASSERT(m_undoStatcks.size() == 0);
     Q_ASSERT(m_loadingDocs.size() == 0);
@@ -119,8 +80,73 @@ GtDocManagerPrivate::~GtDocManagerPrivate()
     Q_ASSERT(m_notes.size() == 0);
 }
 
+void GtDocManagerPrivate::openDatabase(const QString &dbpath)
+{
+    // find sqlite driver
+    m_docDatabase = QSqlDatabase::addDatabase("QSQLITE");
+    m_docDatabase.setDatabaseName(dbpath);
+
+    if (m_docDatabase.open()) {
+        QSqlQuery query(m_docDatabase);
+
+        // file ID to file path table
+        QString sql = "CREATE TABLE IF NOT EXISTS id2path "
+                      "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                      "uuid VARCHAR(64), "
+                      "path VARCHAR(256))";
+
+        if (!query.exec(sql)) {
+            qWarning() << "create id to path table error:"
+                       << query.lastError();
+        }
+
+        // doc meta table
+        sql = "CREATE TABLE IF NOT EXISTS meta "
+              "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
+              "uuid VARCHAR(64), "
+              "bookmarks VARCHAR(64), "
+              "notes VARCHAR(64))";
+
+        if (!query.exec(sql)) {
+            qWarning() << "create doc meta table error:"
+                       << query.lastError();
+        }
+
+        // bookmarks table
+        sql = "CREATE TABLE IF NOT EXISTS bookmarks "
+              "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
+              "uuid VARCHAR(64), "
+              "data BLOB)";
+
+        if (!query.exec(sql)) {
+            qWarning() << "create bookmarks table error:"
+                       << query.lastError();
+        }
+
+        // notes table
+        sql = "CREATE TABLE IF NOT EXISTS notes "
+              "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
+              "uuid VARCHAR(64), "
+              "data BLOB)";
+
+        if (!query.exec(sql)) {
+            qWarning() << "create notes table error:"
+                       << query.lastError();
+        }
+
+        m_hasDatabase = true;
+    }
+    else {
+        qWarning() << "open document database error:"
+                   << m_docDatabase.lastError();
+    }
+}
+
 void GtDocManagerPrivate::updateDocMetaToDB(GtDocMeta *meta)
 {
+    if (!m_hasDatabase)
+        return;
+
     QSqlQuery query(m_docDatabase);
     query.prepare("SELECT * FROM meta WHERE uuid=:uuid");
     query.bindValue(":uuid", meta->documentId());
@@ -249,11 +275,16 @@ int GtDocManagerPrivate::cleanNotes()
     return count;
 }
 
-GtDocManager::GtDocManager(QThread *thread, QObject *parent)
+GtDocManager::GtDocManager(const QString &dbpath,
+                           QThread *thread,
+                           QObject *parent)
     : QObject(parent)
     , d_ptr(new GtDocManagerPrivate(this))
 {
     d_ptr->m_docThread = thread;
+
+    if (!dbpath.isEmpty())
+        d_ptr->openDatabase(dbpath);
 }
 
 GtDocManager::~GtDocManager()
@@ -264,6 +295,18 @@ int GtDocManager::registerLoaders(const QString &loaderDir)
 {
     Q_D(GtDocManager);
     return d->m_docLoader->registerLoaders(loaderDir);
+}
+
+int GtDocManager::documentCount() const
+{
+    Q_D(const GtDocManager);
+    return d->m_docModels.size();
+}
+
+int GtDocManager::cleanDocuments()
+{
+    Q_D(GtDocManager);
+    return d->cleanDocuments();
 }
 
 GtDocMeta *GtDocManager::loadDocMeta(const QString &fileId)
@@ -278,16 +321,17 @@ GtDocMeta *GtDocManager::loadDocMeta(const QString &fileId)
 
     d->cleanDocMetas();
 
-    QSqlQuery query(d->m_docDatabase);
-    query.prepare("SELECT * FROM meta WHERE uuid=:fileid");
-    query.bindValue(":fileid", fileId);
-
     GtDocMeta *meta = new GtDocMeta(fileId);
-    if (query.exec() && query.first()) {
-        meta->setBookmarksId(query.value(2).toString());
-        meta->setNotesId(query.value(3).toString());
-    }
-    else {
+
+    if (d->m_hasDatabase) {
+        QSqlQuery query(d->m_docDatabase);
+        query.prepare("SELECT * FROM meta WHERE uuid=:fileid");
+        query.bindValue(":fileid", fileId);
+
+        if (query.exec() && query.first()) {
+            meta->setBookmarksId(query.value(2).toString());
+            meta->setNotesId(query.value(3).toString());
+        }
     }
 
     connect(meta,
@@ -310,39 +354,47 @@ GtDocModel *GtDocManager::loadLocalDocument(const QString &fileName)
 {
     Q_D(GtDocManager);
 
-    QHash<QString, GtDocModel*>::iterator it;
+    QHash<QString, QString>::iterator it0;
 
-    it = d->m_docModels.find(fileName);
-    if (it != d->m_docModels.end())
-        return it.value();
+    it0 = d->m_path2id.find(fileName);
+    if (it0 != d->m_path2id.end()) {
+        QHash<QString, GtDocModel*>::iterator it1;
+
+        it1 = d->m_docModels.find(it0.value());
+        if (it1 != d->m_docModels.end())
+            return it1.value();
+    }
 
     if (d->cleanDocuments() > 0)
         d->cleanDocMetas();
 
     GtDocument *document;
-    GtDocModel *model = new GtDocModel();
-
-    document = d->m_docLoader->loadDocument(fileName, d->m_docThread, model);
-    if (document) {
-        model->setDocument(document);
-        model->setMinScale(0.1);
-        model->setMaxScale(4.0);
-        model->setMouseMode(GtDocModel::SelectText);
-
-        model->ref.ref();
-        d->m_docModels.insert(fileName, model);
-        d->m_loadingDocs.insert(document, model);
-
-        if (!document->isLoaded()) {
-            connect(document,
-                    SIGNAL(loaded(GtDocument*)),
-                    this,
-                    SLOT(documentLoaded(GtDocument*)));
-        }
-
-        if (document->isLoaded())
-            documentLoaded(document);
+    document = d->m_docLoader->loadDocument(fileName, d->m_docThread);
+    if (!document) {
+        return 0;
     }
+
+    GtDocModel *model = new GtDocModel();
+    document->setParent(model);
+    model->setDocument(document);
+    model->setMinScale(0.1);
+    model->setMaxScale(4.0);
+    model->setMouseMode(GtDocModel::SelectText);
+
+    model->ref.ref();
+    d->m_docModels.insert(document->fileId(), model);
+    d->m_loadingDocs.insert(document, model);
+    d->m_path2id.insert(fileName, document->fileId());
+
+    if (!document->isLoaded()) {
+        connect(document,
+                SIGNAL(loaded(GtDocument*)),
+                this,
+                SLOT(documentLoaded(GtDocument*)));
+    }
+
+    if (document->isLoaded())
+        documentLoaded(document);
 
     return model;
 }
@@ -380,8 +432,7 @@ void GtDocManager::documentLoaded(GtDocument *document)
 
     it = d->m_loadingDocs.find(document);
     if (it == d->m_loadingDocs.end()) {
-        qWarning() << "invalid loading document:"
-                   << document->title();
+        qWarning() << "invalid loaded document:" << document->title();
         return;
     }
 
@@ -401,7 +452,7 @@ void GtDocManager::documentLoaded(GtDocument *document)
     GtBookmarks *bookmarks = 0;
     QString bookmarksId = meta->bookmarksId();
     if (bookmarksId.isEmpty()) {
-        bookmarksId = GtApplication::generateUuid();
+        bookmarksId = QUuid::createUuid().toString();
         meta->setBookmarksId(bookmarksId);
 
         bookmarks = new GtBookmarks(bookmarksId);
@@ -416,7 +467,7 @@ void GtDocManager::documentLoaded(GtDocument *document)
     GtDocNotes *notes = 0;
     QString notesId = meta->notesId();
     if (notesId.isEmpty()) {
-        notesId = GtApplication::generateUuid();
+        notesId = QUuid::createUuid().toString();
         meta->setNotesId(notesId);
 
         notes = new GtDocNotes(notesId);

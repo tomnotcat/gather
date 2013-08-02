@@ -10,7 +10,6 @@
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
 #include <QtCore/QPointer>
-#include <QtCore/QUuid>
 #include <QtCore/QStandardPaths>
 #include <QtCore/QStringList>
 #include <QtCore/QTextStream>
@@ -144,6 +143,7 @@ GtApplication::GtApplication(int &argc, char **argv)
     : QApplication(argc, argv)
     , d_ptr(new GtApplicationPrivate(this))
 {
+    setWindowIcon(QIcon(QLatin1String(":/images/logo.bmp")));
 }
 
 GtApplication::~GtApplication()
@@ -204,8 +204,9 @@ GtDocManager *GtApplication::docManager()
     Q_D(GtApplication);
 
     if (!d->m_docManager) {
+        QString dbpath = dataFilePath("document.db");
         QThread *thread = docThread();
-        d->m_docManager = new GtDocManager(thread, this);
+        d->m_docManager = new GtDocManager(dbpath, thread, this);
 
         QDir dir(QCoreApplication::applicationDirPath());
         if (dir.cd("loader"))
@@ -228,12 +229,6 @@ QString GtApplication::dataFilePath(const QString &fileName)
     dir.mkpath(".");
 
     return dir.absoluteFilePath(fileName);
-}
-
-QString GtApplication::generateUuid()
-{
-    QUuid uuid(QUuid::createUuid());
-    return uuid.toString();
 }
 
 #if defined(Q_WS_MAC)
@@ -282,7 +277,6 @@ void GtApplication::quitReader()
 
 void GtApplication::postLaunch()
 {
-    setWindowIcon(QIcon(QLatin1String(":/images/logo.bmp")));
     newMainWindow();
 }
 

@@ -23,11 +23,15 @@ class GtDocManager : public QObject, public GtObject
     Q_OBJECT;
 
 public:
-    explicit GtDocManager(QThread *thread = 0, QObject *parent = 0);
+    explicit GtDocManager(const QString &dbpath = QString(),
+                          QThread *thread = 0,
+                          QObject *parent = 0);
     ~GtDocManager();
 
 public:
     int registerLoaders(const QString &loaderDir);
+    int documentCount() const;
+    int cleanDocuments();
     GtDocMeta *loadDocMeta(const QString &fileId);
     GtDocModel *loadDocument(const QString &fileId);
     GtDocModel *loadLocalDocument(const QString &fileName);

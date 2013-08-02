@@ -41,6 +41,7 @@ void GtDocumentPrivate::setDevice(const QString &title, QIODevice *device)
 {
     Q_ASSERT(0 == m_device);
 
+    m_fileId = GtDocument::makeFileId(device);
     m_title = title;
     m_device = device;
 
@@ -154,7 +155,6 @@ GtDocument::~GtDocument()
 QString GtDocument::fileId() const
 {
     Q_D(const GtDocument);
-    Q_ASSERT(d->m_loaded);
     return d->m_fileId;
 }
 
@@ -279,11 +279,7 @@ void GtDocument::loadDocument()
 
     Q_ASSERT(!d->m_loaded && d->m_device);
 
-    QMutexLocker locker(&d->m_mutex);
-
-    d->m_fileId = makeFileId(d->m_device);
     if (!d->m_abstractDoc->load(d->m_device)) {
-        locker.unlock();
         emit loaded(this);
         return;
     }
@@ -342,7 +338,6 @@ void GtDocument::loadDocument()
 
     d->m_loaded = true;
 
-    locker.unlock();
     emit loaded(this);
 }
 

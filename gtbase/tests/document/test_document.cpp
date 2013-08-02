@@ -33,10 +33,11 @@ void test_document::initTestCase()
 
 void test_document::testDocument()
 {
-    GtDocument *doc = m_docLoader->loadDocument(TEST_PDF_FILE, 0, this);
+    GtDocument *doc = m_docLoader->loadDocument(TEST_PDF_FILE, 0);
 
     QVERIFY(doc && doc->isLoaded());
-    QVERIFY(doc->parent() == this);
+    QVERIFY(doc->parent() == 0);
+    QVERIFY(doc->thread() == QThread::currentThread());
     QVERIFY(doc->title() == "test.pdf");
     QVERIFY(!doc->fileId().isEmpty());
     QVERIFY(doc->isPageSizeUniform());

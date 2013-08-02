@@ -7,8 +7,6 @@ using namespace Gather;
 
 int main(int argc, char *argv[])
 {
-    Q_INIT_RESOURCE(gather);
-
     int result = 0;
 
     if (1) {

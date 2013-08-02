@@ -32,8 +32,7 @@ public:
     GtDocLoaderObject* loaderObject(QThread *thread);
     GtDocument* loadDocument(LoaderInfo &info,
                              const QString &fileName,
-                             QThread *thread,
-                             QObject *parent);
+                             QThread *thread);
 
 public:
     GtDocLoader *q_ptr;
@@ -119,8 +118,7 @@ GtDocLoaderObject* GtDocLoaderPrivate::loaderObject(QThread *thread)
 
 GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
                                              const QString &fileName,
-                                             QThread *thread,
-                                             QObject *parent)
+                                             QThread *thread)
 {
     GtDocument *document = NULL;
 
@@ -146,7 +144,7 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
             Q_ASSERT(ad);
 
             QFileInfo info(fileName);
-            document = new GtDocument(ad, parent);
+            document = new GtDocument(ad);
             file->setParent(document);
             document->d_ptr->setDevice(info.fileName(), file.take());
 
@@ -269,8 +267,7 @@ QList<const GtDocLoader::LoaderInfo *> GtDocLoader::loaderInfos()
 }
 
 GtDocument* GtDocLoader::loadDocument(const QString &fileName,
-                                      QThread *thread,
-                                      QObject *parent)
+                                      QThread *thread)
 {
     Q_D(GtDocLoader);
 
@@ -283,14 +280,13 @@ GtDocument* GtDocLoader::loadDocument(const QString &fileName,
     // By extension
     for (int i = 0, count = infoList.count(); i != count; ++i) {
         if (infoList[i].info.extension == ext) {
-            document = d->loadDocument(infoList[i], fileName, thread, parent);
+            document = d->loadDocument(infoList[i], fileName, thread);
             if (document)
                 return document;
         }
     }
 
-    // By mime type
-    Q_ASSERT(0);
+    // TODO: By mime type
 
     return 0;
 }

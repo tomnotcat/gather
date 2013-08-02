@@ -1,6 +1,5 @@
 CONFIG += debug
-QT += network
-INCLUDEPATH += ../../gtsvce
+INCLUDEPATH += ../../gtapp
 INCLUDEPATH += ../../../gtbase/gtbase
 
 CONFIG(debug, debug|release) {
@@ -9,4 +8,4 @@ CONFIG(debug, debug|release) {
     DESTDIR = ../../../build/release
 }
 
-unix: LIBS += -L$$DESTDIR -lgtbase -lgtsvce -lprotobuf
+unix: LIBS += -L$$DESTDIR -lgtapp -lgtbase -lgtview -lgtsvce

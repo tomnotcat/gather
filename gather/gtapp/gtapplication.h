@@ -33,7 +33,6 @@ public:
 public:
     static GtApplication* instance();
     static QString dataFilePath(const QString &fileName);
-    static QString generateUuid();
 
 protected:
 #if defined(Q_WS_MAC)
