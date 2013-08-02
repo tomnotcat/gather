@@ -26,6 +26,7 @@ public:
     ~GtDocManagerPrivate();
 
 public:
+    void updateDocMetaToDB(GtDocMeta *meta);
     int cleanDocMetas();
     int cleanDocuments();
     int cleanBookmarks();
@@ -35,12 +36,17 @@ protected:
     GtDocManager *q_ptr;
     GtDocLoader *m_docLoader;
     QThread *m_docThread;
+
+    QHash<QString, GtDocModel*> m_docModels;
     QHash<GtDocument*, GtDocModel*> m_loadingDocs;
     QHash<GtDocModel*, QUndoStack*> m_undoStatcks;
+
     QHash<QString, GtDocMeta*> m_docMetas;
-    QHash<QString, GtDocModel*> m_docModels;
+    QSet<GtDocMeta*> m_changedDocMetas;
     QHash<QString, GtBookmarks*> m_bookmarks;
     QHash<QString, GtDocNotes*> m_notes;
+    QHash<QString, GtDocMeta*> m_initBmNotes;
+
     QSqlDatabase m_docDatabase;
 };
 
@@ -108,8 +114,46 @@ GtDocManagerPrivate::~GtDocManagerPrivate()
     Q_ASSERT(m_loadingDocs.size() == 0);
     Q_ASSERT(m_docModels.size() == 0);
     Q_ASSERT(m_docMetas.size() == 0);
+    Q_ASSERT(m_changedDocMetas.size() == 0);
     Q_ASSERT(m_bookmarks.size() == 0);
     Q_ASSERT(m_notes.size() == 0);
+}
+
+void GtDocManagerPrivate::updateDocMetaToDB(GtDocMeta *meta)
+{
+    QSqlQuery query(m_docDatabase);
+    query.prepare("SELECT * FROM meta WHERE uuid=:uuid");
+    query.bindValue(":uuid", meta->documentId());
+
+    if (!query.exec()) {
+        qWarning() << "select doc meta error:" << query.lastError();
+        return;
+    }
+
+    if (query.first()) {
+        query.prepare("UPDATE meta SET bookmarks=:bid, notes=:nid "
+                      "WHERE uuid=:uuid");
+        query.bindValue(":uuid", meta->documentId());
+        query.bindValue(":bid", meta->bookmarksId());
+        query.bindValue(":nid", meta->notesId());
+
+        if (!query.exec()) {
+            qWarning() << "update doc meta error:" << query.lastError();
+            return;
+        }
+    }
+    else {
+        query.prepare("INSERT INTO meta (uuid, bookmarks, notes) "
+                      "VALUES(:uuid, :bid, :nid)");
+        query.bindValue(":uuid", meta->documentId());
+        query.bindValue(":bid", meta->bookmarksId());
+        query.bindValue(":nid", meta->notesId());
+
+        if (!query.exec()) {
+            qWarning() << "insert doc meta error:" << query.lastError();
+            return;
+        }
+    }
 }
 
 int GtDocManagerPrivate::cleanDocMetas()
@@ -120,6 +164,11 @@ int GtDocManagerPrivate::cleanDocMetas()
 
     for (it = m_docMetas.begin(); it != m_docMetas.end();) {
         if (it.value()->ref.load() <= 1) {
+            if (m_changedDocMetas.contains(it.value())) {
+                updateDocMetaToDB(it.value());
+                m_changedDocMetas.remove(it.value());
+            }
+
             delete it.value();
             it = m_docMetas.erase(it);
             ++count;
@@ -238,6 +287,8 @@ GtDocMeta *GtDocManager::loadDocMeta(const QString &fileId)
         meta->setBookmarksId(query.value(2).toString());
         meta->setNotesId(query.value(3).toString());
     }
+    else {
+    }
 
     connect(meta,
             SIGNAL(changed(GtDocMeta *)),
@@ -347,8 +398,6 @@ void GtDocManager::documentLoaded(GtDocument *document)
         return;
     }
 
-    bool metaChanged = false;
-
     GtBookmarks *bookmarks = 0;
     QString bookmarksId = meta->bookmarksId();
     if (bookmarksId.isEmpty()) {
@@ -359,8 +408,6 @@ void GtDocManager::documentLoaded(GtDocument *document)
         bookmarks->ref.ref();
         document->loadOutline(bookmarks->root());
         d->m_bookmarks.insert(bookmarksId, bookmarks);
-
-        metaChanged = true;
     }
     else {
         bookmarks = loadBookmarks(bookmarksId);
@@ -375,8 +422,6 @@ void GtDocManager::documentLoaded(GtDocument *document)
         notes = new GtDocNotes(notesId);
         notes->ref.ref();
         d->m_notes.insert(notesId, notes);
-
-        metaChanged = true;
     }
     else {
         notes = loadNotes(notesId);
@@ -384,50 +429,11 @@ void GtDocManager::documentLoaded(GtDocument *document)
 
     model->setNotes(notes);
     model->setBookmarks(bookmarks);
-
-    if (metaChanged)
-        emit meta->changed(meta);
 }
 
-void GtDocManager::docMetaChanged(GtDocMeta *meta)
+void GtDocManager::docMetaChanged(const QString &)
 {
-    Q_D(GtDocManager);
-
-    QSqlQuery query(d->m_docDatabase);
-    query.prepare("SELECT * FROM meta WHERE uuid=:uuid");
-    query.bindValue(":uuid", meta->documentId());
-
-    if (!query.exec()) {
-        qWarning() << "select doc meta error:" << query.lastError();
-        return;
-    }
-
-    if (query.first()) {
-        query.prepare("UPDATE meta SET bookmarks=:bid, notes=:nid "
-                      "WHERE uuid=:uuid");
-        query.bindValue(":uuid", meta->documentId());
-        query.bindValue(":bid", meta->bookmarksId());
-        query.bindValue(":nid", meta->notesId());
-
-        if (!query.exec()) {
-            qWarning() << "update doc meta error:" << query.lastError();
-            return;
-        }
-    }
-    else {
-        query.prepare("INSERT INTO meta (uuid, bookmarks, notes) "
-                      "VALUES(:uuid, :bid, :nid)");
-        query.bindValue(":uuid", meta->documentId());
-        query.bindValue(":bid", meta->bookmarksId());
-        query.bindValue(":nid", meta->notesId());
-
-        if (!query.exec()) {
-            qWarning() << "insert doc meta error:" << query.lastError();
-            return;
-        }
-    }
-
-    qDebug() << ">>>>:" << query.lastQuery();
+    GtDocMeta *meta = qobject_cast<GtDocMeta*>(sender());
 }
 
 GT_END_NAMESPACE

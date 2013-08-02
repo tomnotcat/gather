@@ -53,7 +53,12 @@ QString GtDocMeta::bookmarksId() const
 
 void GtDocMeta::setBookmarksId(const QString &id)
 {
-    d_ptr->m_bookmarksId = id;
+    Q_D(GtDocMeta);
+
+    if (d->m_bookmarksId != id) {
+        d->m_bookmarksId = id;
+        emit bookmarksIdChanged(id);
+    }
 }
 
 QString GtDocMeta::notesId() const
@@ -63,7 +68,12 @@ QString GtDocMeta::notesId() const
 
 void GtDocMeta::setNotesId(const QString &id)
 {
-    d_ptr->m_notesId = id;
+    Q_D(GtDocMeta);
+
+    if (d->m_notesId != id) {
+        d_ptr->m_notesId = id;
+        emit notesIdChanged(id);
+    }
 }
 
 GT_END_NAMESPACE

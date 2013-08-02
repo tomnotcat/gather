@@ -29,7 +29,8 @@ public:
     void setNotesId(const QString &id);
 
 Q_SIGNALS:
-    void changed(GtDocMeta *meta);
+    void bookmarksIdChanged(const QString &id);
+    void notesIdChanged(const QString &id);
 
 protected:
     QScopedPointer<GtDocMetaPrivate> d_ptr;

@@ -37,7 +37,7 @@ public:
 
 private Q_SLOTS:
     void documentLoaded(GtDocument *document);
-    void docMetaChanged(GtDocMeta *meta);
+    void docMetaChanged(const QString &);
 
 private:
     QScopedPointer<GtDocManagerPrivate> d_ptr;
