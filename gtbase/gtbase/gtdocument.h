@@ -17,7 +17,7 @@ class GtBookmark;
 class GtDocPage;
 class GtDocumentPrivate;
 
-class GT_BASE_EXPORT GtDocument : public QObject, public GtObject
+class GT_BASE_EXPORT GtDocument : public QObject, public GtSharedObject
 {
     Q_OBJECT
 

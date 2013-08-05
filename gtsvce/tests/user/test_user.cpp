@@ -3,6 +3,7 @@
  */
 #include "gtbookmark.h"
 #include "gtbookmarks.h"
+#include "gtdocmeta.h"
 #include "gtdocnote.h"
 #include "gtdocnotes.h"
 #include "gtuserclient.h"
@@ -61,6 +62,25 @@ void test_user::onLogout(int r)
 
 void test_user::testConvert()
 {
+    // document meta
+    GtDocMeta dm("meta0");
+    GtUserDocMeta udm;
+    dm.setBookmarksId("bookmarks0");
+    dm.setNotesId("notes0");
+
+    QVERIFY(GtUserClient::convert(dm, udm));
+    QVERIFY(udm.id() == "meta0");
+    QVERIFY(udm.bookmarks_id() == "bookmarks0");
+    QVERIFY(udm.notes_id() == "notes0");
+    dm.setBookmarksId("x");
+    dm.setNotesId("y");
+    QVERIFY(dm.bookmarksId() == "x");
+    QVERIFY(dm.notesId() == "y");
+    QVERIFY(GtUserClient::convert(udm, dm));
+    QVERIFY(dm.id() == "meta0");
+    QVERIFY(dm.bookmarksId() == "bookmarks0");
+    QVERIFY(dm.notesId() == "notes0");
+
     // bookmarks
     GtBookmarks bm("id0");
     GtUserBookmarks ubm;

@@ -2,7 +2,9 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtdocmodel.h"
+#include "gtbookmark.h"
 #include "gtbookmarks.h"
+#include "gtdocmeta.h"
 #include "gtdocnotes.h"
 #include "gtdocument.h"
 #include <QtCore/QDebug>
@@ -20,6 +22,7 @@ public:
 
 protected:
     GtDocModel *q_ptr;
+    GtDocMeta *m_meta;
     GtDocument *m_document;
     GtBookmarks *m_bookmarks;
     GtDocNotes *m_notes;
@@ -37,6 +40,7 @@ protected:
 
 GtDocModelPrivate::GtDocModelPrivate(GtDocModel *q)
     : q_ptr(q)
+    , m_meta(0)
     , m_document(0)
     , m_bookmarks(0)
     , m_notes(0)
@@ -55,6 +59,17 @@ GtDocModelPrivate::GtDocModelPrivate(GtDocModel *q)
 
 GtDocModelPrivate::~GtDocModelPrivate()
 {
+    if (m_meta)
+        m_meta->release();
+
+    if (m_document)
+        m_document->release();
+
+    if (m_bookmarks)
+        m_bookmarks->release();
+
+    if (m_notes)
+        m_notes->release();
 }
 
 GtDocModel::GtDocModel(QObject *parent)
@@ -65,6 +80,30 @@ GtDocModel::GtDocModel(QObject *parent)
 
 GtDocModel::~GtDocModel()
 {
+}
+
+GtDocMeta* GtDocModel::meta() const
+{
+    Q_D(const GtDocModel);
+    return d->m_meta;
+}
+
+void GtDocModel::setMeta(GtDocMeta *meta)
+{
+    Q_D(GtDocModel);
+
+    if (meta == d->m_meta)
+        return;
+
+    if (d->m_meta)
+        d->m_meta->release();
+
+    d->m_meta = meta;
+
+    if (d->m_meta)
+        d->m_meta->ref.ref();
+
+    emit metaChanged(d->m_meta);
 }
 
 GtDocument* GtDocModel::document() const
@@ -80,29 +119,19 @@ void GtDocModel::setDocument(GtDocument *document)
     if (document == d->m_document)
         return;
 
-    if (d->m_document) {
-        disconnect(d->m_document,
-                   SIGNAL(destroyed(QObject*)),
-                   this,
-                   SLOT(documentDestroyed(QObject*)));
-
-        if (d->m_document->parent() == this)
-            delete d->m_document;
-    }
+    if (d->m_document)
+        d->m_document->release();
 
     d->m_document = document;
     d->m_pageCount = -1;
 
     if (d->m_document) {
+        d->m_document->ref.ref();
+
         if (document->isLoaded()) {
             d->m_pageCount = document->pageCount();
             setPage(CLAMP(d->m_page, 0, d->m_pageCount - 1));
         }
-
-        connect(d->m_document,
-                SIGNAL(destroyed(QObject*)),
-                this,
-                SLOT(documentDestroyed(QObject*)));
     }
 
     if (-1 == d->m_pageCount)
@@ -124,23 +153,13 @@ void GtDocModel::setBookmarks(GtBookmarks *bookmarks)
     if (bookmarks == d->m_bookmarks)
         return;
 
-    if (d->m_bookmarks) {
-        disconnect(d->m_bookmarks,
-                   SIGNAL(destroyed(QObject*)),
-                   this,
-                   SLOT(bookmarksDestroyed(QObject*)));
-
-        if (d->m_bookmarks->parent() == this)
-            delete d->m_bookmarks;
-    }
+    if (d->m_bookmarks)
+        d->m_bookmarks->release();
 
     d->m_bookmarks = bookmarks;
-    if (d->m_bookmarks) {
-        connect(d->m_bookmarks,
-                SIGNAL(destroyed(QObject*)),
-                this,
-                SLOT(bookmarksDestroyed(QObject*)));
-    }
+
+    if (d->m_bookmarks)
+        d->m_bookmarks->ref.ref();
 
     emit bookmarksChanged(d->m_bookmarks);
 }
@@ -158,23 +177,13 @@ void GtDocModel::setNotes(GtDocNotes *notes)
     if (notes == d->m_notes)
         return;
 
-    if (d->m_notes) {
-        disconnect(d->m_notes,
-                   SIGNAL(destroyed(QObject*)),
-                   this,
-                   SLOT(notesDestroyed(QObject*)));
-
-        if (d->m_notes->parent() == this)
-            delete d->m_notes;
-    }
+    if (d->m_notes)
+        d->m_notes->release();
 
     d->m_notes = notes;
-    if (d->m_notes) {
-        connect(d->m_notes,
-                SIGNAL(destroyed(QObject*)),
-                this,
-                SLOT(notesDestroyed(QObject*)));
-    }
+
+    if (d->m_notes)
+        d->m_notes->ref.ref();
 
     emit notesChanged(d->m_notes);
 }
@@ -359,28 +368,26 @@ void GtDocModel::setMouseMode(MouseMode mode)
     emit mouseModeChanged(d->m_mouseMode);
 }
 
-void GtDocModel::documentDestroyed(QObject *object)
+void GtDocModel::loadOutline()
 {
     Q_D(GtDocModel);
 
-    if (object == static_cast<QObject *>(d->m_document))
-        setDocument(0);
-}
+    if (!d->m_document || !d->m_bookmarks) {
+        qWarning() << "loadOutline document or bookmarks is null";
+        return;
+    }
 
-void GtDocModel::bookmarksDestroyed(QObject *object)
-{
-    Q_D(GtDocModel);
+    if (!d->m_document->isLoaded()) {
+        qWarning() << "loadOutline document not loaded";
+        return;
+    }
 
-    if (object == static_cast<QObject *>(d->m_bookmarks))
-        setBookmarks(0);
-}
+    if (d->m_bookmarks->root()->children().size() > 0) {
+        qWarning() << "loadOutline bookmarks is not empty";
+        return;
+    }
 
-void GtDocModel::notesDestroyed(QObject *object)
-{
-    Q_D(GtDocModel);
-
-    if (object == static_cast<QObject *>(d->m_notes))
-        setNotes(0);
+    d->m_document->loadOutline(d->m_bookmarks->root());
 }
 
 GT_END_NAMESPACE

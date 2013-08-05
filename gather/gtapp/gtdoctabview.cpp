@@ -320,7 +320,7 @@ void GtDocTabView::addBookmark()
         parent = bookmarks->root();
 
     parent->insert(prev ? prev->next() : 0, bookmark);
-    emit bookmarks->inserted(bookmark);
+    emit bookmarks->added(bookmark);
 }
 
 void GtDocTabView::searchSelectedText()

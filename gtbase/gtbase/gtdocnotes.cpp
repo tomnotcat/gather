@@ -91,7 +91,7 @@ void GtDocNotes::addNote(GtDocNote *note)
     for (int i = beginPage; i < endPage; ++i)
         d->m_pages[i].push_back(note);
 
-    emit noteAdded(note);
+    emit added(note);
 }
 
 bool GtDocNotes::removeNote(GtDocNote *note)
@@ -117,7 +117,7 @@ bool GtDocNotes::removeNote(GtDocNote *note)
             break;
     }
 
-    emit noteRemoved(note);
+    emit removed(note);
     return true;
 }
 

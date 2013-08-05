@@ -64,6 +64,6 @@ message GtFTTempData {
 }
 
 message GtFTTempMeta {
-    required string fileId = 1;
+    required string file_id = 1;
     repeated GtFTTempData datas = 2;
 }

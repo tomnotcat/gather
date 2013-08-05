@@ -16,11 +16,12 @@ class GT_BASE_EXPORT GtDocMeta : public QObject, public GtSharedObject
     Q_OBJECT
 
 public:
-    explicit GtDocMeta(const QString &documentId, QObject *parent = 0);
+    explicit GtDocMeta(const QString &id, QObject *parent = 0);
     ~GtDocMeta();
 
 public:
-    QString documentId() const;
+    QString id() const;
+    quint32 usn() const;
 
     QString bookmarksId() const;
     void setBookmarksId(const QString &id);

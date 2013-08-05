@@ -9,6 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtDocMeta;
 class GtDocument;
 class GtBookmarks;
 class GtDocNotes;
@@ -23,6 +24,9 @@ public:
     ~GtDocModel();
 
 public:
+    GtDocMeta* meta() const;
+    void setMeta(GtDocMeta *meta);
+
     GtDocument* document() const;
     void setDocument(GtDocument *document);
 
@@ -77,7 +81,11 @@ public:
     MouseMode mouseMode() const;
     void setMouseMode(MouseMode mode);
 
+public Q_SLOTS:
+    void loadOutline();
+
 Q_SIGNALS:
+    void metaChanged(GtDocMeta *meta);
     void documentChanged(GtDocument *document);
     void bookmarksChanged(GtBookmarks *bookmarks);
     void notesChanged(GtDocNotes *notes);
@@ -88,11 +96,6 @@ Q_SIGNALS:
     void layoutModeChanged(int mode);
     void sizingModeChanged(int mode);
     void mouseModeChanged(int mode);
-
-private Q_SLOTS:
-    void documentDestroyed(QObject *object);
-    void bookmarksDestroyed(QObject *object);
-    void notesDestroyed(QObject *object);
 
 private:
     QScopedPointer<GtDocModelPrivate> d_ptr;

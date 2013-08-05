@@ -1804,17 +1804,17 @@ void GtDocView::notesChanged(GtDocNotes *notes)
     Q_D(GtDocView);
 
     if (d->m_notes) {
-        disconnect(d->m_notes, SIGNAL(noteAdded(GtDocNote*)),
+        disconnect(d->m_notes, SIGNAL(added(GtDocNote*)),
                    this, SLOT(noteUpdated(GtDocNote*)));
-        disconnect(d->m_notes, SIGNAL(noteRemoved(GtDocNote*)),
+        disconnect(d->m_notes, SIGNAL(removed(GtDocNote*)),
                    this, SLOT(noteUpdated(GtDocNote*)));
     }
 
     d->m_notes = notes;
     if (d->m_notes) {
-        connect(d->m_notes, SIGNAL(noteAdded(GtDocNote*)),
+        connect(d->m_notes, SIGNAL(added(GtDocNote*)),
                 this, SLOT(noteUpdated(GtDocNote*)));
-        connect(d->m_notes, SIGNAL(noteRemoved(GtDocNote*)),
+        connect(d->m_notes, SIGNAL(removed(GtDocNote*)),
                 this, SLOT(noteUpdated(GtDocNote*)));
     }
 

@@ -22,12 +22,14 @@ public:
 
 public:
     QString id() const;
+    quint32 usn() const;
 
     const GtBookmark* root() const;
     GtBookmark* root();
 
 Q_SIGNALS:
-    void inserted(GtBookmark *bookmark);
+    void added(GtBookmark *bookmark);
+    void removed(GtBookmark *bookmark);
 
 protected:
     QScopedPointer<GtBookmarksPrivate> d_ptr;

@@ -20,6 +20,13 @@ message GtUserLogoutResponse {
     optional int32 reason = 1;
 }
 
+message GtUserDocMeta {
+    optional string id = 1;
+    optional uint32 usn = 2;
+    optional string bookmarks_id = 3;
+    optional string notes_id = 4;
+}
+
 message GtUserLinkDest {
     optional int32 type = 1;
     optional int32 page = 2;
@@ -37,7 +44,8 @@ message GtUserBookmark {
 
 message GtUserBookmarks {
     optional string id = 1;
-    optional GtUserBookmark root = 2;
+    optional uint32 usn = 2;
+    optional GtUserBookmark root = 3;
 }
 
 message GtUserDocRange {
@@ -57,5 +65,6 @@ message GtUserDocNote {
 
 message GtUserDocNotes {
     optional string id = 1;
-    repeated GtUserDocNote notes = 2;
+    optional uint32 usn = 2;
+    repeated GtUserDocNote notes = 3;
 }

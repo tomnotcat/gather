@@ -127,7 +127,7 @@ bool GtFTTemp::open(OpenMode mode)
         QByteArray data = d->metaFile.readAll();
 
         if (d->tempMeta.ParseFromArray(data.constData(), data.size()) &&
-            QString::fromUtf8(d->tempMeta.fileid().c_str()) == d->fileId)
+            QString(d->tempMeta.file_id().c_str()) == d->fileId)
         {
             int count = d->tempMeta.datas_size();
             for (int i = 0; i < count; ++i) {
@@ -141,7 +141,7 @@ bool GtFTTemp::open(OpenMode mode)
         }
     }
 
-    d->tempMeta.set_fileid(d->fileId.toUtf8());
+    d->tempMeta.set_file_id(d->fileId.toUtf8());
 
     if (d->dataFile.open(mode))
         return QIODevice::open(mode);

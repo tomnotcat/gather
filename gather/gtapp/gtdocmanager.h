@@ -11,9 +11,11 @@ class QUndoStack;
 
 GT_BEGIN_NAMESPACE
 
+class GtBookmark;
 class GtBookmarks;
 class GtDocMeta;
 class GtDocModel;
+class GtDocNote;
 class GtDocNotes;
 class GtDocument;
 class GtDocManagerPrivate;
@@ -31,17 +33,20 @@ public:
 public:
     int registerLoaders(const QString &loaderDir);
     int documentCount() const;
-    int cleanDocuments();
+    int cleanUnreferencedObjects();
     GtDocMeta *loadDocMeta(const QString &fileId);
+    GtBookmarks *loadBookmarks(const QString &bookmarksId);
+    GtDocNotes *loadDocNotes(const QString &notesId);
     GtDocModel *loadDocument(const QString &fileId);
     GtDocModel *loadLocalDocument(const QString &fileName);
-    GtBookmarks *loadBookmarks(const QString &bookmarksId);
-    GtDocNotes *loadNotes(const QString &notesId);
     QUndoStack *undoStack(GtDocModel *docModel);
 
 private Q_SLOTS:
-    void documentLoaded(GtDocument *document);
-    void docMetaChanged(const QString &);
+    void bookmarkAdded(GtBookmark *bookmark);
+    void bookmarkRemoved(GtBookmark *bookmark);
+    void noteAdded(GtDocNote *note);
+    void noteRemoved(GtDocNote *note);
+    void updateDatabase();
 
 private:
     QScopedPointer<GtDocManagerPrivate> d_ptr;

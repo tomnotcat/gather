@@ -22,6 +22,7 @@ public:
 
 public:
     QString id() const;
+    quint32 usn() const;
 
     int pageCount() const;
     QList<GtDocNote*> pageNotes(int page) const;
@@ -32,8 +33,8 @@ public:
     void clearAll();
 
 Q_SIGNALS:
-    void noteAdded(GtDocNote *note);
-    void noteRemoved(GtDocNote *note);
+    void added(GtDocNote *note);
+    void removed(GtDocNote *note);
 
 protected:
     QScopedPointer<GtDocNotesPrivate> d_ptr;

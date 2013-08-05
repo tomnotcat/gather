@@ -11,8 +11,10 @@
 GT_BEGIN_NAMESPACE
 
 class GtBookmarks;
+class GtDocMeta;
 class GtDocNotes;
 class GtUserBookmarks;
+class GtUserDocMeta;
 class GtUserDocNotes;
 class GtUserClientPrivate;
 
@@ -44,10 +46,33 @@ public:
     void logout();
 
 public:
+    static bool convert(const GtDocMeta &src, GtUserDocMeta &dest);
+    static bool convert(const GtUserDocMeta &src, GtDocMeta &dest);
     static bool convert(const GtBookmarks &src, GtUserBookmarks &dest);
     static bool convert(const GtUserBookmarks &src, GtBookmarks &dest);
     static bool convert(const GtDocNotes &src, GtUserDocNotes &dest);
     static bool convert(const GtUserDocNotes &src, GtDocNotes &dest);
+
+    template<typename TS, typename TD>
+    static bool serialize(const TS &src, QByteArray &data)
+    {
+        TD dest;
+        if (!GtUserClient::convert(src, dest))
+            return false;
+
+        data.resize(dest.ByteSize());
+        return dest.SerializeToArray(data.data(), data.size());
+    }
+
+    template<typename TS, typename TD>
+    static bool deserialize(const QByteArray &data, TD &dest)
+    {
+        TS src;
+        if (!src.ParseFromArray(data.data(), data.size()))
+            return false;
+
+        return GtUserClient::convert(src, dest);
+    }
 
 Q_SIGNALS:
     void login(int result);

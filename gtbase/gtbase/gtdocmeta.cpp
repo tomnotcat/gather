@@ -16,7 +16,7 @@ public:
 
 protected:
     GtDocMeta *q_ptr;
-    QString m_documentId;
+    QString m_id;
     QString m_bookmarksId;
     QString m_notesId;
 };
@@ -30,20 +30,20 @@ GtDocMetaPrivate::~GtDocMetaPrivate()
 {
 }
 
-GtDocMeta::GtDocMeta(const QString &documentId, QObject *parent)
+GtDocMeta::GtDocMeta(const QString &id, QObject *parent)
     : QObject(parent)
     , d_ptr(new GtDocMetaPrivate(this))
 {
-    d_ptr->m_documentId = documentId;
+    d_ptr->m_id = id;
 }
 
 GtDocMeta::~GtDocMeta()
 {
 }
 
-QString GtDocMeta::documentId() const
+QString GtDocMeta::id() const
 {
-    return d_ptr->m_documentId;
+    return d_ptr->m_id;
 }
 
 QString GtDocMeta::bookmarksId() const

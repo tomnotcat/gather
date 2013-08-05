@@ -4,6 +4,7 @@
 #include "gtuserclient.h"
 #include "gtbookmark.h"
 #include "gtbookmarks.h"
+#include "gtdocmeta.h"
 #include "gtdocnote.h"
 #include "gtdocnotes.h"
 #include "gtrecvbuffer.h"
@@ -271,6 +272,24 @@ void GtUserClient::logout()
     }
 
     emit logout(LogoutNormal);
+}
+
+bool GtUserClient::convert(const GtDocMeta &src, GtUserDocMeta &dest)
+{
+    dest.set_id(src.id().toUtf8());
+    dest.set_bookmarks_id(src.bookmarksId().toUtf8());
+    dest.set_notes_id(src.notesId().toUtf8());
+    return true;
+}
+
+bool GtUserClient::convert(const GtUserDocMeta &src, GtDocMeta &dest)
+{
+    if (strcmp(dest.id().toUtf8().constData(), src.id().c_str()))
+        return false;
+
+    dest.setBookmarksId(src.bookmarks_id().c_str());
+    dest.setNotesId(src.notes_id().c_str());
+    return true;
 }
 
 bool GtUserClient::convert(const GtBookmarks &src, GtUserBookmarks &dest)

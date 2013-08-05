@@ -149,7 +149,7 @@ void test_filetrans::testTempFile()
     GtFTTempMeta tempMeta;
     QByteArray metaData(metaFile.readAll());
     QVERIFY(tempMeta.ParseFromArray(metaData.constData(), metaData.size()));
-    QVERIFY(QString::fromUtf8(tempMeta.fileid().c_str()) == fileId);
+    QVERIFY(QString(tempMeta.file_id().c_str()) == fileId);
     QVERIFY(tempMeta.datas_size() == 3);
     QVERIFY(tempMeta.datas(0).offset() == 0);
     QVERIFY(tempMeta.datas(0).size() == 10);
