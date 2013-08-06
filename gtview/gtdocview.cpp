@@ -1608,7 +1608,7 @@ QString GtDocView::selectedText() const
 
     GtDocRange selRange(selectedRange());
 
-    if (selRange.type() != GtDocRange::TextRange)
+    if (selRange.isEmpty() || selRange.type() != GtDocRange::TextRange)
         return QString();
 
     int selBegin = selRange.begin().page();
