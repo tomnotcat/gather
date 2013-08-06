@@ -77,6 +77,11 @@ void GtTocModel::setDocModel(GtDocModel *docModel)
                    SIGNAL(added(GtBookmark*)),
                    this,
                    SLOT(bookmarkAdded(GtBookmark*)));
+
+        disconnect(d->m_bookmarks,
+                   SIGNAL(removed(GtBookmark*)),
+                   this,
+                   SLOT(bookmarkRemoved(GtBookmark*)));
     }
 
     d->m_docModel = docModel;
@@ -101,6 +106,11 @@ void GtTocModel::setDocModel(GtDocModel *docModel)
                 SIGNAL(added(GtBookmark*)),
                 this,
                 SLOT(bookmarkAdded(GtBookmark*)));
+
+        connect(d->m_bookmarks,
+                SIGNAL(removed(GtBookmark*)),
+                this,
+                SLOT(bookmarkRemoved(GtBookmark*)));
     }
 }
 
@@ -241,6 +251,11 @@ void GtTocModel::bookmarksChanged(GtBookmarks *bookmarks)
                    SIGNAL(added(GtBookmark*)),
                    this,
                    SLOT(bookmarkAdded(GtBookmark*)));
+
+        disconnect(d->m_bookmarks,
+                   SIGNAL(removed(GtBookmark*)),
+                   this,
+                   SLOT(bookmarkRemoved(GtBookmark*)));
     }
 
     d->m_bookmarks = bookmarks;
@@ -250,12 +265,22 @@ void GtTocModel::bookmarksChanged(GtBookmarks *bookmarks)
                 SIGNAL(added(GtBookmark*)),
                 this,
                 SLOT(bookmarkAdded(GtBookmark*)));
+
+        connect(d->m_bookmarks,
+                SIGNAL(removed(GtBookmark*)),
+                this,
+                SLOT(bookmarkRemoved(GtBookmark*)));
     }
 
     endResetModel();
 }
 
 void GtTocModel::bookmarkAdded(GtBookmark *)
+{
+    emit layoutChanged();
+}
+
+void GtTocModel::bookmarkRemoved(GtBookmark *)
 {
     emit layoutChanged();
 }

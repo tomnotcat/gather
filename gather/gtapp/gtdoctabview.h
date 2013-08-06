@@ -23,6 +23,11 @@ class GtDocTabView : public GtTabView
     Q_OBJECT
 
 public:
+    enum {
+        MaxBookmarkTitle = 128
+    };
+
+public:
     explicit GtDocTabView(QWidget *parent = 0);
     ~GtDocTabView();
 
@@ -39,7 +44,9 @@ protected:
     void saveSettings(GtMainSettings *settings);
 
 private Q_SLOTS:
-    void showDocViewContextMenu(const QPoint &pos);
+    void onDelete();
+    void docViewContextMenu(const QPoint &pos);
+    void tocViewContextMenu(const QPoint &pos);
     void documentLoaded(GtDocument *document);
     void tocChanged(const QModelIndex &index);
     void addBookmark();

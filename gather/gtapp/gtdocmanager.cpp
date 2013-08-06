@@ -229,7 +229,15 @@ bool GtDocManagerPrivate::readDocNotesFromDB(GtDocNotes *notes)
 
 bool GtDocManagerPrivate::writeDocMetaToDB(const GtDocMeta *meta)
 {
-    return writeToDatabase<GtDocMeta, GtUserDocMeta>("docmeta", *meta);
+    GtDocMeta temp(meta->id());
+
+    if (!m_tempBookmarks.contains(meta->bookmarksId()))
+        temp.setBookmarksId(meta->bookmarksId());
+
+    if (!m_tempDocNotes.contains(meta->notesId()))
+        temp.setNotesId(meta->notesId());
+
+    return writeToDatabase<GtDocMeta, GtUserDocMeta>("docmeta", temp);
 }
 
 bool GtDocManagerPrivate::writeBookmarksToDB(const GtBookmarks *bookmarks)

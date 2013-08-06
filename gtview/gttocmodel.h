@@ -43,6 +43,7 @@ public:
 private Q_SLOTS:
     void bookmarksChanged(GtBookmarks *bookmarks);
     void bookmarkAdded(GtBookmark *bookmark);
+    void bookmarkRemoved(GtBookmark *bookmark);
     void docModelDestroyed(QObject *object);
 
 private:

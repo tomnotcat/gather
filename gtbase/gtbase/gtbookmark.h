@@ -33,6 +33,7 @@ public:
     GtBookmark* next();
 
     void insert(GtBookmark *before, GtBookmark *bookmark);
+    void remove(GtBookmark *bookmark);
     void clearChildren();
     inline void append(GtBookmark *bookmark) { insert(0, bookmark); }
 

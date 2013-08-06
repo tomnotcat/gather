@@ -1546,6 +1546,7 @@ void GtDocView::scrollTo(const GtLinkDest &dest)
     Q_D(GtDocView);
 
     if (dest.zoom() > 0) {
+        setSizingMode(GtDocModel::FreeSize);
         setScale(dest.zoom());
         relayoutPages();
     }
@@ -1601,6 +1602,31 @@ GtDocRange GtDocView::selectedRange() const
     return selRange;
 }
 
+QString GtDocView::selectedText() const
+{
+    Q_D(const GtDocView);
+
+    GtDocRange selRange(selectedRange());
+
+    if (selRange.type() != GtDocRange::TextRange)
+        return QString();
+
+    int selBegin = selRange.begin().page();
+    int selEnd = selRange.end().page() + 1;
+    QString selText;
+
+    for (int i = selBegin; i < selEnd; ++i) {
+        GtDocPage *page = d->m_document->page(i);
+        QPoint textRange(selRange.intersectedText(page));
+        GtDocTextPointer text(page->text());
+
+        selText.append(text->texts() + textRange.x(),
+                       textRange.y() - textRange.x());
+    }
+
+    return selText;
+}
+
 GtDocPoint GtDocView::docPointFromViewPoint(const QPoint &p,
                                             bool inside)
 {
@@ -1631,7 +1657,7 @@ void GtDocView::highlight()
         return;
 
     GtDocNote *note = new GtDocNote(GtDocNote::Highlight, range);
-    QUndoCommand *command = new GtNoteCommand(d->m_model, note);
+    QUndoCommand *command = new GtAddNoteCommand(d->m_model, note);
 
     command->setText(tr("\"Highlight\""));
     d->m_undoStack->push(command);
@@ -1648,7 +1674,7 @@ void GtDocView::underline()
         return;
 
     GtDocNote *note = new GtDocNote(GtDocNote::Underline, range);
-    QUndoCommand *command = new GtNoteCommand(d->m_model, note);
+    QUndoCommand *command = new GtAddNoteCommand(d->m_model, note);
 
     command->setText(tr("\"Underline\""));
     d->m_undoStack->push(command);
@@ -1658,10 +1684,7 @@ void GtDocView::underline()
 
 void GtDocView::copy()
 {
-    Q_D(GtDocView);
-
     GtDocRange selRange(selectedRange());
-
     if (selRange.isEmpty())
         return;
 
@@ -1669,20 +1692,9 @@ void GtDocView::copy()
     switch (selRange.type()) {
     case GtDocRange::TextRange:
         {
-            int selBegin = selRange.begin().page();
-            int selEnd = selRange.end().page() + 1;
-            QString selText;
-
-            for (int i = selBegin; i < selEnd; ++i) {
-                GtDocPage *page = d->m_document->page(i);
-                QPoint textRange(selRange.intersectedText(page));
-                GtDocTextPointer text(page->text());
-
-                selText.append(text->texts() + textRange.x(),
-                               textRange.y() - textRange.x());
-            }
-
-            clipboard->setText(selText, QClipboard::Clipboard);
+            QString selText(selectedText());
+            if (!selText.isEmpty())
+                clipboard->setText(selText, QClipboard::Clipboard);
         }
         break;
 

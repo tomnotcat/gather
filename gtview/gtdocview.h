@@ -82,6 +82,8 @@ public:
     void select(const GtDocPoint &begin, const GtDocPoint &end);
     void deselect();
     GtDocRange selectedRange() const;
+    QString selectedText() const;
+
     GtDocPoint docPointFromViewPoint(const QPoint &p, bool inside);
     QPoint viewPointFromDocPoint(const GtDocPoint &p);
 

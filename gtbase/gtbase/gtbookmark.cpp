@@ -68,6 +68,14 @@ void GtBookmark::insert(GtBookmark *before, GtBookmark *bookmark)
     }
 }
 
+void GtBookmark::remove(GtBookmark *bookmark)
+{
+    Q_ASSERT(bookmark->m_parent == this);
+
+    if (m_children.removeOne(bookmark))
+        bookmark->m_parent = 0;
+}
+
 void GtBookmark::clearChildren()
 {
     qDeleteAll(m_children);

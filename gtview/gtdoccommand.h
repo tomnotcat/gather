@@ -9,6 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtBookmark;
 class GtDocModel;
 class GtDocNote;
 class GtDocRange;
@@ -28,11 +29,11 @@ protected:
     bool m_done;
 };
 
-class GT_VIEW_EXPORT GtNoteCommand : public GtDocCommand
+class GT_VIEW_EXPORT GtAddNoteCommand : public GtDocCommand
 {
 public:
-    GtNoteCommand(GtDocModel *model, GtDocNote *note);
-    ~GtNoteCommand();
+    GtAddNoteCommand(GtDocModel *model, GtDocNote *note);
+    ~GtAddNoteCommand();
 
 public:
     void undo();
@@ -40,6 +41,42 @@ public:
 
 protected:
     GtDocNote *m_note;
+};
+
+class GT_VIEW_EXPORT GtAddBookmarkCommand : public GtDocCommand
+{
+public:
+    GtAddBookmarkCommand(GtDocModel *model,
+                         GtBookmark *parent,
+                         GtBookmark *before,
+                         GtBookmark *bookmark);
+    ~GtAddBookmarkCommand();
+
+public:
+    void undo();
+    void redo();
+
+protected:
+    GtBookmark *m_parent;
+    GtBookmark *m_before;
+    GtBookmark *m_bookmark;
+};
+
+class GT_VIEW_EXPORT GtDelBookmarkCommand : public GtDocCommand
+{
+public:
+    GtDelBookmarkCommand(GtDocModel *model,
+                         GtBookmark *bookmark);
+    ~GtDelBookmarkCommand();
+
+public:
+    void undo();
+    void redo();
+
+protected:
+    GtBookmark *m_parent;
+    GtBookmark *m_before;
+    GtBookmark *m_bookmark;
 };
 
 GT_END_NAMESPACE
