@@ -213,8 +213,8 @@ void GtMainWindow::on_actionOpenFile_triggered()
         if (fileName.isEmpty())
             return;
 
-        m_lastOpenPath = QFileInfo(fileName).path();
-        loadFile(fileName);
+        if (loadFile(fileName))
+            m_lastOpenPath = QFileInfo(fileName).path();
     }
 }
 
@@ -256,6 +256,16 @@ bool GtMainWindow::okToContinue()
 
 bool GtMainWindow::loadFile(const QString &fileName)
 {
+    GtDocManager *docManager = GtApplication::instance()->docManager();
+    GtDocModel *docModel = docManager->loadLocalDocument(fileName);
+
+    if (!docModel) {
+        QMessageBox::warning(this, tr("Gather Reader"),
+                             tr("The document could not be loaded."),
+                             QMessageBox::Cancel);
+        return false;
+    }
+
     GtTabView *view = tabView();
     GtDocTabView *docView = qobject_cast<GtDocTabView*>(tabView());
     if (!docView) {
@@ -269,10 +279,6 @@ bool GtMainWindow::loadFile(const QString &fileName)
         m_ui.tabWidget->setCurrentWidget(view);
     }
 
-    docView->setDocModel(0);
-
-    GtDocManager *docManager = GtApplication::instance()->docManager();
-    GtDocModel *docModel = docManager->loadLocalDocument(fileName);
     docView->setDocModel(docModel);
 
     QUndoStack *undoStack = docManager->undoStack(docModel);

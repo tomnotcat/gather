@@ -52,9 +52,18 @@ GtDocTabView::GtDocTabView(QWidget *parent)
     m_tocView->setObjectName(QStringLiteral("tocView"));
     m_tocView->setFrameShape(QFrame::NoFrame);
     m_tocView->setHeaderHidden(true);
+    m_tocView->setUniformRowHeights(true);
     m_tocView->setItemDelegate(new GtTocDelegate(m_tocView));
     m_tocView->setEditTriggers(QAbstractItemView::EditKeyPressed);
     m_tocView->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // drag and drop
+    m_tocView->setAcceptDrops(true);
+    m_tocView->setDragEnabled(true);
+    // FIXME: auto expand seems not work properly
+    m_tocView->setAutoExpandDelay(1000);
+    m_tocView->setDragDropMode(QAbstractItemView::InternalMove);
+
     m_splitter->addWidget(m_tocView);
 
     connect(m_tocView, SIGNAL(clicked(QModelIndex)),

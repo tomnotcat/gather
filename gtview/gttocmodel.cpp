@@ -9,6 +9,7 @@
 #include "gtdocument.h"
 #include "gttocdelegate.h"
 #include <QtCore/QDebug>
+#include <QtCore/QMimeData>
 
 GT_BEGIN_NAMESPACE
 
@@ -20,21 +21,47 @@ public:
     GtTocModelPrivate(GtTocModel *q);
     ~GtTocModelPrivate();
 
+public:
+    void encodeBookmarkList(const QModelIndexList &indexes,
+                            QDataStream &stream) const;
+    bool decodeBookmarkList(int row, int column,
+                            const QModelIndex &parent,
+                            QDataStream &stream);
+
 protected:
     GtTocModel *q_ptr;
     GtDocModel *m_docModel;
     GtBookmarks *m_bookmarks;
+    const QString m_mimeBookmarkList;
 };
 
 GtTocModelPrivate::GtTocModelPrivate(GtTocModel *q)
     : q_ptr(q)
     , m_docModel(0)
     , m_bookmarks(0)
+    , m_mimeBookmarkList(QLatin1String("application/x-gtbookmarklist"))
 {
 }
 
 GtTocModelPrivate::~GtTocModelPrivate()
 {
+}
+
+void GtTocModelPrivate::encodeBookmarkList(const QModelIndexList &indexes,
+                                           QDataStream &stream) const
+{
+    /*
+    QModelIndexList::ConstIterator it = indexes.begin();
+    for (; it != indexes.end(); ++it)
+        stream << (*it).row() << (*it).column() << itemData(*it);
+    */
+}
+
+bool GtTocModelPrivate::decodeBookmarkList(int row, int column,
+                                           const QModelIndex &parent,
+                                           QDataStream &stream)
+{
+    return false;
 }
 
 GtTocModel::GtTocModel(QObject *parent)
@@ -263,14 +290,77 @@ bool GtTocModel::setData(const QModelIndex &index,
 Qt::ItemFlags GtTocModel::flags(const QModelIndex &index) const
 {
     if (!index.isValid())
-        return 0;
+        return Qt::ItemIsDropEnabled;
 
-    return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable |
+            Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled;
+}
+
+Qt::DropActions GtTocModel::supportedDropActions() const
+{
+    return Qt::CopyAction | Qt::MoveAction;
 }
 
 QVariant GtTocModel::headerData(int, Qt::Orientation, int) const
 {
     return QVariant();
+}
+
+bool GtTocModel::removeRows(int row, int count, const QModelIndex &parent)
+{
+    qDebug() << "remove:" << row << count;
+    return false;
+}
+
+bool GtTocModel::dropMimeData(const QMimeData *data, Qt::DropAction action,
+                              int row, int column, const QModelIndex &parent)
+{
+    Q_D(GtTocModel);
+
+    if (!data || !(action == Qt::CopyAction || action == Qt::MoveAction))
+        return false;
+
+    if (row > rowCount(parent))
+        row = rowCount(parent);
+
+    if (row == -1)
+        row = rowCount(parent);
+
+    if (column == -1)
+        column = 0;
+
+    if (data->hasFormat(d->m_mimeBookmarkList)) {
+        // decode and insert
+        QByteArray encoded = data->data(d->m_mimeBookmarkList);
+        QDataStream stream(&encoded, QIODevice::ReadOnly);
+        return d->decodeBookmarkList(row, column, parent, stream);
+    }
+
+    return false;
+}
+
+QMimeData *GtTocModel::mimeData(const QModelIndexList &indexes) const
+{
+    Q_D(const GtTocModel);
+
+    if (indexes.count() <= 0)
+        return 0;
+
+    QMimeData *data = new QMimeData();
+    QByteArray encoded;
+    QDataStream stream(&encoded, QIODevice::WriteOnly);
+    d->encodeBookmarkList(indexes, stream);
+    data->setData(d->m_mimeBookmarkList, encoded);
+    return data;
+}
+
+QStringList GtTocModel::mimeTypes() const
+{
+    Q_D(const GtTocModel);
+
+    QStringList types;
+    types << d->m_mimeBookmarkList;
+    return types;
 }
 
 void GtTocModel::bookmarksChanged(GtBookmarks *bookmarks)
