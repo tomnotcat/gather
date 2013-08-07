@@ -30,6 +30,7 @@ public:
 Q_SIGNALS:
     void added(GtBookmark *bookmark);
     void removed(GtBookmark *bookmark);
+    void updated(GtBookmark *bookmark, int flags);
 
 protected:
     QScopedPointer<GtBookmarksPrivate> d_ptr;

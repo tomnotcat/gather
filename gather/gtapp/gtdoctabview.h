@@ -13,6 +13,7 @@ class QVBoxLayout;
 
 GT_BEGIN_NAMESPACE
 
+class GtBookmark;
 class GtDocModel;
 class GtDocument;
 class GtDocView;
@@ -48,8 +49,12 @@ private Q_SLOTS:
     void docViewContextMenu(const QPoint &pos);
     void tocViewContextMenu(const QPoint &pos);
     void documentLoaded(GtDocument *document);
-    void tocChanged(const QModelIndex &index);
+    void gotoBookmark(const QModelIndex &index);
+    void gotoBookmark();
     void addBookmark();
+    void setDestination();
+    void renameBookmark();
+    void renameBookmark(GtBookmark *bookmark, const QString &name);
     void searchSelectedText();
 
 private:

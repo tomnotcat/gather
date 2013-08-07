@@ -518,6 +518,9 @@ GtBookmarks *GtDocManager::loadBookmarks(const QString &bookmarksId)
     connect(bookmarks, SIGNAL(removed(GtBookmark*)),
             this, SLOT(bookmarkRemoved(GtBookmark*)));
 
+    connect(bookmarks, SIGNAL(updated(GtBookmark*, int)),
+            this, SLOT(bookmarkUpdated(GtBookmark*, int)));
+
     bookmarks->ref.ref();
     d->m_bookmarks.insert(bookmarksId, bookmarks);
 
@@ -662,6 +665,14 @@ void GtDocManager::bookmarkAdded(GtBookmark *bookmark)
 }
 
 void GtDocManager::bookmarkRemoved(GtBookmark *bookmark)
+{
+    Q_D(GtDocManager);
+
+    GtBookmarks *bookmarks = qobject_cast<GtBookmarks*>(sender());
+    d->bookmarksChanged(bookmarks);
+}
+
+void GtDocManager::bookmarkUpdated(GtBookmark *bookmark, int flags)
 {
     Q_D(GtDocManager);
 

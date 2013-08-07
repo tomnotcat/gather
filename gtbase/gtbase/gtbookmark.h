@@ -13,6 +13,13 @@ GT_BEGIN_NAMESPACE
 class GT_BASE_EXPORT GtBookmark : public GtObject
 {
 public:
+    enum UpdateFlag {
+        UpdateNone    = 0x00000000,
+        UpdateTitle   = 0x00000001,
+        UpdateDest    = 0x00000002
+    };
+
+public:
     explicit GtBookmark();
     explicit GtBookmark(const GtLinkDest &dest);
     GtBookmark(const QString &title, const GtLinkDest &dest);

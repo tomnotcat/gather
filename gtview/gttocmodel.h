@@ -36,14 +36,19 @@ public:
     int rowCount(const QModelIndex &parent) const;
     int columnCount(const QModelIndex &parent) const;
     QVariant data(const QModelIndex &index, int role) const;
+    bool setData(const QModelIndex &index, const QVariant &value, int role);
     Qt::ItemFlags flags(const QModelIndex &index) const;
     QVariant headerData(int section, Qt::Orientation orientation,
                         int role = Qt::DisplayRole) const;
+
+Q_SIGNALS:
+    void renameBookmark(GtBookmark *bookmark, const QString &name);
 
 private Q_SLOTS:
     void bookmarksChanged(GtBookmarks *bookmarks);
     void bookmarkAdded(GtBookmark *bookmark);
     void bookmarkRemoved(GtBookmark *bookmark);
+    void bookmarkUpdated(GtBookmark *bookmark, int flags);
     void docModelDestroyed(QObject *object);
 
 private:

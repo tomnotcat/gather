@@ -62,6 +62,26 @@ protected:
     GtBookmark *m_bookmark;
 };
 
+class GT_VIEW_EXPORT GtRenameBookmarkCommand : public GtDocCommand
+{
+public:
+    GtRenameBookmarkCommand(GtDocModel *model,
+                            GtBookmark *bookmark,
+                            const QString &name);
+    ~GtRenameBookmarkCommand();
+
+public:
+    void undo();
+    void redo();
+
+protected:
+    void rename();
+
+protected:
+    GtBookmark *m_bookmark;
+    QString m_name;
+};
+
 class GT_VIEW_EXPORT GtDelBookmarkCommand : public GtDocCommand
 {
 public:

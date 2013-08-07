@@ -96,6 +96,42 @@ void GtAddBookmarkCommand::redo()
     GtDocCommand::redo();
 }
 
+GtRenameBookmarkCommand::GtRenameBookmarkCommand(GtDocModel *model,
+                                                 GtBookmark *bookmark,
+                                                 const QString &name)
+    : GtDocCommand(model)
+    , m_bookmark(bookmark)
+    , m_name(name)
+{
+}
+
+GtRenameBookmarkCommand::~GtRenameBookmarkCommand()
+{
+}
+
+void GtRenameBookmarkCommand::undo()
+{
+    GtDocCommand::undo();
+    rename();
+}
+
+void GtRenameBookmarkCommand::redo()
+{
+    rename();
+    GtDocCommand::redo();
+}
+
+void GtRenameBookmarkCommand::rename()
+{
+    GtBookmarks *bookmarks = m_model->bookmarks();
+
+    QString temp = m_bookmark->title();
+    m_bookmark->setTitle(m_name);
+    m_name = temp;
+
+    emit bookmarks->updated(m_bookmark, GtBookmark::UpdateTitle);
+}
+
 GtDelBookmarkCommand::GtDelBookmarkCommand(GtDocModel *model,
                                            GtBookmark *bookmark)
     : GtDocCommand(model)

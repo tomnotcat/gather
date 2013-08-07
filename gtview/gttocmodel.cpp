@@ -82,6 +82,11 @@ void GtTocModel::setDocModel(GtDocModel *docModel)
                    SIGNAL(removed(GtBookmark*)),
                    this,
                    SLOT(bookmarkRemoved(GtBookmark*)));
+
+        disconnect(d->m_bookmarks,
+                   SIGNAL(updated(GtBookmark*, int)),
+                   this,
+                   SLOT(bookmarkUpdated(GtBookmark*, int)));
     }
 
     d->m_docModel = docModel;
@@ -111,6 +116,11 @@ void GtTocModel::setDocModel(GtDocModel *docModel)
                 SIGNAL(removed(GtBookmark*)),
                 this,
                 SLOT(bookmarkRemoved(GtBookmark*)));
+
+        connect(d->m_bookmarks,
+                SIGNAL(updated(GtBookmark*, int)),
+                this,
+                SLOT(bookmarkUpdated(GtBookmark*, int)));
     }
 }
 
@@ -199,6 +209,7 @@ QVariant GtTocModel::data(const QModelIndex &index, int role) const
     GtBookmark *node = static_cast<GtBookmark*>(index.internalPointer());
     switch (role) {
     case Qt::DisplayRole:
+    case Qt::EditRole:
     case Qt::ToolTipRole:
         {
             QString title = node->title();
@@ -227,12 +238,34 @@ QVariant GtTocModel::data(const QModelIndex &index, int role) const
     return QVariant();
 }
 
+bool GtTocModel::setData(const QModelIndex &index,
+                         const QVariant &value, int role)
+{
+    GtBookmark *node = static_cast<GtBookmark*>(index.internalPointer());
+    switch (role) {
+    case Qt::EditRole:
+        {
+            QString title(value.toString());
+            if (tr("Untitled") == title)
+                title.clear();
+
+            emit renameBookmark(node, title);
+        }
+        break;
+
+    default:
+        break;
+    }
+
+    return false;
+}
+
 Qt::ItemFlags GtTocModel::flags(const QModelIndex &index) const
 {
     if (!index.isValid())
         return 0;
 
-    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
 }
 
 QVariant GtTocModel::headerData(int, Qt::Orientation, int) const
@@ -256,6 +289,11 @@ void GtTocModel::bookmarksChanged(GtBookmarks *bookmarks)
                    SIGNAL(removed(GtBookmark*)),
                    this,
                    SLOT(bookmarkRemoved(GtBookmark*)));
+
+        disconnect(d->m_bookmarks,
+                   SIGNAL(updated(GtBookmark*, int)),
+                   this,
+                   SLOT(bookmarkUpdated(GtBookmark*, int)));
     }
 
     d->m_bookmarks = bookmarks;
@@ -270,6 +308,11 @@ void GtTocModel::bookmarksChanged(GtBookmarks *bookmarks)
                 SIGNAL(removed(GtBookmark*)),
                 this,
                 SLOT(bookmarkRemoved(GtBookmark*)));
+
+        connect(d->m_bookmarks,
+                SIGNAL(updated(GtBookmark*, int)),
+                this,
+                SLOT(bookmarkUpdated(GtBookmark*, int)));
     }
 
     endResetModel();
@@ -283,6 +326,12 @@ void GtTocModel::bookmarkAdded(GtBookmark *)
 void GtTocModel::bookmarkRemoved(GtBookmark *)
 {
     emit layoutChanged();
+}
+
+void GtTocModel::bookmarkUpdated(GtBookmark *bookmark, int)
+{
+    QModelIndex index = indexFromBookmark(bookmark);
+    emit dataChanged(index, index);
 }
 
 void GtTocModel::docModelDestroyed(QObject *object)

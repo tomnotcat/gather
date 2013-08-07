@@ -44,6 +44,7 @@ public:
 private Q_SLOTS:
     void bookmarkAdded(GtBookmark *bookmark);
     void bookmarkRemoved(GtBookmark *bookmark);
+    void bookmarkUpdated(GtBookmark *bookmark, int flags);
     void noteAdded(GtDocNote *note);
     void noteRemoved(GtDocNote *note);
     void updateDatabase();
