@@ -337,10 +337,13 @@ bool GtDocPoint::isWordSeparator(const QChar &c)
 }
 
 #ifndef QT_NO_DEBUG_STREAM
-QDebug operator<<(QDebug dbg, const GtDocPoint &r) {
+
+QDebug operator<<(QDebug dbg, const GtDocPoint &r)
+{
     dbg.nospace() << "GtDocPoint(" << r.page() << ' ' << r.x() << ',' << r.y() << ')';
     return dbg.space();
 }
+
 #endif
 
 GT_END_NAMESPACE

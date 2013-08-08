@@ -10,6 +10,7 @@
 GT_BEGIN_NAMESPACE
 
 class GtDocNote;
+class GtDocNotesMsg;
 class GtDocNotesPrivate;
 
 class GT_BASE_EXPORT GtDocNotes : public QObject, public GtSharedObject
@@ -32,6 +33,9 @@ public:
     bool removeNote(GtDocNote *note);
     void clearAll();
 
+    void serialize(GtDocNotesMsg &msg) const;
+    bool deserialize(const GtDocNotesMsg &msg);
+
 Q_SIGNALS:
     void added(GtDocNote *note);
     void removed(GtDocNote *note);
@@ -43,6 +47,11 @@ private:
     Q_DISABLE_COPY(GtDocNotes)
     Q_DECLARE_PRIVATE(GtDocNotes)
 };
+
+#ifndef QT_NO_DATASTREAM
+GT_BASE_EXPORT QDataStream &operator<<(QDataStream &, const GtDocNotes &);
+GT_BASE_EXPORT QDataStream &operator>>(QDataStream &, GtDocNotes &);
+#endif
 
 GT_END_NAMESPACE
 

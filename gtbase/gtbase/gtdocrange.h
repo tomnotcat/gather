@@ -9,6 +9,8 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtDocRangeMsg;
+
 class GT_BASE_EXPORT GtDocRange : public GtObject
 {
 public:
@@ -19,39 +21,47 @@ public:
     };
 
 public:
-    Q_DECL_CONSTEXPR GtDocRange() : _type(UnknownRange) {}
+    Q_DECL_CONSTEXPR GtDocRange() : m_type(UnknownRange) {}
     inline GtDocRange(const GtDocPoint &begin,
                       const GtDocPoint &end,
                       RangeType type = UnknownRange);
-    inline GtDocPoint begin() const { return _begin; }
-    inline GtDocPoint end() const { return _end; }
-    inline RangeType type() const { return _type; }
+    inline GtDocPoint begin() const { return m_begin; }
+    inline GtDocPoint end() const { return m_end; }
+    inline RangeType type() const { return m_type; }
     inline bool isEmpty() const;
 
     inline void setRange(const GtDocPoint &begin, const GtDocPoint &end);
-    inline void setType(RangeType type) { _type = type; }
+    inline void setType(RangeType type) { m_type = type; }
     inline bool contains(const GtDocPoint &point) const;
     QPoint intersectedText(GtDocPage *page) const;
 
+    void serialize(GtDocRangeMsg &msg) const;
+    bool deserialize(const GtDocRangeMsg &msg);
+
 private:
-    GtDocPoint _begin;
-    GtDocPoint _end;
-    RangeType _type;
+    GtDocPoint m_begin;
+    GtDocPoint m_end;
+    RangeType m_type;
 };
 
 inline GtDocRange::GtDocRange(const GtDocPoint &begin,
                               const GtDocPoint &end,
                               GtDocRange::RangeType type)
-    : _begin(begin), _end(end), _type(type) {}
+    : m_begin(begin), m_end(end), m_type(type) {}
 
 inline bool GtDocRange::isEmpty() const
-{ return _begin.isNull() || _end.isNull() || _end <= _begin; }
+{ return m_begin.isNull() || m_end.isNull() || m_end <= m_begin; }
 
 inline void GtDocRange::setRange(const GtDocPoint &begin, const GtDocPoint &end)
-{ _begin = begin; _end = end; }
+{ m_begin = begin; m_end = end; }
 
 inline bool GtDocRange::contains(const GtDocPoint &p) const
-{ return !isEmpty() && !p.isNull() && p >= _begin && p <= _end; }
+{ return !isEmpty() && !p.isNull() && p >= m_begin && p <= m_end; }
+
+#ifndef QT_NO_DATASTREAM
+GT_BASE_EXPORT QDataStream &operator<<(QDataStream &, const GtDocRange &);
+GT_BASE_EXPORT QDataStream &operator>>(QDataStream &, GtDocRange &);
+#endif
 
 GT_END_NAMESPACE
 

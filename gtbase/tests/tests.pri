@@ -1,4 +1,5 @@
 CONFIG += debug
+INCLUDEPATH += ../../message
 INCLUDEPATH += ../../gtbase
 
 CONFIG(debug, debug|release) {
@@ -7,4 +8,4 @@ CONFIG(debug, debug|release) {
     DESTDIR = ../../../build/release
 }
 
-unix: LIBS += -L$$DESTDIR -lgtbase
+unix: LIBS += -L$$DESTDIR -lgtbase -lprotobuf

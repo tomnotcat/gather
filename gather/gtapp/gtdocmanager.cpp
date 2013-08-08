@@ -4,12 +4,13 @@
 #include "gtdocmanager.h"
 #include "gtbookmarks.h"
 #include "gtdocloader.h"
+#include "gtdocmessage.pb.h"
 #include "gtdocmeta.h"
 #include "gtdocmodel.h"
 #include "gtdocnotes.h"
 #include "gtdocument.h"
+#include "gtserialize.h"
 #include "gtuserclient.h"
-#include "gtusermessage.pb.h"
 #include <QtCore/QDebug>
 #include <QtCore/QTimer>
 #include <QtCore/QUuid>
@@ -214,17 +215,17 @@ void GtDocManagerPrivate::notesChanged(GtDocNotes *notes)
 
 bool GtDocManagerPrivate::readDocMetaFromDB(GtDocMeta *meta)
 {
-    return readFromDatabase<GtDocMeta, GtUserDocMeta>("docmeta", *meta);
+    return readFromDatabase<GtDocMeta, GtDocMetaMsg>("docmeta", *meta);
 }
 
 bool GtDocManagerPrivate::readBookmarksFromDB(GtBookmarks *bookmarks)
 {
-    return readFromDatabase<GtBookmarks, GtUserBookmarks>("bookmarks", *bookmarks);
+    return readFromDatabase<GtBookmarks, GtBookmarksMsg>("bookmarks", *bookmarks);
 }
 
 bool GtDocManagerPrivate::readDocNotesFromDB(GtDocNotes *notes)
 {
-    return readFromDatabase<GtDocNotes, GtUserDocNotes>("docnotes", *notes);
+    return readFromDatabase<GtDocNotes, GtDocNotesMsg>("docnotes", *notes);
 }
 
 bool GtDocManagerPrivate::writeDocMetaToDB(const GtDocMeta *meta)
@@ -237,17 +238,17 @@ bool GtDocManagerPrivate::writeDocMetaToDB(const GtDocMeta *meta)
     if (!m_tempDocNotes.contains(meta->notesId()))
         temp.setNotesId(meta->notesId());
 
-    return writeToDatabase<GtDocMeta, GtUserDocMeta>("docmeta", temp);
+    return writeToDatabase<GtDocMeta, GtDocMetaMsg>("docmeta", temp);
 }
 
 bool GtDocManagerPrivate::writeBookmarksToDB(const GtBookmarks *bookmarks)
 {
-    return writeToDatabase<GtBookmarks, GtUserBookmarks>("bookmarks", *bookmarks);
+    return writeToDatabase<GtBookmarks, GtBookmarksMsg>("bookmarks", *bookmarks);
 }
 
 bool GtDocManagerPrivate::writeDocNotesToDB(const GtDocNotes *notes)
 {
-    return writeToDatabase<GtDocNotes, GtUserDocNotes>("docnotes", *notes);
+    return writeToDatabase<GtDocNotes, GtDocNotesMsg>("docnotes", *notes);
 }
 
 int GtDocManagerPrivate::cleanDocMetas()
@@ -374,7 +375,7 @@ bool GtDocManagerPrivate::readFromDatabase(const QString &table, T0 &dest)
         return false;
 
     QByteArray data = query.value(0).toByteArray();
-    if (!GtUserClient::deserialize<T1, T0>(data, dest)) {
+    if (!GtSerialize::deserialize<T0, T1>(dest, data)) {
         qWarning() << "deserialize" << table << "error";
         return false;
     }
@@ -399,7 +400,7 @@ bool GtDocManagerPrivate::writeToDatabase(const QString &table, const T0 &src)
     }
 
     QByteArray data;
-    if (!GtUserClient::serialize<T0, T1>(src, data)) {
+    if (!GtSerialize::serialize<T0, T1>(src, data)) {
         qWarning() << "serialize" << table << "error";
         return false;
     }

@@ -55,6 +55,7 @@ void GtTocModelPrivate::encodeBookmarkList(const QModelIndexList &indexes,
                                            QDataStream &stream) const
 {
     stream << m_mimeDataMagic << m_mimeDataVersion;
+    stream << indexes.size();
 
     GtBookmark *bookmark;
     QModelIndexList::ConstIterator it = indexes.begin();
@@ -68,6 +69,31 @@ bool GtTocModelPrivate::decodeBookmarkList(int row, int column,
                                            const QModelIndex &parent,
                                            QDataStream &stream)
 {
+    quint16 magic;
+    quint16 version;
+    int i, count;
+
+    stream >> magic;
+    if (magic != m_mimeDataMagic) {
+        qWarning() << "invalid bookmark list magic:" << magic;
+        return false;
+    }
+
+    stream >> version;
+    if (version != m_mimeDataVersion) {
+        qWarning() << "invalid bookmark list version:" << version;
+        return false;
+    }
+
+    stream >> count;
+
+    for (i = 0; i < count; ++i) {
+        /*
+        GtBookmark *bookmark = new GtBookmark();
+        stream >> *bookmark;
+        */
+    }
+
     return false;
 }
 

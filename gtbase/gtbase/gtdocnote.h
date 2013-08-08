@@ -8,16 +8,19 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtDocNoteMsg;
+
 class GT_BASE_EXPORT GtDocNote : public GtObject
 {
 public:
     enum NoteType {
-        NullNote,
+        InvalidNote,
         Highlight,
         Underline
     };
 
 public:
+    explicit inline GtDocNote() : m_type(InvalidNote) {}
     GtDocNote(NoteType type, const GtDocRange &range);
     ~GtDocNote();
 
@@ -29,6 +32,9 @@ public:
 
     bool isValid() const;
 
+    void serialize(GtDocNoteMsg &msg) const;
+    bool deserialize(const GtDocNoteMsg &msg);
+
 private:
     NoteType m_type;
     GtDocRange m_range;
@@ -36,6 +42,11 @@ private:
 private:
     Q_DISABLE_COPY(GtDocNote)
 };
+
+#ifndef QT_NO_DATASTREAM
+GT_BASE_EXPORT QDataStream &operator<<(QDataStream &, const GtDocNote &);
+GT_BASE_EXPORT QDataStream &operator>>(QDataStream &, GtDocNote &);
+#endif
 
 GT_END_NAMESPACE
 

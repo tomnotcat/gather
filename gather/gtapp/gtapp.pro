@@ -9,6 +9,7 @@ SOURCES += gtapplication.cpp gtdocmanager.cpp gtmainwindow.cpp \
     gtmainsettings.cpp gtlogindialog.cpp
 FORMS += gtmainwindow.ui gthometabview.ui gtlogindialog.ui
 RESOURCES = gtapp.qrc
+INCLUDEPATH += $$PWD/../../gtbase/message
 INCLUDEPATH += $$PWD/../../gtbase/gtbase
 INCLUDEPATH += $$PWD/../../gtview
 INCLUDEPATH += $$PWD/../../gtsvce/message

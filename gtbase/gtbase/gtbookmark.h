@@ -10,6 +10,8 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtBookmarkMsg;
+
 class GT_BASE_EXPORT GtBookmark : public GtObject
 {
 public:
@@ -43,6 +45,9 @@ public:
     void remove(GtBookmark *bookmark);
     void clearChildren();
     inline void append(GtBookmark *bookmark) { insert(0, bookmark); }
+
+    void serialize(GtBookmarkMsg &msg) const;
+    bool deserialize(const GtBookmarkMsg &msg);
 
 private:
     QString m_title;

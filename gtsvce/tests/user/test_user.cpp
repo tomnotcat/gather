@@ -7,7 +7,6 @@
 #include "gtdocnote.h"
 #include "gtdocnotes.h"
 #include "gtuserclient.h"
-#include "gtusermessage.pb.h"
 #include "gtuserserver.h"
 #include <QtNetwork/QHostAddress>
 #include <QtTest/QtTest>
@@ -23,7 +22,6 @@ private Q_SLOTS:
     void onLogout(int r);
 
 private Q_SLOTS:
-    void testConvert();
     void testLogin();
     void testLogout();
     void cleanupTestCase();
@@ -58,121 +56,6 @@ void test_user::onLogout(int r)
     logoutSender = sender();
     logoutReason = r;
     exit();
-}
-
-void test_user::testConvert()
-{
-    // document meta
-    GtDocMeta dm("meta0");
-    GtUserDocMeta udm;
-    dm.setBookmarksId("bookmarks0");
-    dm.setNotesId("notes0");
-
-    QVERIFY(GtUserClient::convert(dm, udm));
-    QVERIFY(udm.id() == "meta0");
-    QVERIFY(udm.bookmarks_id() == "bookmarks0");
-    QVERIFY(udm.notes_id() == "notes0");
-    dm.setBookmarksId("x");
-    dm.setNotesId("y");
-    QVERIFY(dm.bookmarksId() == "x");
-    QVERIFY(dm.notesId() == "y");
-    QVERIFY(GtUserClient::convert(udm, dm));
-    QVERIFY(dm.id() == "meta0");
-    QVERIFY(dm.bookmarksId() == "bookmarks0");
-    QVERIFY(dm.notesId() == "notes0");
-
-    // bookmarks
-    GtBookmarks bm("id0");
-    GtUserBookmarks ubm;
-
-    GtBookmark *b = bm.root();
-    b->setTitle("root0");
-    b->append(new GtBookmark("sub0", GtLinkDest(10, QPointF(5, 6), 2)));
-    b->append(new GtBookmark("sub1", GtLinkDest()));
-
-    QVERIFY(ubm.root().children_size() == 0);
-    QVERIFY(GtUserClient::convert(bm, ubm));
-    QVERIFY(ubm.id() == "id0");
-    QVERIFY(ubm.root().title() == "root0");
-    QVERIFY(ubm.root().children_size() == 2);
-    QVERIFY(ubm.root().children(0).title() == "sub0");
-    QVERIFY(ubm.root().children(0).dest().type() == GtLinkDest::ScrollTo);
-    QVERIFY(ubm.root().children(0).dest().x() == 5);
-    QVERIFY(ubm.root().children(0).dest().y() == 6);
-    QVERIFY(ubm.root().children(0).dest().zoom() == 2);
-    QVERIFY(!ubm.root().children(0).dest().has_uri());
-    QVERIFY(ubm.root().children(1).title() == "sub1");
-    QVERIFY(ubm.root().children(1).dest().type() == GtLinkDest::LinkNone);
-    QVERIFY(!ubm.root().children(1).dest().has_x());
-    QVERIFY(!ubm.root().children(1).dest().has_y());
-    QVERIFY(!ubm.root().children(1).dest().has_zoom());
-    QVERIFY(!ubm.root().children(1).dest().has_uri());
-
-    QVERIFY(b->title() == "root0");
-    QVERIFY(b->children().size() == 2);
-    b->setTitle("");
-    b->clearChildren();
-    QVERIFY(b->title() == "");
-    QVERIFY(b->children().size() == 0);
-
-    QVERIFY(GtUserClient::convert(ubm, bm));
-    QVERIFY(b->title() == "root0");
-    QVERIFY(b->children().size() == 2);
-    QVERIFY(b->children()[0]->title() == "sub0");
-    QVERIFY(b->children()[0]->dest().type() == GtLinkDest::ScrollTo);
-    QVERIFY(b->children()[0]->dest().point() == QPoint(5, 6));
-    QVERIFY(b->children()[0]->dest().zoom() == 2);
-    QVERIFY(b->children()[1]->title() == "sub1");
-    QVERIFY(b->children()[1]->dest().type() == GtLinkDest::LinkNone);
-
-    // document notes
-    GtDocNotes nt("id1");
-    GtUserDocNotes unt;
-
-    GtDocRange range(GtDocPoint(1, QPoint(20, 30)),
-                     GtDocPoint(2, QPoint(30, 40)),
-                     GtDocRange::TextRange);
-    nt.addNote(new GtDocNote(GtDocNote::Underline, range));
-
-    range = GtDocRange(GtDocPoint(3, QPoint(40, 50)),
-                       GtDocPoint(4, QPoint(50, 60)),
-                       GtDocRange::GeomRange);
-    nt.addNote(new GtDocNote(GtDocNote::Highlight, range));
-
-    QVERIFY(GtUserClient::convert(nt, unt));
-    QVERIFY(unt.id() == "id1");
-    QVERIFY(unt.notes_size() == 2);
-    QVERIFY(unt.notes(0).type() == GtDocNote::Underline);
-    QVERIFY(unt.notes(0).range().type() == GtDocRange::TextRange);
-    QVERIFY(unt.notes(0).range().begin_page() == 1);
-    QVERIFY(unt.notes(0).range().begin_x() == 20);
-    QVERIFY(unt.notes(0).range().begin_y() == 30);
-    QVERIFY(unt.notes(0).range().end_page() == 2);
-    QVERIFY(unt.notes(0).range().end_x() == 30);
-    QVERIFY(unt.notes(0).range().end_y() == 40);
-    QVERIFY(unt.notes(1).type() == GtDocNote::Highlight);
-    QVERIFY(unt.notes(1).range().type() == GtDocRange::GeomRange);
-    QVERIFY(unt.notes(1).range().begin_page() == 3);
-    QVERIFY(unt.notes(1).range().begin_x() == 40);
-    QVERIFY(unt.notes(1).range().begin_y() == 50);
-    QVERIFY(unt.notes(1).range().end_page() == 4);
-    QVERIFY(unt.notes(1).range().end_x() == 50);
-    QVERIFY(unt.notes(1).range().end_y() == 60);
-
-    nt.clearAll();
-    QVERIFY(nt.allNotes().size() == 0);
-    QVERIFY(nt.pageCount() == 0);
-    QVERIFY(GtUserClient::convert(unt, nt));
-    QVERIFY(nt.allNotes().size() == 2);
-    QVERIFY(nt.pageCount() == 5);
-    QVERIFY(nt.allNotes()[0]->type() == GtDocNote::Underline);
-    QVERIFY(nt.allNotes()[0]->range().type() == GtDocRange::TextRange);
-    QVERIFY(nt.allNotes()[0]->range().begin() == GtDocPoint(1, QPoint(20, 30)));
-    QVERIFY(nt.allNotes()[0]->range().end() == GtDocPoint(2, QPoint(30, 40)));
-    QVERIFY(nt.allNotes()[1]->type() == GtDocNote::Highlight);
-    QVERIFY(nt.allNotes()[1]->range().type() == GtDocRange::GeomRange);
-    QVERIFY(nt.allNotes()[1]->range().begin() == GtDocPoint(3, QPoint(40, 50)));
-    QVERIFY(nt.allNotes()[1]->range().end() == GtDocPoint(4, QPoint(50, 60)));
 }
 
 void test_user::testLogin()

@@ -10,6 +10,7 @@
 GT_BEGIN_NAMESPACE
 
 class GtBookmark;
+class GtBookmarksMsg;
 class GtBookmarksPrivate;
 
 class GT_BASE_EXPORT GtBookmarks : public QObject, public GtSharedObject
@@ -27,6 +28,9 @@ public:
     const GtBookmark* root() const;
     GtBookmark* root();
 
+    void serialize(GtBookmarksMsg &msg) const;
+    bool deserialize(const GtBookmarksMsg &msg);
+
 Q_SIGNALS:
     void added(GtBookmark *bookmark);
     void removed(GtBookmark *bookmark);
@@ -39,6 +43,11 @@ private:
     Q_DISABLE_COPY(GtBookmarks)
     Q_DECLARE_PRIVATE(GtBookmarks)
 };
+
+#ifndef QT_NO_DATASTREAM
+GT_BASE_EXPORT QDataStream &operator<<(QDataStream &, const GtBookmarks &);
+GT_BASE_EXPORT QDataStream &operator>>(QDataStream &, GtBookmarks &);
+#endif
 
 GT_END_NAMESPACE
 

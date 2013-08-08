@@ -2,6 +2,8 @@
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
 #include "gtbookmark.h"
+#include "gtdocmessage.pb.h"
+#include "gtserialize.h"
 #include <QtCore/QDebug>
 
 GT_BEGIN_NAMESPACE
@@ -82,16 +84,47 @@ void GtBookmark::clearChildren()
     m_children.clear();
 }
 
+void GtBookmark::serialize(GtBookmarkMsg &msg) const
+{
+    msg.set_title(m_title.toUtf8());
+    m_dest.serialize(*msg.mutable_dest());
+
+    QList<GtBookmark*>::const_iterator it;
+    for (it = m_children.begin(); it != m_children.end(); ++it)
+        (*it)->serialize(*msg.add_children());
+}
+
+bool GtBookmark::deserialize(const GtBookmarkMsg &msg)
+{
+    setTitle(msg.title().c_str());
+    m_dest.deserialize(msg.dest());
+
+    int count = msg.children_size();
+    for (int i = 0; i < count; ++i) {
+        GtBookmark *p = new GtBookmark();
+
+        if (p->deserialize(msg.children(i))) {
+            append(p);
+        }
+        else {
+            delete p;
+            return false;
+        }
+    }
+
+    return true;
+}
+
 #ifndef QT_NO_DATASTREAM
 
 QDataStream &operator<<(QDataStream &s, const GtBookmark &b)
 {
-    return s;
+    return GtSerialize::serialize<GtBookmark, GtBookmarkMsg>(s, b);
 }
 
 QDataStream &operator>>(QDataStream &s, GtBookmark &b)
 {
-    return s;
+    return GtSerialize::deserialize<GtBookmark, GtBookmarkMsg>(s, b);
 }
 
 #endif // QT_NO_DATASTREAM

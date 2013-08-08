@@ -9,6 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
+class GtDocMetaMsg;
 class GtDocMetaPrivate;
 
 class GT_BASE_EXPORT GtDocMeta : public QObject, public GtSharedObject
@@ -29,6 +30,9 @@ public:
     QString notesId() const;
     void setNotesId(const QString &id);
 
+    void serialize(GtDocMetaMsg &msg) const;
+    bool deserialize(const GtDocMetaMsg &msg);
+
 Q_SIGNALS:
     void bookmarksIdChanged(const QString &id);
     void notesIdChanged(const QString &id);
@@ -40,6 +44,11 @@ private:
     Q_DISABLE_COPY(GtDocMeta)
     Q_DECLARE_PRIVATE(GtDocMeta)
 };
+
+#ifndef QT_NO_DATASTREAM
+GT_BASE_EXPORT QDataStream &operator<<(QDataStream &, const GtDocMeta &);
+GT_BASE_EXPORT QDataStream &operator>>(QDataStream &, GtDocMeta &);
+#endif
 
 GT_END_NAMESPACE
 
