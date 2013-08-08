@@ -11,6 +11,7 @@ FORMS += gtmainwindow.ui gthometabview.ui gtlogindialog.ui
 RESOURCES = gtapp.qrc
 INCLUDEPATH += $$PWD/../../gtbase/gtbase
 INCLUDEPATH += $$PWD/../../gtview
+INCLUDEPATH += $$PWD/../../gtsvce/message
 INCLUDEPATH += $$PWD/../../gtsvce/gtsvce
 
 CONFIG(debug, debug|release) {

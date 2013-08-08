@@ -1,2 +1,2 @@
 TEMPLATE = subdirs
-SUBDIRS = gtbase tests
+SUBDIRS = message gtbase tests

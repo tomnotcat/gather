@@ -1,12 +1,9 @@
-include(protobuf.pri)
-
 TEMPLATE = lib
 TARGET = gtsvce
 QT -= gui
 QT += network
 CONFIG += qt debug client server
-INCLUDEPATH += ../../gtbase/gtbase
-PROTOS += gtusermessage.proto gtftmessage.proto
+INCLUDEPATH += ../message ../../gtbase/gtbase
 HEADERS += gtrecvbuffer.h gtsvcutil.h gtfttemp.h
 SOURCES += gtrecvbuffer.cpp gtsvcutil.cpp gtfttemp.cpp
 
@@ -28,4 +25,4 @@ CONFIG(debug, debug|release) {
     DESTDIR = ../../build/release
 }
 
-unix: LIBS += -L$$DESTDIR -lgtbase -lprotobuf
+unix: LIBS += -L$$DESTDIR -lgtbase -lgtsvce-message -lprotobuf

@@ -1,6 +1,7 @@
 TEMPLATE = lib
 QT -= gui
 CONFIG += qt debug
+INCLUDEPATH += ../message
 HEADERS += gtcommon.h gtobject.h gtabstractdocument.h gtdocument.h \
     gtdocument_p.h gtdocmeta.h gtdocpage.h gtdocpage_p.h gtdocmodel.h \
     gtdocloader.h gtdocpoint.h gtdocrange.h gtlinkdest.h \

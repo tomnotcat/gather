@@ -82,4 +82,18 @@ void GtBookmark::clearChildren()
     m_children.clear();
 }
 
+#ifndef QT_NO_DATASTREAM
+
+QDataStream &operator<<(QDataStream &s, const GtBookmark &b)
+{
+    return s;
+}
+
+QDataStream &operator>>(QDataStream &s, GtBookmark &b)
+{
+    return s;
+}
+
+#endif // QT_NO_DATASTREAM
+
 GT_END_NAMESPACE

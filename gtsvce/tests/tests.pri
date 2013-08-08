@@ -1,5 +1,6 @@
 CONFIG += debug
 QT += network
+INCLUDEPATH += ../../message
 INCLUDEPATH += ../../gtsvce
 INCLUDEPATH += ../../../gtbase/gtbase
 

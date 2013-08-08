@@ -54,6 +54,11 @@ private:
     Q_DISABLE_COPY(GtBookmark)
 };
 
+#ifndef QT_NO_DATASTREAM
+GT_BASE_EXPORT QDataStream &operator<<(QDataStream &, const GtBookmark &);
+GT_BASE_EXPORT QDataStream &operator>>(QDataStream &, GtBookmark &);
+#endif
+
 GT_END_NAMESPACE
 
 #endif  /* __GT_BOOKMARK_H__ */

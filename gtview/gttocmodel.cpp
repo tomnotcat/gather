@@ -33,6 +33,8 @@ protected:
     GtDocModel *m_docModel;
     GtBookmarks *m_bookmarks;
     const QString m_mimeBookmarkList;
+    const quint16 m_mimeDataMagic;
+    const quint16 m_mimeDataVersion;
 };
 
 GtTocModelPrivate::GtTocModelPrivate(GtTocModel *q)
@@ -40,6 +42,8 @@ GtTocModelPrivate::GtTocModelPrivate(GtTocModel *q)
     , m_docModel(0)
     , m_bookmarks(0)
     , m_mimeBookmarkList(QLatin1String("application/x-gtbookmarklist"))
+    , m_mimeDataMagic(0xF7B4)
+    , m_mimeDataVersion(1)
 {
 }
 
@@ -50,11 +54,14 @@ GtTocModelPrivate::~GtTocModelPrivate()
 void GtTocModelPrivate::encodeBookmarkList(const QModelIndexList &indexes,
                                            QDataStream &stream) const
 {
-    /*
+    stream << m_mimeDataMagic << m_mimeDataVersion;
+
+    GtBookmark *bookmark;
     QModelIndexList::ConstIterator it = indexes.begin();
-    for (; it != indexes.end(); ++it)
-        stream << (*it).row() << (*it).column() << itemData(*it);
-    */
+    for (; it != indexes.end(); ++it) {
+        bookmark = static_cast<GtBookmark*>((*it).internalPointer());
+        stream << *bookmark;
+    }
 }
 
 bool GtTocModelPrivate::decodeBookmarkList(int row, int column,

@@ -1,0 +1,50 @@
+package Gather;
+
+message GtDocMetaMsg {
+    optional string id = 1;
+    optional uint32 usn = 2;
+    optional string bookmarks_id = 3;
+    optional string notes_id = 4;
+}
+
+message GtLinkDestMsg {
+    optional int32 type = 1;
+    optional int32 page = 2;
+    optional float x = 3;
+    optional float y = 4;
+    optional float zoom = 5;
+    optional string uri = 6;
+}
+
+message GtBookmarkMsg {
+    optional string title = 1;
+    optional GtLinkDestMsg dest = 2;
+    repeated GtBookmarkMsg children = 3;
+}
+
+message GtBookmarksMsg {
+    optional string id = 1;
+    optional uint32 usn = 2;
+    optional GtBookmarkMsg root = 3;
+}
+
+message GtDocRangeMsg {
+    optional int32 type = 1;
+    optional int32 begin_page = 2;
+    optional float begin_x = 3;
+    optional float begin_y = 4;
+    optional int32 end_page = 5;
+    optional float end_x = 6;
+    optional float end_y = 7;
+}
+
+message GtDocNoteMsg {
+    optional int32 type = 1;
+    optional GtDocRangeMsg range = 2;
+}
+
+message GtDocNotesMsg {
+    optional string id = 1;
+    optional uint32 usn = 2;
+    repeated GtDocNoteMsg notes = 3;
+}
