@@ -7,6 +7,8 @@
 #include "gtobject.h"
 #include <QtCore/QAbstractItemModel>
 
+class QUndoStack;
+
 GT_BEGIN_NAMESPACE
 
 class GtBookmark;
@@ -25,6 +27,9 @@ public:
 public:
     GtDocModel* docModel() const;
     void setDocModel(GtDocModel *docModel);
+
+    QUndoStack* undoStack() const;
+    void setUndoStack(QUndoStack *undoStack);
 
     GtBookmark* bookmarkFromIndex(const QModelIndex &index) const;
     QModelIndex indexFromBookmark(GtBookmark* bookmark) const;
@@ -55,6 +60,7 @@ private Q_SLOTS:
     void bookmarkRemoved(GtBookmark *bookmark);
     void bookmarkUpdated(GtBookmark *bookmark, int flags);
     void docModelDestroyed(QObject *object);
+    void undoStackDestroyed(QObject *object);
 
 private:
     QScopedPointer<GtTocModelPrivate> d_ptr;

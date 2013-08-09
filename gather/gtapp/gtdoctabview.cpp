@@ -143,6 +143,7 @@ void GtDocTabView::setUndoStack(QUndoStack *undoStack)
 {
     m_undoStack = undoStack;
     m_docView->setUndoStack(undoStack);
+    m_tocModel->setUndoStack(undoStack);
 
     QAction *undoAction = m_undoStack->createUndoAction(this);
     undoAction->setShortcuts(QKeySequence::Undo);
@@ -289,8 +290,6 @@ void GtDocTabView::onDelete()
 
         GtBookmark *bookmark = m_tocModel->bookmarkFromIndex(index);
         QUndoCommand *command = new GtDelBookmarkCommand(m_docModel, bookmark);
-
-        command->setText(tr("\"Delete Bookmark\""));
         m_undoStack->push(command);
 
         if (next.isValid())
@@ -409,7 +408,6 @@ void GtDocTabView::addBookmark()
         current ? current->next() : 0,
         bookmark);
 
-    command->setText(tr("\"Add Bookmark\""));
     m_undoStack->push(command);
 
     // edit the added bookmark
@@ -460,7 +458,6 @@ void GtDocTabView::renameBookmark(GtBookmark *bookmark, const QString &name)
 
     QUndoCommand *command = new GtRenameBookmarkCommand(m_docModel, bookmark, name);
 
-    command->setText(tr("\"Rename Bookmark\""));
     m_undoStack->push(command);
 }
 

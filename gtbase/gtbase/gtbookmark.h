@@ -37,7 +37,7 @@ public:
     inline GtBookmark* parent() const { return m_parent; }
     inline int index() { return m_parent ? m_parent->m_children.indexOf(this) : 0; }
     inline QList<GtBookmark*> children() const { return m_children; }
-
+    inline GtBookmark *children(int i) const { return m_children[i]; }
     GtBookmark* prev();
     GtBookmark* next();
 

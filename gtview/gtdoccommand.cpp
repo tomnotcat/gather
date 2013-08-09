@@ -37,6 +37,7 @@ GtAddNoteCommand::GtAddNoteCommand(GtDocModel *model, GtDocNote *note)
     : GtDocCommand(model)
     , m_note(note)
 {
+    setText(QObject::tr("\"Add Bookmark\""));
 }
 
 GtAddNoteCommand::~GtAddNoteCommand()
@@ -103,6 +104,7 @@ GtRenameBookmarkCommand::GtRenameBookmarkCommand(GtDocModel *model,
     , m_bookmark(bookmark)
     , m_name(name)
 {
+    setText(QObject::tr("\"Rename Bookmark\""));
 }
 
 GtRenameBookmarkCommand::~GtRenameBookmarkCommand()
@@ -137,6 +139,8 @@ GtDelBookmarkCommand::GtDelBookmarkCommand(GtDocModel *model,
     : GtDocCommand(model)
     , m_bookmark(bookmark)
 {
+    setText(QObject::tr("\"Delete Bookmark\""));
+
     m_parent = bookmark->parent();
     m_before = bookmark->next();
 }
