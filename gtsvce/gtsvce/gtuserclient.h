@@ -17,17 +17,18 @@ class GT_SVCE_EXPORT GtUserClient : public QObject, public GtObject
     Q_OBJECT
 
 public:
-    enum LoginResult {
-        LoginSuccess,
-        InvalidUser,
-        InvalidPasswd,
-        LoginUnknown = -1
+    enum ErrorCode {
+        ErrorNone,
+        ErrorDisconnected,
+        ErrorInvalidState,
+        ErrorInvalidUser,
+        ErrorInvalidPasswd
     };
 
-    enum LogoutReason {
-        LogoutNormal,
-        LogoutRelogin,
-        LogoutUnknown = -1
+    enum StateCode {
+        UnconnectedState,
+        ConnectedState,
+        LoggedInState
     };
 
 public:
@@ -35,13 +36,14 @@ public:
     ~GtUserClient();
 
 public:
-    void login(const QHostAddress &address, quint16 port,
-               const QString &user, const QString &passwd);
+    bool connect(const QHostAddress &address, quint16 port);
+    void disconnect();
+
+    bool login(const QString &user, const QString &passwd);
     void logout();
 
-Q_SIGNALS:
-    void login(int result);
-    void logout(int reason);
+    ErrorCode error() const;
+    StateCode state() const;
 
 private Q_SLOTS:
     void handleRead();

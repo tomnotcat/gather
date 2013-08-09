@@ -11,8 +11,10 @@
 
 GT_BEGIN_NAMESPACE
 
-GtDocCommand::GtDocCommand(GtDocModel *model)
-    : m_model(model)
+GtDocCommand::GtDocCommand(GtDocModel *model,
+                           QUndoCommand *parent)
+    : QUndoCommand(parent)
+    , m_model(model)
     , m_done(false)
 {
 }
@@ -33,8 +35,10 @@ void GtDocCommand::redo()
     QUndoCommand::redo();
 }
 
-GtAddNoteCommand::GtAddNoteCommand(GtDocModel *model, GtDocNote *note)
-    : GtDocCommand(model)
+GtAddNoteCommand::GtAddNoteCommand(GtDocModel *model,
+                                   GtDocNote *note,
+                                   QUndoCommand *parent)
+    : GtDocCommand(model, parent)
     , m_note(note)
 {
     setText(QObject::tr("\"Add Bookmark\""));
@@ -61,8 +65,9 @@ void GtAddNoteCommand::redo()
 GtAddBookmarkCommand::GtAddBookmarkCommand(GtDocModel *model,
                                            GtBookmark *parent,
                                            GtBookmark *before,
-                                           GtBookmark *bookmark)
-    : GtDocCommand(model)
+                                           GtBookmark *bookmark,
+                                           QUndoCommand *parentc)
+    : GtDocCommand(model, parentc)
     , m_parent(parent)
     , m_before(before)
     , m_bookmark(bookmark)
@@ -99,8 +104,9 @@ void GtAddBookmarkCommand::redo()
 
 GtRenameBookmarkCommand::GtRenameBookmarkCommand(GtDocModel *model,
                                                  GtBookmark *bookmark,
-                                                 const QString &name)
-    : GtDocCommand(model)
+                                                 const QString &name,
+                                                 QUndoCommand *parent)
+    : GtDocCommand(model, parent)
     , m_bookmark(bookmark)
     , m_name(name)
 {
@@ -135,8 +141,9 @@ void GtRenameBookmarkCommand::rename()
 }
 
 GtDelBookmarkCommand::GtDelBookmarkCommand(GtDocModel *model,
-                                           GtBookmark *bookmark)
-    : GtDocCommand(model)
+                                           GtBookmark *bookmark,
+                                           QUndoCommand *parent)
+    : GtDocCommand(model, parent)
     , m_bookmark(bookmark)
 {
     setText(QObject::tr("\"Delete Bookmark\""));

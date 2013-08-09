@@ -7,6 +7,7 @@
 #include "gtobject.h"
 #include <QtCore/QAbstractItemModel>
 
+class QUndoCommand;
 class QUndoStack;
 
 GT_BEGIN_NAMESPACE
@@ -31,6 +32,9 @@ public:
     QUndoStack* undoStack() const;
     void setUndoStack(QUndoStack *undoStack);
 
+    void beginDrag(const QModelIndex &index);
+    GtBookmark* endDrag();
+
     GtBookmark* bookmarkFromIndex(const QModelIndex &index) const;
     QModelIndex indexFromBookmark(GtBookmark* bookmark) const;
 
@@ -50,9 +54,6 @@ public:
                       int row, int column, const QModelIndex &parent);
     QMimeData *mimeData(const QModelIndexList &indexes) const;
     QStringList mimeTypes() const;
-
-Q_SIGNALS:
-    void renameBookmark(GtBookmark *bookmark, const QString &name);
 
 private Q_SLOTS:
     void bookmarksChanged(GtBookmarks *bookmarks);

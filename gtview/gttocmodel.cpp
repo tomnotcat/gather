@@ -32,7 +32,10 @@ protected:
     GtTocModel *q_ptr;
     GtDocModel *m_docModel;
     QUndoStack *m_undoStack;
+    QUndoCommand *m_dragCommand;
+    QModelIndex m_dragIndex;
     GtBookmarks *m_bookmarks;
+    GtBookmark *m_droppedBookmark;
     const QString m_mimeBookmarkList;
     const quint16 m_mimeDataMagic;
     const quint16 m_mimeDataVersion;
@@ -42,7 +45,9 @@ GtTocModelPrivate::GtTocModelPrivate(GtTocModel *q)
     : q_ptr(q)
     , m_docModel(0)
     , m_undoStack(0)
+    , m_dragCommand(0)
     , m_bookmarks(0)
+    , m_droppedBookmark(0)
     , m_mimeBookmarkList(QLatin1String("application/x-gtbookmarklist"))
     , m_mimeDataMagic(0xF7B4)
     , m_mimeDataVersion(1)
@@ -217,6 +222,33 @@ void GtTocModel::setUndoStack(QUndoStack *undoStack)
     }
 }
 
+void GtTocModel::beginDrag(const QModelIndex &index)
+{
+    Q_D(GtTocModel);
+
+    d->m_dragCommand = new QUndoCommand();
+    d->m_dragIndex = index;
+}
+
+GtBookmark* GtTocModel::endDrag()
+{
+    Q_D(GtTocModel);
+
+    if (d->m_dragCommand->childCount() == 0) {
+        delete d->m_dragCommand;
+        d->m_dragCommand = 0;
+        return 0;
+    }
+
+    d->m_dragCommand->setText(tr("\"Move Bookmark\""));
+    d->m_undoStack->push(d->m_dragCommand);
+    d->m_dragCommand = 0;
+
+    GtBookmark *dropped = d->m_droppedBookmark;
+    d->m_droppedBookmark = 0;
+    return dropped;
+}
+
 GtBookmark* GtTocModel::bookmarkFromIndex(const QModelIndex &index) const
 {
     if (!index.isValid())
@@ -334,15 +366,24 @@ QVariant GtTocModel::data(const QModelIndex &index, int role) const
 bool GtTocModel::setData(const QModelIndex &index,
                          const QVariant &value, int role)
 {
+    Q_D(GtTocModel);
+
     if (role != Qt::EditRole)
         return false;
 
+    if (data(index, role) == value)
+        return true;
+
     GtBookmark *node = static_cast<GtBookmark*>(index.internalPointer());
     QString title(value.toString());
-    if (tr("Untitled") == title)
-        title.clear();
 
-    emit renameBookmark(node, title);
+    QUndoCommand *command = new GtRenameBookmarkCommand(d->m_docModel,
+                                                        node,
+                                                        title,
+                                                        d->m_dragCommand);
+    if (!d->m_dragCommand)
+        d->m_undoStack->push(command);
+
     return true;
 }
 
@@ -369,16 +410,16 @@ bool GtTocModel::removeRows(int row, int count, const QModelIndex &parent)
 {
     Q_D(GtTocModel);
 
-    beginRemoveRows(parent, row, row + count - 1);
-
     GtBookmark *pb = bookmarkFromIndex(parent);
     for (int i = 0; i < count; ++i) {
         GtBookmark *b = pb->children(row + i);
-        QUndoCommand *c = new GtDelBookmarkCommand(d->m_docModel, b);
-        d->m_undoStack->push(c);
+        QUndoCommand *c = new GtDelBookmarkCommand(d->m_docModel,
+                                                   b,
+                                                   d->m_dragCommand);
+        if (!d->m_dragCommand)
+            d->m_undoStack->push(c);
     }
 
-    endRemoveRows();
     return true;
 }
 
@@ -392,6 +433,17 @@ bool GtTocModel::dropMimeData(const QMimeData *data, Qt::DropAction action,
 
     if (!parent.isValid())
         return false;
+
+    if (d->m_dragCommand) {
+        int dragRow = d->m_dragIndex.row();
+
+        if ((dragRow == row  || dragRow + 1 == row) &&
+            d->m_dragIndex.parent() == parent)
+        {
+            // drag and drop to the same position
+            return false;
+        }
+    }
 
     if (row > rowCount(parent))
         row = rowCount(parent);
@@ -414,18 +466,17 @@ bool GtTocModel::dropMimeData(const QMimeData *data, Qt::DropAction action,
         if (row < pb->children().size())
             nb = pb->children(row);
 
-        beginInsertRows(parent, row, row + list.size() - 1);
-
         QList<GtBookmark*>::iterator it;
         for (it = list.begin(); it != list.end(); ++it) {
             QUndoCommand *c = new GtAddBookmarkCommand(
-                d->m_docModel, pb, nb, *it);
+                d->m_docModel, pb, nb, *it, d->m_dragCommand);
 
-            d->m_undoStack->push(c);
+            if (!d->m_dragCommand)
+                d->m_undoStack->push(c);
+
             nb = *it;
         }
 
-        endInsertRows();
         return true;
     }
 
@@ -499,8 +550,15 @@ void GtTocModel::bookmarksChanged(GtBookmarks *bookmarks)
     endResetModel();
 }
 
-void GtTocModel::bookmarkAdded(GtBookmark *)
+void GtTocModel::bookmarkAdded(GtBookmark *bookmark)
 {
+    Q_D(GtTocModel);
+
+    if (d->m_dragCommand) {
+        if (!d->m_droppedBookmark)
+            d->m_droppedBookmark = bookmark;
+    }
+
     emit layoutChanged();
 }
 

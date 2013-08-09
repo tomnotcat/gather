@@ -20,58 +20,41 @@ public:
     ~GtUserClientPrivate();
 
 public:
-    void sendLogin() const;
-
-public:
     void handleMessage(const char *data, int size);
     void handleLogin(GtUserLoginResponse &msg);
 
 protected:
     GtUserClient *q_ptr;
-    QTcpSocket *socket;
-    GtRecvBuffer buffer;
-    QString user;
-    QString passwd;
-    bool connected;
-    bool logined;
+    QTcpSocket m_socket;
+    GtRecvBuffer m_buffer;
+    GtUserClient::ErrorCode m_error;
+    GtUserClient::StateCode m_state;
 };
 
 GtUserClientPrivate::GtUserClientPrivate(GtUserClient *q)
     : q_ptr(q)
-    , connected(false)
-    , logined(false)
+    , m_error(GtUserClient::ErrorNone)
+    , m_state(GtUserClient::UnconnectedState)
 {
-    socket = new QTcpSocket(q);
-    q->connect(socket, SIGNAL(readyRead()), q, SLOT(handleRead()));
-    q->connect(socket, SIGNAL(error(QAbstractSocket::SocketError)),
+    QObject::connect(&m_socket, SIGNAL(readyRead()),
+                     q, SLOT(handleRead()));
+
+    QObject::connect(&m_socket, SIGNAL(error(QAbstractSocket::SocketError)),
                q, SLOT(handleError(QAbstractSocket::SocketError)));
-    q->connect(socket, SIGNAL(connected()), q, SLOT(handleConnected()));
-    q->connect(socket, SIGNAL(disconnected()), q, SLOT(handleDisconnected()));
+
+    QObject::connect(&m_socket, SIGNAL(connected()),
+                     q, SLOT(handleConnected()));
+
+    QObject::connect(&m_socket, SIGNAL(disconnected()),
+                     q, SLOT(handleDisconnected()));
 }
 
 GtUserClientPrivate::~GtUserClientPrivate()
 {
-    if (connected) {
-        socket->disconnectFromHost();
-        if (socket->state() != QAbstractSocket::UnconnectedState)
-            socket->waitForDisconnected();
-    }
-}
-
-void GtUserClientPrivate::sendLogin() const
-{
-    GtUserLoginRequest msg;
-
-    msg.set_user(user.toUtf8().constData());
-    msg.set_passwd(passwd.toUtf8().constData());
-
-    GtSvcUtil::sendMessage(socket, GT_USER_LOGIN_REQUEST, &msg);
 }
 
 void GtUserClientPrivate::handleMessage(const char *data, int size)
 {
-    Q_Q(GtUserClient);
-
     if (size < (int)sizeof(quint16)) {
         qWarning() << "Invalid user message size:" << size;
         return;
@@ -98,7 +81,7 @@ void GtUserClientPrivate::handleMessage(const char *data, int size)
         {
             GtUserLogoutResponse msg;
             if (msg.ParseFromArray(data, size)) {
-                emit q->logout(msg.reason());
+                Q_ASSERT(0);
             }
             else {
                 qWarning() << "Invalid user logout response";
@@ -112,15 +95,6 @@ void GtUserClientPrivate::handleMessage(const char *data, int size)
     }
 }
 
-void GtUserClientPrivate::handleLogin(GtUserLoginResponse &msg)
-{
-    Q_Q(GtUserClient);
-
-    logined = (GtUserClient::LoginSuccess == msg.result());
-
-    emit q->login(msg.result());
-}
-
 GtUserClient::GtUserClient(QObject *parent)
     : QObject(parent)
     , d_ptr(new GtUserClientPrivate(this))
@@ -131,44 +105,73 @@ GtUserClient::~GtUserClient()
 {
 }
 
-void GtUserClient::login(const QHostAddress &address, quint16 port,
-                         const QString &user, const QString &passwd)
+bool GtUserClient::connect(const QHostAddress &address, quint16 port)
 {
     Q_D(GtUserClient);
 
-    d->user = user;
-    d->passwd = passwd;
+    if (d->m_state != UnconnectedState) {
+        d->m_error = ErrorInvalidState;
+        return false;
+    }
 
-    if (d->connected) {
-        d->sendLogin();
+    d->m_socket.connectToHost(address, port);
+    return d->m_socket.waitForConnected();
+}
+
+void GtUserClient::disconnect()
+{
+    Q_D(GtUserClient);
+
+    if (d->m_state == UnconnectedState)
+        return;
+
+    d->m_socket.disconnectFromHost();
+    if (d->m_socket.state() != QAbstractSocket::UnconnectedState)
+        d->m_socket.waitForDisconnected();
+}
+
+bool GtUserClient::login(const QString &user, const QString &passwd)
+{
+    Q_D(GtUserClient);
+
+    if (d->m_state != ConnectedState) {
+        d->m_error = ErrorInvalidState;
+        return false;
     }
-    else {
-        d->socket->connectToHost(address, port);
-    }
+
+    GtUserLoginRequest msg;
+
+    msg.set_user(user.toUtf8());
+    msg.set_passwd(passwd.toUtf8());
+
+    if (!GtSvcUtil::sendMessage(&d->m_socket, GT_USER_LOGIN_REQUEST, &msg))
+        return false;
+
+    return true;
 }
 
 void GtUserClient::logout()
 {
     Q_D(GtUserClient);
 
-    if (d->connected) {
-        d->socket->disconnectFromHost();
-        d->connected = false;
-        d->logined = false;
-    }
+    if (d->m_state != LoggedInState)
+        return;
 
-    emit logout(LogoutNormal);
+    GtUserLogoutRequest msg;
+    GtSvcUtil::sendMessage(&d->m_socket, GT_USER_LOGOUT_REQUEST, &msg);
+
+    d->m_state = ConnectedState;
 }
 
 void GtUserClient::handleRead()
 {
     Q_D(GtUserClient);
 
-    int result = d->buffer.read(d->socket);
+    int result = d->m_buffer.read(&d->m_socket);
     while (GtRecvBuffer::ReadMessage == result) {
-        d->handleMessage(d->buffer.buffer(), d->buffer.size());
-        d->buffer.clear();
-        result = d->buffer.read(d->socket);
+        d->handleMessage(d->m_buffer.buffer(), d->m_buffer.size());
+        d->m_buffer.clear();
+        result = d->m_buffer.read(&d->m_socket);
     }
 
     switch (result) {
@@ -184,23 +187,18 @@ void GtUserClient::handleRead()
 void GtUserClient::handleConnected()
 {
     Q_D(GtUserClient);
-    d->connected = true;
-    d->sendLogin();
+    d->m_state = ConnectedState;
 }
 
 void GtUserClient::handleDisconnected()
 {
     Q_D(GtUserClient);
-    d->connected = false;
-    d->logined = false;
+    d->m_state = UnconnectedState;
 }
 
 void GtUserClient::handleError(QAbstractSocket::SocketError error)
 {
     Q_D(GtUserClient);
-
-    d->connected = false;
-    d->logined = false;
 
     switch (error) {
     case QAbstractSocket::RemoteHostClosedError:
@@ -208,7 +206,7 @@ void GtUserClient::handleError(QAbstractSocket::SocketError error)
 
     default:
         qWarning() << "GtUserClient socket error:"
-                   << error << d->socket->errorString();
+                   << error << d->m_socket.errorString();
         break;
     }
 }

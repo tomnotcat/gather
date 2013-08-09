@@ -18,9 +18,6 @@ public:
     explicit GtUserSession(QObject *parent = 0);
     ~GtUserSession();
 
-public:
-    QString name() const;
-
 protected:
     void message(const char *data, int size);
 

@@ -24,13 +24,12 @@ public:
 
 protected:
     GtUserSession *q_ptr;
-    QString name;
-    bool logined;
+    bool m_loggedIn;
 };
 
 GtUserSessionPrivate::GtUserSessionPrivate(GtUserSession *q)
     : q_ptr(q)
-    , logined(false)
+    , m_loggedIn(false)
 {
 }
 
@@ -44,29 +43,26 @@ void GtUserSessionPrivate::handleLogin(GtUserLoginRequest &msg)
 
     QString user = QString::fromUtf8(msg.user().c_str());
     QString passwd = QString::fromUtf8(msg.passwd().c_str());
-    GtUserClient::LoginResult result;
+    GtUserClient::ErrorCode error = GtUserClient::ErrorNone;
 
     if (user.isEmpty()) {
-        result = GtUserClient::InvalidUser;
+        error = GtUserClient::ErrorInvalidUser;
     }
     else if (passwd.isEmpty()) {
-        result = GtUserClient::InvalidPasswd;
-    }
-    else {
-        result = GtUserClient::LoginSuccess;
+        error = GtUserClient::ErrorInvalidPasswd;
     }
 
     GtUserLoginResponse response;
-    response.set_result(result);
+    response.set_error(error);
     GtSvcUtil::sendMessage(q->socket(), GT_USER_LOGIN_RESPONSE, &response);
 
-    if (GtUserClient::LoginSuccess == result) {
+    m_loggedIn = (GtUserClient::ErrorNone == error);
+    if (m_loggedIn) {
         GtUserServer *server = qobject_cast<GtUserServer*>(q->server());
-        this->name = user;
+        m_user = user;
+        m_passwd = passwd;
         server->addLogin(q);
     }
-
-    logined = (GtUserClient::LoginSuccess == result);
 }
 
 GtUserSession::GtUserSession(QObject *parent)
@@ -77,12 +73,6 @@ GtUserSession::GtUserSession(QObject *parent)
 
 GtUserSession::~GtUserSession()
 {
-}
-
-QString GtUserSession::name() const
-{
-    Q_D(const GtUserSession);
-    return d->name;
 }
 
 void GtUserSession::message(const char *data, int size)

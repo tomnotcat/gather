@@ -13,14 +13,13 @@
 #include "gtdocview.h"
 #include "gtmainsettings.h"
 #include "gtmainwindow.h"
-#include "gttocdelegate.h"
 #include "gttocmodel.h"
+#include "gttocview.h"
 #include <QtCore/QDebug>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QShortcut>
 #include <QtWidgets/QSplitter>
-#include <QtWidgets/QTreeView>
 #include <QtWidgets/QUndoStack>
 #include <QtWidgets/QVBoxLayout>
 
@@ -33,11 +32,6 @@ GtDocTabView::GtDocTabView(QWidget *parent)
     , m_undoAction(0)
     , m_redoAction(0)
 {
-    // model
-    m_tocModel = new GtTocModel(this);
-    connect(m_tocModel, SIGNAL(renameBookmark(GtBookmark *, const QString &)),
-            this, SLOT(renameBookmark(GtBookmark *, const QString &)));
-
     // view
     m_verticalLayout = new QVBoxLayout(this);
     m_verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
@@ -48,28 +42,14 @@ GtDocTabView::GtDocTabView(QWidget *parent)
     m_splitter->setOrientation(Qt::Horizontal);
 
     // tab of contents
-    m_tocView = new QTreeView(m_splitter);
+    m_tocModel = new GtTocModel(this);
+    m_tocView = new GtTocView(m_splitter);
     m_tocView->setObjectName(QStringLiteral("tocView"));
-    m_tocView->setFrameShape(QFrame::NoFrame);
-    m_tocView->setHeaderHidden(true);
-    m_tocView->setUniformRowHeights(true);
-    m_tocView->setItemDelegate(new GtTocDelegate(m_tocView));
-    m_tocView->setEditTriggers(QAbstractItemView::EditKeyPressed);
-    m_tocView->setContextMenuPolicy(Qt::CustomContextMenu);
-
-    // drag and drop
-    m_tocView->setAcceptDrops(true);
-    m_tocView->setDragEnabled(true);
-    // FIXME: auto expand seems not work properly
-    m_tocView->setAutoExpandDelay(1000);
-    m_tocView->setDragDropMode(QAbstractItemView::InternalMove);
 
     m_splitter->addWidget(m_tocView);
 
-    connect(m_tocView, SIGNAL(clicked(QModelIndex)),
-            this, SLOT(gotoBookmark(QModelIndex)));
-    connect(m_tocView, SIGNAL(activated(QModelIndex)),
-            this, SLOT(gotoBookmark(QModelIndex)));
+    connect(m_tocView, SIGNAL(gotoBookmark(GtBookmark*)),
+            this, SLOT(gotoBookmark(GtBookmark*)));
     connect(m_tocView, SIGNAL(customContextMenuRequested(const QPoint&)),
             this, SLOT(tocViewContextMenu(const QPoint&)));
 
@@ -144,6 +124,7 @@ void GtDocTabView::setUndoStack(QUndoStack *undoStack)
     m_undoStack = undoStack;
     m_docView->setUndoStack(undoStack);
     m_tocModel->setUndoStack(undoStack);
+    m_tocView->setUndoStack(undoStack);
 
     QAction *undoAction = m_undoStack->createUndoAction(this);
     undoAction->setShortcuts(QKeySequence::Undo);
@@ -277,28 +258,7 @@ void GtDocTabView::onDelete()
     }
 
     if (m_tocView->hasFocus()) {
-        // delete bookmark
-        QModelIndex index = m_tocView->currentIndex();
-        if (!index.isValid())
-            return;
-
-        int row = index.row();
-        QModelIndex prev;
-        QModelIndex next = index.sibling(row + 1, 0);
-        if (!next.isValid())
-            prev = index.sibling(row - 1, 0);
-
-        GtBookmark *bookmark = m_tocModel->bookmarkFromIndex(index);
-        QUndoCommand *command = new GtDelBookmarkCommand(m_docModel, bookmark);
-        m_undoStack->push(command);
-
-        if (next.isValid())
-            m_tocView->setCurrentIndex(next.sibling(row, 0));
-        else if (prev.isValid())
-            m_tocView->setCurrentIndex(prev);
-        else
-            m_tocView->setCurrentIndex(QModelIndex());
-
+        m_tocView->deleteBookmark();
         return;
     }
 }
@@ -312,6 +272,8 @@ void GtDocTabView::docViewContextMenu(const QPoint &pos)
     if (selRange.isEmpty()) {
         menu.addAction(tr("S&elect Tool"), m_docView, SLOT(highlight()));
         menu.addAction(tr("Ha&nd Tool"), m_docView, SLOT(highlight()));
+        menu.addSeparator();
+        menu.addAction(ui.actionAddBookmark);
     }
     else {
         menu.addAction(ui.actionCopy);
@@ -346,7 +308,7 @@ void GtDocTabView::tocViewContextMenu(const QPoint &pos)
     menu.addAction(tr("&Set Destination"), this, SLOT(setDestination()));
     menu.addSeparator();
     menu.addAction(ui.actionDelete);
-    menu.addAction(tr("&Rename"), this, SLOT(renameBookmark()));
+    menu.addAction(tr("&Rename"), m_tocView, SLOT(renameBookmark()));
     menu.exec(m_tocView->mapToGlobal(pos));
 }
 
@@ -376,17 +338,13 @@ void GtDocTabView::documentLoaded(GtDocument *document)
     }
 }
 
-void GtDocTabView::gotoBookmark(const QModelIndex &index)
+void GtDocTabView::gotoBookmark(GtBookmark *bookmark)
 {
-    GtBookmark *bookmark = m_tocModel->bookmarkFromIndex(index);
+    if (!bookmark)
+        bookmark = m_tocView->currentBookmark();
 
     if (bookmark)
         m_docView->scrollTo(bookmark->dest());
-}
-
-void GtDocTabView::gotoBookmark()
-{
-    gotoBookmark(m_tocView->currentIndex());
 }
 
 void GtDocTabView::addBookmark()
@@ -418,9 +376,7 @@ void GtDocTabView::addBookmark()
 
 void GtDocTabView::setDestination()
 {
-    QModelIndex index = m_tocView->currentIndex();
-    GtBookmark *bookmark = m_tocModel->bookmarkFromIndex(index);
-
+    GtBookmark *bookmark = m_tocView->currentBookmark();
     if (!bookmark)
         return;
 
@@ -439,26 +395,6 @@ void GtDocTabView::setDestination()
 
     GtBookmarks *bookmarks = m_docModel->bookmarks();
     emit bookmarks->updated(bookmark, GtBookmark::UpdateDest);
-}
-
-void GtDocTabView::renameBookmark()
-{
-    QModelIndex index = m_tocView->currentIndex();
-
-    if (!index.isValid())
-        return;
-
-    m_tocView->edit(index);
-}
-
-void GtDocTabView::renameBookmark(GtBookmark *bookmark, const QString &name)
-{
-    if (bookmark->title() == name)
-        return;
-
-    QUndoCommand *command = new GtRenameBookmarkCommand(m_docModel, bookmark, name);
-
-    m_undoStack->push(command);
 }
 
 void GtDocTabView::searchSelectedText()

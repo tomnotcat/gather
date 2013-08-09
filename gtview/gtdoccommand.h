@@ -17,7 +17,8 @@ class GtDocRange;
 class GT_VIEW_EXPORT GtDocCommand : public QUndoCommand, public GtObject
 {
 public:
-    explicit GtDocCommand(GtDocModel *model);
+    explicit GtDocCommand(GtDocModel *model,
+                          QUndoCommand *parent = 0);
     ~GtDocCommand();
 
 public:
@@ -32,7 +33,9 @@ protected:
 class GT_VIEW_EXPORT GtAddNoteCommand : public GtDocCommand
 {
 public:
-    GtAddNoteCommand(GtDocModel *model, GtDocNote *note);
+    GtAddNoteCommand(GtDocModel *model,
+                     GtDocNote *note,
+                     QUndoCommand *parent = 0);
     ~GtAddNoteCommand();
 
 public:
@@ -49,7 +52,8 @@ public:
     GtAddBookmarkCommand(GtDocModel *model,
                          GtBookmark *parent,
                          GtBookmark *before,
-                         GtBookmark *bookmark);
+                         GtBookmark *bookmark,
+                         QUndoCommand *parentc = 0);
     ~GtAddBookmarkCommand();
 
 public:
@@ -67,7 +71,8 @@ class GT_VIEW_EXPORT GtRenameBookmarkCommand : public GtDocCommand
 public:
     GtRenameBookmarkCommand(GtDocModel *model,
                             GtBookmark *bookmark,
-                            const QString &name);
+                            const QString &name,
+                            QUndoCommand *parent = 0);
     ~GtRenameBookmarkCommand();
 
 public:
@@ -86,7 +91,8 @@ class GT_VIEW_EXPORT GtDelBookmarkCommand : public GtDocCommand
 {
 public:
     GtDelBookmarkCommand(GtDocModel *model,
-                         GtBookmark *bookmark);
+                         GtBookmark *bookmark,
+                         QUndoCommand *parent = 0);
     ~GtDelBookmarkCommand();
 
 public:

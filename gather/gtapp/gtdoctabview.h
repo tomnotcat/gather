@@ -18,6 +18,7 @@ class GtDocModel;
 class GtDocument;
 class GtDocView;
 class GtTocModel;
+class GtTocView;
 
 class GtDocTabView : public GtTabView
 {
@@ -49,12 +50,9 @@ private Q_SLOTS:
     void docViewContextMenu(const QPoint &pos);
     void tocViewContextMenu(const QPoint &pos);
     void documentLoaded(GtDocument *document);
-    void gotoBookmark(const QModelIndex &index);
-    void gotoBookmark();
+    void gotoBookmark(GtBookmark *bookmark = 0);
     void addBookmark();
     void setDestination();
-    void renameBookmark();
-    void renameBookmark(GtBookmark *bookmark, const QString &name);
     void searchSelectedText();
 
 private:
@@ -67,7 +65,7 @@ private:
     QVBoxLayout *m_verticalLayout;
     QSplitter *m_splitter;
     GtDocView *m_docView;
-    QTreeView *m_tocView;
+    GtTocView *m_tocView;
 
     // undo/redo
     QAction *m_undoAction;
