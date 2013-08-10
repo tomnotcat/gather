@@ -9,7 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
-class GtLoginDialog : public QDialog, public GtObject
+class GT_APP_EXPORT GtLoginDialog : public QDialog, public GtObject
 {
     Q_OBJECT
 

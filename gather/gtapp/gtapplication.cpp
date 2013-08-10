@@ -5,7 +5,7 @@
 #include "gtdocmanager.h"
 #include "gtmainsettings.h"
 #include "gtmainwindow.h"
-#include "gtuserclient.h"
+#include "gtusermanager.h"
 #include <QtCore/QCryptographicHash>
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
@@ -17,6 +17,7 @@
 #include <QtCore/QTimer>
 #include <QtGui/QFileOpenEvent>
 #include <QtGui/QIcon>
+#include <QtNetwork/QHostAddress>
 #include <QtNetwork/QLocalServer>
 #include <QtNetwork/QLocalSocket>
 
@@ -40,11 +41,14 @@ protected:
     QLocalServer *m_localServer;
 
     GtMainSettings *m_settings;
+
+    // document
     QThread *m_docThread;
     GtDocManager *m_docManager;
 
-    // Network
-    GtUserClient *m_userClient;
+    // network
+    QThread *m_networkThread;
+    GtUserManager *m_userManager;
 };
 
 GtApplicationPrivate::GtApplicationPrivate(GtApplication *q)
@@ -52,7 +56,8 @@ GtApplicationPrivate::GtApplicationPrivate(GtApplication *q)
     , m_localServer(0)
     , m_docThread(0)
     , m_docManager(0)
-    , m_userClient(0)
+    , m_networkThread(0)
+    , m_userManager(0)
 {
     QCoreApplication::setOrganizationName(QLatin1String("Clue"));
     QCoreApplication::setApplicationName(QLatin1String("Gather"));
@@ -109,9 +114,6 @@ GtApplicationPrivate::GtApplicationPrivate(GtApplication *q)
     m_settings = new GtMainSettings(q);
     m_settings->load();
 
-    // network
-    m_userClient = new GtUserClient(q);
-
     QTimer::singleShot(0, q, SLOT(postLaunch()));
 }
 
@@ -128,6 +130,11 @@ GtApplicationPrivate::~GtApplicationPrivate()
     }
 
     m_settings->save();
+
+    if (m_networkThread) {
+        m_networkThread->quit();
+        m_networkThread->wait();
+    }
 }
 
 void GtApplicationPrivate::clearWindows()
@@ -218,6 +225,32 @@ GtDocManager *GtApplication::docManager()
     return d->m_docManager;
 }
 
+QThread *GtApplication::networkThread()
+{
+    Q_D(GtApplication);
+
+    if (!d->m_networkThread) {
+        d->m_networkThread = new QThread(this);
+        d->m_networkThread->start();
+    }
+
+    return d->m_networkThread;
+}
+
+GtUserManager *GtApplication::userManager()
+{
+    Q_D(GtApplication);
+
+    if (!d->m_userManager) {
+        QThread *thread = networkThread();
+        d->m_userManager = new GtUserManager(thread, this);
+
+        //d->m_userManager->connect();
+    }
+
+    return d->m_userManager;
+}
+
 GtApplication* GtApplication::instance()
 {
     return static_cast<GtApplication*>(QCoreApplication::instance());
@@ -277,7 +310,15 @@ void GtApplication::quitReader()
 
 void GtApplication::postLaunch()
 {
+    // new default window
     newMainWindow();
+
+    // connect to server
+    GtUserManager *user = userManager();
+    QHostAddress host(QHostAddress::LocalHost);
+    quint16 port = 8701;
+
+    user->connect(host, port);
 }
 
 void GtApplication::newLocalSocketConnection()

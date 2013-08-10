@@ -6,6 +6,7 @@
 #include "gtdocmanager.h"
 #include "gtdoctabview.h"
 #include "gthometabview.h"
+#include "gtlogindialog.h"
 #include "gtmainsettings.h"
 #include <QtCore/QtDebug>
 #include <QtGui/QCloseEvent>
@@ -232,6 +233,12 @@ void GtMainWindow::on_actionCloseTab_triggered()
 void GtMainWindow::on_actionQuit_triggered()
 {
     close();
+}
+
+void GtMainWindow::on_actionLogin_triggered()
+{
+    GtLoginDialog dialog(this);
+    dialog.exec();
 }
 
 void GtMainWindow::on_actionAboutGather_triggered()

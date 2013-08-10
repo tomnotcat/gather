@@ -18,11 +18,13 @@ public:
     explicit GtUserSession(QObject *parent = 0);
     ~GtUserSession();
 
+public:
+    bool isLoggedIn() const;
+
+    QString sessionId() const;
+
 protected:
     void message(const char *data, int size);
-
-private Q_SLOTS:
-    void reloginLogout();
 
 private:
     QScopedPointer<GtUserSessionPrivate> d_ptr;

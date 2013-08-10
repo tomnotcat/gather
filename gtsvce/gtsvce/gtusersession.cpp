@@ -8,6 +8,7 @@
 #include "gtsvcutil.h"
 #include <QtCore/QDebug>
 #include <QtCore/qendian.h>
+#include <QtCore/QUuid>
 
 GT_BEGIN_NAMESPACE
 
@@ -21,9 +22,11 @@ public:
 
 public:
     void handleLogin(GtUserLoginRequest &msg);
+    void handleLogout(GtUserLogoutRequest &msg);
 
 protected:
     GtUserSession *q_ptr;
+    QString m_sessionId;
     bool m_loggedIn;
 };
 
@@ -54,15 +57,21 @@ void GtUserSessionPrivate::handleLogin(GtUserLoginRequest &msg)
 
     GtUserLoginResponse response;
     response.set_error(error);
-    GtSvcUtil::sendMessage(q->socket(), GT_USER_LOGIN_RESPONSE, &response);
 
     m_loggedIn = (GtUserClient::ErrorNone == error);
     if (m_loggedIn) {
-        GtUserServer *server = qobject_cast<GtUserServer*>(q->server());
-        m_user = user;
-        m_passwd = passwd;
-        server->addLogin(q);
+        m_sessionId = QUuid::createUuid().toString();
+        response.set_session_id(m_sessionId.toUtf8());
     }
+
+    GtSvcUtil::sendMessage(q->socket(), GT_USER_LOGIN_RESPONSE, &response);
+}
+
+void GtUserSessionPrivate::handleLogout(GtUserLogoutRequest &msg)
+{
+    Q_UNUSED(msg);
+    m_loggedIn = false;
+    m_sessionId.clear();
 }
 
 GtUserSession::GtUserSession(QObject *parent)
@@ -73,6 +82,18 @@ GtUserSession::GtUserSession(QObject *parent)
 
 GtUserSession::~GtUserSession()
 {
+}
+
+bool GtUserSession::isLoggedIn() const
+{
+    Q_D(const GtUserSession);
+    return d->m_loggedIn;
+}
+
+QString GtUserSession::sessionId() const
+{
+    Q_D(const GtUserSession);
+    return d->m_sessionId;
 }
 
 void GtUserSession::message(const char *data, int size)
@@ -101,17 +122,22 @@ void GtUserSession::message(const char *data, int size)
         }
         break;
 
+    case GT_USER_LOGOUT_REQUEST:
+        {
+            GtUserLogoutRequest msg;
+            if (msg.ParseFromArray(data, size)) {
+                d->handleLogout(msg);
+            }
+            else {
+                qWarning() << "Invalid user logout request";
+            }
+        }
+        break;
+
     default:
-        qWarning() << "Invalid user message type:" << type;
+        qWarning() << "Unknown user message type:" << type;
         break;
     }
-}
-
-void GtUserSession::reloginLogout()
-{
-    GtUserLogoutResponse msg;
-    msg.set_reason(GtUserClient::LogoutRelogin);
-    GtSvcUtil::sendMessage(socket(), GT_USER_LOGOUT_RESPONSE, &msg);
 }
 
 GT_END_NAMESPACE

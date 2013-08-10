@@ -20,6 +20,9 @@ public:
     enum ErrorCode {
         ErrorNone,
         ErrorDisconnected,
+        ErrorSendFail,
+        ErrorReceiveFail,
+        ErrorInvalidMessage,
         ErrorInvalidState,
         ErrorInvalidUser,
         ErrorInvalidPasswd
@@ -42,8 +45,12 @@ public:
     bool login(const QString &user, const QString &passwd);
     void logout();
 
+    QString sessionId() const;
+
     ErrorCode error() const;
     StateCode state() const;
+
+    void clearError();
 
 private Q_SLOTS:
     void handleRead();

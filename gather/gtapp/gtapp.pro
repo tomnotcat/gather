@@ -1,11 +1,11 @@
 TEMPLATE = lib
 CONFIG += qt debug
 QT += sql widgets network
-HEADERS += gtapplication.h gtdocmanager.h gtmainwindow.h \
-    gttabview.h gthometabview.h gtdoctabview.h gtmainsettings.h \
-    gtlogindialog.h
-SOURCES += gtapplication.cpp gtdocmanager.cpp gtmainwindow.cpp \
-    gttabview.cpp gthometabview.cpp gtdoctabview.cpp \
+HEADERS += gtapplication.h gtdocmanager.h gtusermanager.h \
+    gtusermanager_p.h gtmainwindow.h gttabview.h gthometabview.h \
+    gtdoctabview.h gtmainsettings.h gtlogindialog.h
+SOURCES += gtapplication.cpp gtdocmanager.cpp gtusermanager.cpp \
+    gtmainwindow.cpp gttabview.cpp gthometabview.cpp gtdoctabview.cpp \
     gtmainsettings.cpp gtlogindialog.cpp
 FORMS += gtmainwindow.ui gthometabview.ui gtlogindialog.ui
 RESOURCES = gtapp.qrc

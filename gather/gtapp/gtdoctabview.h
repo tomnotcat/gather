@@ -20,7 +20,7 @@ class GtDocView;
 class GtTocModel;
 class GtTocView;
 
-class GtDocTabView : public GtTabView
+class GT_APP_EXPORT GtDocTabView : public GtTabView
 {
     Q_OBJECT
 

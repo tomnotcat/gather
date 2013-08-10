@@ -4,7 +4,6 @@
 #include "gtuserserver.h"
 #include "gtusersession.h"
 #include <QtCore/QDebug>
-#include <QtCore/QMutex>
 
 GT_BEGIN_NAMESPACE
 
@@ -18,8 +17,6 @@ public:
 
 protected:
     GtUserServer *q_ptr;
-    QHash<QString, GtUserSession*> users;
-    QMutex mutex;
 };
 
 GtUserServerPrivate::GtUserServerPrivate(GtUserServer *q)
@@ -41,24 +38,6 @@ GtUserServer::~GtUserServer()
 {
 }
 
-void GtUserServer::addLogin(GtUserSession *session)
-{
-    Q_D(GtUserServer);
-
-    QString key = session->name();
-    Q_ASSERT(!key.isEmpty());
-
-    QMutexLocker locker(&d->mutex);
-
-    QHash<QString, GtUserSession*>::iterator it = d->users.find(key);
-    if (it != d->users.end()) {
-        QMetaObject::invokeMethod(*it, "reloginLogout", Qt::QueuedConnection);
-        d->users.erase(it);
-    }
-
-    d->users.insert(key, session);
-}
-
 GtSession* GtUserServer::createSession()
 {
     return new GtUserSession();
@@ -66,11 +45,7 @@ GtSession* GtUserServer::createSession()
 
 void GtUserServer::removeSession(GtSession *session)
 {
-    Q_D(GtUserServer);
-
-    GtUserSession *user = qobject_cast<GtUserSession*>(session);
-    QMutexLocker locker(&d->mutex);
-    d->users.remove(user->name());
+    Q_UNUSED(session);
 }
 
 GT_END_NAMESPACE

@@ -9,7 +9,7 @@
 
 GT_BEGIN_NAMESPACE
 
-class GtHomeTabView : public GtTabView
+class GT_APP_EXPORT GtHomeTabView : public GtTabView
 {
     Q_OBJECT
 

@@ -18,11 +18,11 @@ public:
     ~GtRecvBuffer();
 
 public:
-    inline void setMaxSize(quint16 size) { _maxSize = size; }
-    inline quint16 maxSize() const { return _maxSize; }
-    inline const char* buffer() const { return _buffer; }
-    inline quint16 size() const { return _received - sizeof(_remain); }
-    inline void clear() { _remain = 0; _received = 0; }
+    inline void setMaxSize(quint16 size) { m_maxSize = size; }
+    inline quint16 maxSize() const { return m_maxSize; }
+    inline const char* buffer() const { return m_buffer; }
+    inline quint16 size() const { return m_received - sizeof(m_remain); }
+    inline void clear() { m_remain = 0; m_received = 0; }
 
 public:
     enum {
@@ -30,14 +30,14 @@ public:
         ReadError = -1
     };
 
-    int read(QAbstractSocket *socket);
+    int read(QAbstractSocket *socket, bool wait);
 
 private:
-    char *_buffer;
-    quint16 _bufferSize;
-    quint16 _maxSize;
-    quint16 _remain;
-    quint16 _received;
+    char *m_buffer;
+    quint16 m_bufferSize;
+    quint16 m_maxSize;
+    quint16 m_remain;
+    quint16 m_received;
 
 private:
     Q_DISABLE_COPY(GtRecvBuffer)

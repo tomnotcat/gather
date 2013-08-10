@@ -140,9 +140,16 @@
     </property>
     <addaction name="actionAboutGather"/>
    </widget>
+   <widget class="QMenu" name="menuUser">
+    <property name="title">
+     <string>&amp;User</string>
+    </property>
+    <addaction name="actionLogin"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
    <addaction name="menuView"/>
+   <addaction name="menuUser"/>
    <addaction name="menuHelp"/>
   </widget>
   <action name="actionOpenFile">
@@ -350,6 +357,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+B</string>
+   </property>
+  </action>
+  <action name="actionLogin">
+   <property name="text">
+    <string>&amp;Login</string>
    </property>
   </action>
  </widget>

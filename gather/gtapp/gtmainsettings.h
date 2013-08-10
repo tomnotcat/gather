@@ -10,7 +10,7 @@
 
 GT_BEGIN_NAMESPACE
 
-class GtMainSettings : public QObject, public GtObject
+class GT_APP_EXPORT GtMainSettings : public QObject, public GtObject
 {
     Q_OBJECT
 

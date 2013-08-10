@@ -20,19 +20,24 @@ public:
     ~GtUserClientPrivate();
 
 public:
-    void handleMessage(const char *data, int size);
-    void handleLogin(GtUserLoginResponse &msg);
+    bool sendMessage(int type, const ::google::protobuf::Message *msg);
+    int nextMessage(const char **data, int *size, bool wait);
+    void handleMessage(int type, const char *data, int size);
+    void disconnect();
 
 protected:
     GtUserClient *q_ptr;
     QTcpSocket m_socket;
     GtRecvBuffer m_buffer;
+    QString m_sessionId;
+    int m_receiving;
     GtUserClient::ErrorCode m_error;
     GtUserClient::StateCode m_state;
 };
 
 GtUserClientPrivate::GtUserClientPrivate(GtUserClient *q)
     : q_ptr(q)
+    , m_receiving(0)
     , m_error(GtUserClient::ErrorNone)
     , m_state(GtUserClient::UnconnectedState)
 {
@@ -51,48 +56,75 @@ GtUserClientPrivate::GtUserClientPrivate(GtUserClient *q)
 
 GtUserClientPrivate::~GtUserClientPrivate()
 {
+    disconnect();
 }
 
-void GtUserClientPrivate::handleMessage(const char *data, int size)
+bool GtUserClientPrivate::sendMessage(int type, const ::google::protobuf::Message *msg)
 {
-    if (size < (int)sizeof(quint16)) {
-        qWarning() << "Invalid user message size:" << size;
-        return;
+    if (GtSvcUtil::sendMessage(&m_socket, type, msg))
+        return true;
+
+    m_error = GtUserClient::ErrorSendFail;
+    disconnect();
+    return false;
+}
+
+int GtUserClientPrivate::nextMessage(const char **data, int *size, bool wait)
+{
+    m_receiving++;
+    int result = m_buffer.read(&m_socket, wait);
+    m_receiving--;
+
+    if (result == GtRecvBuffer::ReadError) {
+        qWarning() << "Receive user message error";
+
+        m_error = GtUserClient::ErrorReceiveFail;
+        disconnect();
+        return 0;
     }
 
-    quint16 type = qFromBigEndian<quint16>(*(quint16*)data);
-    data += sizeof(quint16);
-    size -= sizeof(quint16);
+    if (result != GtRecvBuffer::ReadMessage)
+        return 0;
+
+    const char *p = m_buffer.buffer();
+    int n = m_buffer.size();
+    if (n < (int)sizeof(quint16)) {
+        qWarning() << "Invalid user message size:" << n;
+
+        m_error = GtUserClient::ErrorInvalidMessage;
+        disconnect();
+        return 0;
+    }
+
+    // NOTE: just reset the cursor, the data in the buffer is not changed
+    m_buffer.clear();
+
+    *data = p + sizeof(quint16);
+    *size = n - sizeof(quint16);
+
+    return qFromBigEndian<quint16>(*(quint16*)p);
+}
+
+void GtUserClientPrivate::handleMessage(int type, const char *data, int size)
+{
+    Q_UNUSED(data);
+    Q_UNUSED(size);
 
     switch (type) {
-    case GT_USER_LOGIN_RESPONSE:
-        {
-            GtUserLoginResponse msg;
-            if (msg.ParseFromArray(data, size)) {
-                handleLogin(msg);
-            }
-            else {
-                qWarning() << "Invalid user login response";
-            }
-        }
-        break;
-
-    case GT_USER_LOGOUT_RESPONSE:
-        {
-            GtUserLogoutResponse msg;
-            if (msg.ParseFromArray(data, size)) {
-                Q_ASSERT(0);
-            }
-            else {
-                qWarning() << "Invalid user logout response";
-            }
-        }
-        break;
-
     default:
-        qWarning() << "Invalid user message type:" << type;
+        qWarning() << "Unknown user message type:" << type;
         break;
     }
+}
+
+void GtUserClientPrivate::disconnect()
+{
+    if (m_state == GtUserClient::UnconnectedState)
+        return;
+
+    m_socket.disconnectFromHost();
+    if (m_socket.state() != QAbstractSocket::UnconnectedState)
+        m_socket.waitForDisconnected();
 }
 
 GtUserClient::GtUserClient(QObject *parent)
@@ -121,13 +153,7 @@ bool GtUserClient::connect(const QHostAddress &address, quint16 port)
 void GtUserClient::disconnect()
 {
     Q_D(GtUserClient);
-
-    if (d->m_state == UnconnectedState)
-        return;
-
-    d->m_socket.disconnectFromHost();
-    if (d->m_socket.state() != QAbstractSocket::UnconnectedState)
-        d->m_socket.waitForDisconnected();
+    d->disconnect();
 }
 
 bool GtUserClient::login(const QString &user, const QString &passwd)
@@ -139,15 +165,43 @@ bool GtUserClient::login(const QString &user, const QString &passwd)
         return false;
     }
 
-    GtUserLoginRequest msg;
+    GtUserLoginRequest request;
 
-    msg.set_user(user.toUtf8());
-    msg.set_passwd(passwd.toUtf8());
+    request.set_user(user.toUtf8());
+    request.set_passwd(passwd.toUtf8());
 
-    if (!GtSvcUtil::sendMessage(&d->m_socket, GT_USER_LOGIN_REQUEST, &msg))
+    if (!d->sendMessage(GT_USER_LOGIN_REQUEST, &request))
         return false;
 
-    return true;
+    const char *data;
+    int size;
+    int type = d->nextMessage(&data, &size, true);
+    while (type && type != GT_USER_LOGIN_RESPONSE) {
+        d->handleMessage(type, data, size);
+        type = d->nextMessage(&data, &size, true);
+    }
+
+    if (!type)
+        return false;
+
+    GtUserLoginResponse response;
+    if (!response.ParseFromArray(data, size)) {
+        qWarning() << "Invalid user login response";
+        return false;
+    }
+
+    bool success = true;
+    if (response.has_error()) {
+        d->m_error = (ErrorCode)response.error();
+        success = (d->m_error == GtUserClient::ErrorNone);
+    }
+
+    if (success) {
+        d->m_sessionId = response.session_id().c_str();
+        d->m_state = LoggedInState;
+    }
+
+    return success;
 }
 
 void GtUserClient::logout()
@@ -158,30 +212,49 @@ void GtUserClient::logout()
         return;
 
     GtUserLogoutRequest msg;
-    GtSvcUtil::sendMessage(&d->m_socket, GT_USER_LOGOUT_REQUEST, &msg);
+    d->sendMessage(GT_USER_LOGOUT_REQUEST, &msg);
 
     d->m_state = ConnectedState;
+    d->m_sessionId.clear();
+}
+
+QString GtUserClient::sessionId() const
+{
+    Q_D(const GtUserClient);
+    return d->m_sessionId;
+}
+
+GtUserClient::ErrorCode GtUserClient::error() const
+{
+    Q_D(const GtUserClient);
+    return d->m_error;
+}
+
+GtUserClient::StateCode GtUserClient::state() const
+{
+    Q_D(const GtUserClient);
+    return d->m_state;
+}
+
+void GtUserClient::clearError()
+{
+    Q_D(GtUserClient);
+    d->m_error = ErrorNone;
 }
 
 void GtUserClient::handleRead()
 {
     Q_D(GtUserClient);
 
-    int result = d->m_buffer.read(&d->m_socket);
-    while (GtRecvBuffer::ReadMessage == result) {
-        d->handleMessage(d->m_buffer.buffer(), d->m_buffer.size());
-        d->m_buffer.clear();
-        result = d->m_buffer.read(&d->m_socket);
-    }
+    if (d->m_receiving > 0)
+        return;
 
-    switch (result) {
-    case GtRecvBuffer::ReadError:
-        qWarning() << "GtUserClient GtRecvBuffer::ReadError";
-        break;
+    const char *data;
+    int size;
+    int type = d->nextMessage(&data, &size, false);
 
-    default:
-        break;
-    }
+    if (type)
+        d->handleMessage(type, data, size);
 }
 
 void GtUserClient::handleConnected()
@@ -194,6 +267,7 @@ void GtUserClient::handleDisconnected()
 {
     Q_D(GtUserClient);
     d->m_state = UnconnectedState;
+    d->m_sessionId.clear();
 }
 
 void GtUserClient::handleError(QAbstractSocket::SocketError error)

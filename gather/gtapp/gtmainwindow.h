@@ -11,7 +11,7 @@ GT_BEGIN_NAMESPACE
 
 class GtTabView;
 
-class GtMainWindow : public QMainWindow, public GtObject
+class GT_APP_EXPORT GtMainWindow : public QMainWindow, public GtObject
 {
     Q_OBJECT;
 
@@ -34,6 +34,7 @@ private Q_SLOTS:
     void on_actionOpenFile_triggered();
     void on_actionCloseTab_triggered();
     void on_actionQuit_triggered();
+    void on_actionLogin_triggered();
     void on_actionAboutGather_triggered();
     void openRecentFile();
     void currentTabChanged(int index);

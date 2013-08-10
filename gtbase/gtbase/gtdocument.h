@@ -48,7 +48,6 @@ private Q_SLOTS:
 
 protected:
     friend class GtDocPage;
-    friend class GtDocLoaderObject;
     friend class GtDocLoaderPrivate;
     QScopedPointer<GtDocumentPrivate> d_ptr;
 

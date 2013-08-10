@@ -1,2 +1,2 @@
 TEMPLATE = subdirs
-SUBDIRS = message gtsvce tests gtftserver
+SUBDIRS = message gtsvce tests gtuserserver gtftserver

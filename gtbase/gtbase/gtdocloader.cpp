@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2013 Tom Wong. All rights reserved.
  */
-#include "gtdocloader.h"
+#include "gtdocloader_p.h"
 #include "gtdocument_p.h"
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
@@ -29,26 +29,31 @@ public:
     ~GtDocLoaderPrivate();
 
 public:
-    GtDocLoaderObject* loaderObject(QThread *thread);
+    GtDocLoaderProxy* proxy(QThread *thread);
     GtDocument* loadDocument(LoaderInfo &info,
                              const QString &fileName,
                              QThread *thread);
 
+    static inline void loadDocument(GtDocument *document)
+    {
+        document->loadDocument();
+    }
+
 public:
     GtDocLoader *q_ptr;
-    QList<LoaderInfo> infoList;
-    QHash<QThread*, GtDocLoaderObject*> loaderObjects;
+    QList<LoaderInfo> m_infoList;
+    QHash<QThread*, GtDocLoaderProxy*> m_proxys;
 };
 
-GtDocLoaderObject::GtDocLoaderObject()
+GtDocLoaderProxy::GtDocLoaderProxy()
 {
 }
 
-GtDocLoaderObject::~GtDocLoaderObject()
+GtDocLoaderProxy::~GtDocLoaderProxy()
 {
 }
 
-void GtDocLoaderObject::load(GtDocument *document)
+void GtDocLoaderProxy::load(GtDocument *document)
 {
     QMutexLocker locker(&m_mutex);
 
@@ -61,7 +66,7 @@ void GtDocLoaderObject::load(GtDocument *document)
     QMetaObject::invokeMethod(this, "loadDocument");
 }
 
-void GtDocLoaderObject::loadDocument()
+void GtDocLoaderProxy::loadDocument()
 {
     while (m_documents.size() > 0) {
         GtDocument *document;
@@ -70,7 +75,7 @@ void GtDocLoaderObject::loadDocument()
         document = m_documents.front();
         m_mutex.unlock();
 
-        document->loadDocument();
+        GtDocLoaderPrivate::loadDocument(document);
 
         disconnect(document,
                    SIGNAL(destroyed(QObject*)),
@@ -83,7 +88,7 @@ void GtDocLoaderObject::loadDocument()
     }
 }
 
-void GtDocLoaderObject::documentDestroyed(QObject *)
+void GtDocLoaderProxy::documentDestroyed(QObject *)
 {
     // TODO: document destroyed before load complete
     Q_ASSERT(0);
@@ -95,24 +100,24 @@ GtDocLoaderPrivate::GtDocLoaderPrivate()
 
 GtDocLoaderPrivate::~GtDocLoaderPrivate()
 {
-    qDeleteAll(loaderObjects);
+    qDeleteAll(m_proxys);
 }
 
-GtDocLoaderObject* GtDocLoaderPrivate::loaderObject(QThread *thread)
+GtDocLoaderProxy* GtDocLoaderPrivate::proxy(QThread *thread)
 {
-    QHash<QThread*, GtDocLoaderObject*>::iterator it;
+    QHash<QThread*, GtDocLoaderProxy*>::iterator it;
 
-    it = loaderObjects.find(thread);
-    if (it != loaderObjects.end())
+    it = m_proxys.find(thread);
+    if (it != m_proxys.end())
         return it.value();
 
-    GtDocLoaderObject *loader = new GtDocLoaderObject;
+    GtDocLoaderProxy *loader = new GtDocLoaderProxy();
     loader->moveToThread(thread);
-    loaderObjects.insert(thread, loader);
+    m_proxys.insert(thread, loader);
 
-    // since we didn't destroy DocLoaderObjects,
+    // since we didn't destroy DocLoaderProxy,
     // we use a guard to limit max objects.
-    Q_ASSERT(loaderObjects.size() < 10);
+    Q_ASSERT(m_proxys.size() < 10);
     return loader;
 }
 
@@ -149,7 +154,7 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
             document->d_ptr->setDevice(info.fileName(), file.take());
 
             if (thread)
-                loaderObject(thread)->load(document);
+                proxy(thread)->load(document);
             else
                 document->loadDocument();
         }
@@ -235,7 +240,7 @@ int GtDocLoader::registerLoaders(const QString &loaderDir)
 
                         QString libPath(fileInfo.path() + "/" + info.info.module);
                         info.lib = new QLibrary(libPath, this);
-                        d->infoList.push_back(info);
+                        d->m_infoList.push_back(info);
 
                         count++;
 
@@ -257,11 +262,10 @@ QList<const GtDocLoader::LoaderInfo *> GtDocLoader::loaderInfos()
 {
     Q_D(GtDocLoader);
 
-    QList<GtDocLoaderPrivate::LoaderInfo> *infoList = &d->infoList;
     QList<const LoaderInfo *> constInfoList;
 
-    for (int i = 0, count = infoList->count(); i != count; ++i)
-        constInfoList.append(&infoList->at(i).info);
+    for (int i = 0, count = d->m_infoList.count(); i != count; ++i)
+        constInfoList.append(&d->m_infoList.at(i).info);
 
     return constInfoList;
 }
@@ -275,7 +279,7 @@ GtDocument* GtDocLoader::loadDocument(const QString &fileName,
     QFileInfo fileInfo(fileName);
     QString ext = fileInfo.suffix().toLower();
 
-    QList<GtDocLoaderPrivate::LoaderInfo> &infoList = d->infoList;
+    QList<GtDocLoaderPrivate::LoaderInfo> &infoList = d->m_infoList;
 
     // By extension
     for (int i = 0, count = infoList.count(); i != count; ++i) {

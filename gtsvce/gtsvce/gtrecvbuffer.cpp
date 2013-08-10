@@ -10,51 +10,80 @@
 GT_BEGIN_NAMESPACE
 
 GtRecvBuffer::GtRecvBuffer()
-    : _buffer(0)
-    , _bufferSize(0)
-    , _maxSize(0)
-    , _remain(0)
-    , _received(0)
+    : m_buffer(0)
+    , m_bufferSize(0)
+    , m_maxSize(0)
+    , m_remain(0)
+    , m_received(0)
 {
 }
 
 GtRecvBuffer::~GtRecvBuffer()
 {
-    delete[] _buffer;
+    delete[] m_buffer;
 }
 
-int GtRecvBuffer::read(QAbstractSocket *socket)
+int GtRecvBuffer::read(QAbstractSocket *socket, bool wait)
 {
     qint64 bytesRead;
 
-    if (_received < sizeof(_remain)) {
-        bytesRead = socket->read((char *)&_remain + _received,
-                                 sizeof(_remain) - _received);
+    if (m_received < sizeof(m_remain)) {
+        if (wait) {
+            if (GtSvcUtil::readData(socket,
+                                    (char *)&m_remain + m_received,
+                                    sizeof(m_remain) - m_received))
+            {
+                bytesRead = sizeof(m_remain) - m_received;
+            }
+            else {
+                bytesRead = -1;
+            }
+        }
+        else {
+            bytesRead = socket->read((char *)&m_remain + m_received,
+                                     sizeof(m_remain) - m_received);
+        }
+
         if (bytesRead < 0)
             return ReadError;
 
-        _received += bytesRead;
-        if (_received < sizeof(_remain))
+        m_received += bytesRead;
+        if (m_received < sizeof(m_remain))
             return 0;
 
-        _remain = qFromBigEndian<quint16>((const uchar*)&_remain);
-        if (_bufferSize < _remain) {
-            if (_maxSize > 0 && _remain > _maxSize)
+        m_remain = qFromBigEndian<quint16>((const uchar*)&m_remain);
+        if (m_bufferSize < m_remain) {
+            if (m_maxSize > 0 && m_remain > m_maxSize)
                 return ReadError;
 
-            delete[] _buffer;
-            _buffer = new char[_remain];
-            _bufferSize = _remain;
+            delete[] m_buffer;
+            m_buffer = new char[m_remain];
+            m_bufferSize = m_remain;
         }
     }
 
-    bytesRead = socket->read(_buffer + _received - sizeof(_remain), _remain);
+    if (wait) {
+        if (GtSvcUtil::readData(socket,
+                                m_buffer + m_received -
+                                sizeof(m_remain), m_remain))
+        {
+            bytesRead = m_remain;
+        }
+        else {
+            bytesRead = -1;
+        }
+    }
+    else {
+        bytesRead = socket->read(m_buffer + m_received -
+                                 sizeof(m_remain), m_remain);
+    }
+
     if (bytesRead < 0)
         return ReadError;
 
-    _remain -= bytesRead;
-    _received += bytesRead;
-    if (0 == _remain)
+    m_remain -= bytesRead;
+    m_received += bytesRead;
+    if (0 == m_remain)
         return ReadMessage;
 
     return 0;

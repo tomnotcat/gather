@@ -20,7 +20,7 @@ class GtDocNotes;
 class GtDocument;
 class GtDocManagerPrivate;
 
-class GtDocManager : public QObject, public GtObject
+class GT_APP_EXPORT GtDocManager : public QObject, public GtObject
 {
     Q_OBJECT;
 

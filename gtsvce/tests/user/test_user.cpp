@@ -18,10 +18,6 @@ class test_user : public QObject
     Q_OBJECT
 
 private Q_SLOTS:
-    void onLogin(int r);
-    void onLogout(int r);
-
-private Q_SLOTS:
     void testLogin();
     void testLogout();
     void cleanupTestCase();
@@ -30,106 +26,62 @@ private:
     enum {
         TEST_PORT = 4004
     };
-
-public:
-    inline int exec(int count = 1) { eventCount = count; return app->exec(); }
-    inline void exit() { if (--eventCount == 0) app->exit(); }
-
-private:
-    int loginResult;
-    int logoutReason;
-    int eventCount;
-    QCoreApplication *app;
-    QObject *loginSender;
-    QObject *logoutSender;
 };
-
-void test_user::onLogin(int r)
-{
-    loginSender = sender();
-    loginResult = r;
-    exit();
-}
-
-void test_user::onLogout(int r)
-{
-    logoutSender = sender();
-    logoutReason = r;
-    exit();
-}
 
 void test_user::testLogin()
 {
-    int argc = 0;
-    QCoreApplication app(argc, 0);
     GtUserServer server;
     GtUserClient client;
     QHostAddress host(QHostAddress::LocalHost);
-
-    this->app = &app;
-    connect(&client, SIGNAL(login(int)), this, SLOT(onLogin(int)));
+    QThread thread;
 
     QVERIFY(server.listen(host, TEST_PORT));
+    server.moveToThread(&thread);
 
-    loginResult = GtUserClient::LoginUnknown;
-    client.login(host, TEST_PORT, "testuser", "testpasswd");
-    QVERIFY(exec() == 0);
-    QVERIFY(loginResult == GtUserClient::LoginSuccess);
+    thread.start();
 
-    loginResult = GtUserClient::LoginUnknown;
-    client.login(host, TEST_PORT, "", "testpasswd");
-    QVERIFY(exec() == 0);
-    QVERIFY(loginResult == GtUserClient::InvalidUser);
+    QVERIFY(client.error() == GtUserClient::ErrorNone);
+    QVERIFY(client.state() == GtUserClient::UnconnectedState);
 
-    loginResult = GtUserClient::LoginUnknown;
-    client.login(host, TEST_PORT, "testuser", "");
-    QVERIFY(exec() == 0);
-    QVERIFY(loginResult == GtUserClient::InvalidPasswd);
+    QVERIFY(!client.login("testuser", "testpasswd"));
+    QVERIFY(client.error() == GtUserClient::ErrorInvalidState);
+    QVERIFY(client.state() == GtUserClient::UnconnectedState);
+    QVERIFY(client.sessionId().isEmpty());
+    client.clearError();
+    QVERIFY(client.error() == GtUserClient::ErrorNone);
+
+    QVERIFY(client.connect(host, TEST_PORT));
+    QVERIFY(client.state() == GtUserClient::ConnectedState);
+    QVERIFY(!client.connect(host, TEST_PORT));
+    QVERIFY(client.error() == GtUserClient::ErrorInvalidState);
+    client.clearError();
+    QVERIFY(client.state() == GtUserClient::ConnectedState);
+
+    client.disconnect();
+    QVERIFY(client.state() == GtUserClient::UnconnectedState);
+
+    QVERIFY(client.connect(host, TEST_PORT));
+    QVERIFY(client.state() == GtUserClient::ConnectedState);
+
+    QVERIFY(client.login("testuser", "testpasswd"));
+    QVERIFY(client.error() == GtUserClient::ErrorNone);
+    QVERIFY(client.state() == GtUserClient::LoggedInState);
+    QVERIFY(!client.sessionId().isEmpty());
+    QVERIFY(!client.login("testuser", "testpasswd"));
+    QVERIFY(client.error() == GtUserClient::ErrorInvalidState);
+    client.clearError();
+    QVERIFY(client.state() == GtUserClient::LoggedInState);
+
+    client.logout();
+    QVERIFY(client.state() == GtUserClient::ConnectedState);
+    QVERIFY(client.error() == GtUserClient::ErrorNone);
+
+    thread.quit();
+    thread.wait();
 }
 
 void test_user::testLogout()
 {
-    int argc = 0;
-    QCoreApplication app(argc, 0);
-    GtUserClient client1;
-    GtUserClient client2;
-    GtUserServer server;
-    QHostAddress host(QHostAddress::LocalHost);
-
-    this->app = &app;
-    connect(&client1, SIGNAL(login(int)), this, SLOT(onLogin(int)));
-    connect(&client1, SIGNAL(logout(int)), this, SLOT(onLogout(int)));
-    connect(&client2, SIGNAL(login(int)), this, SLOT(onLogin(int)));
-    connect(&client2, SIGNAL(logout(int)), this, SLOT(onLogout(int)));
-
-    QVERIFY(server.listen(host, TEST_PORT));
-
-    loginResult = GtUserClient::LoginUnknown;
-    logoutReason = GtUserClient::LogoutUnknown;
-    logoutSender = 0;
-    client1.login(host, TEST_PORT, "testuser", "testpasswd");
-    QVERIFY(exec() == 0);
-    QVERIFY(loginResult == GtUserClient::LoginSuccess);
-    QVERIFY(loginSender == &client1);
-
-    loginResult = GtUserClient::LoginUnknown;
-    client2.login(host, TEST_PORT, "testuser", "");
-    QVERIFY(exec() == 0);
-    QVERIFY(loginResult == GtUserClient::InvalidPasswd);
-    QVERIFY(logoutReason == GtUserClient::LogoutUnknown);
-    QVERIFY(loginSender == &client2);
-    QVERIFY(logoutSender == 0);
-
-    loginResult = GtUserClient::LoginUnknown;
-    client2.login(host, TEST_PORT, "testuser", "testpasswd");
-    QVERIFY(exec(2) == 0);
-    QVERIFY(loginResult == GtUserClient::LoginSuccess);
-    QVERIFY(logoutReason == GtUserClient::LogoutRelogin);
-    QVERIFY(loginSender == &client2);
-    QVERIFY(logoutSender == &client1);
-
-    client2.logout();
-    QVERIFY(logoutReason == GtUserClient::LogoutNormal);
 }
 
 void test_user::cleanupTestCase()

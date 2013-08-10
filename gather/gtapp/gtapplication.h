@@ -12,9 +12,10 @@ GT_BEGIN_NAMESPACE
 class GtDocManager;
 class GtMainSettings;
 class GtMainWindow;
+class GtUserManager;
 class GtApplicationPrivate;
 
-class GtApplication : public QApplication, public GtObject
+class GT_APP_EXPORT GtApplication : public QApplication, public GtObject
 {
     Q_OBJECT;
 
@@ -24,11 +25,17 @@ public:
 
 public:
     bool isTheOnlyReader() const;
+
     GtMainWindow *mainWindow();
     QList<GtMainWindow*> mainWindows();
+
     GtMainSettings *settings();
+
     QThread *docThread();
     GtDocManager *docManager();
+
+    QThread *networkThread();
+    GtUserManager *userManager();
 
 public:
     static GtApplication* instance();

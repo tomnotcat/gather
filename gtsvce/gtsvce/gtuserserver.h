@@ -19,9 +19,6 @@ public:
     explicit GtUserServer(QObject *parent = 0);
     ~GtUserServer();
 
-public:
-    void addLogin(GtUserSession *session);
-
 protected:
     GtSession* createSession();
     void removeSession(GtSession *session);

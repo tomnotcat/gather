@@ -25,7 +25,7 @@ class GtDocManagerPrivate
     Q_DECLARE_PUBLIC(GtDocManager)
 
 public:
-    GtDocManagerPrivate(GtDocManager *q);
+    GtDocManagerPrivate(GtDocManager *q, QThread *t);
     ~GtDocManagerPrivate();
 
 public:
@@ -76,9 +76,9 @@ protected:
     bool m_hasDatabase;
 };
 
-GtDocManagerPrivate::GtDocManagerPrivate(GtDocManager *q)
+GtDocManagerPrivate::GtDocManagerPrivate(GtDocManager *q, QThread *t)
     : q_ptr(q)
-    , m_docThread(0)
+    , m_docThread(t)
     , m_changedCount(0)
     , m_hasDatabase(false)
 {
@@ -436,10 +436,8 @@ GtDocManager::GtDocManager(const QString &dbpath,
                            QThread *thread,
                            QObject *parent)
     : QObject(parent)
-    , d_ptr(new GtDocManagerPrivate(this))
+    , d_ptr(new GtDocManagerPrivate(this, thread))
 {
-    d_ptr->m_docThread = thread;
-
     if (!dbpath.isEmpty()) {
         d_ptr->openDatabase(dbpath);
 

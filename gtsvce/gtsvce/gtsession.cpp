@@ -75,11 +75,11 @@ void GtSession::handleRead()
 {
     Q_D(GtSession);
 
-    int result = d->buffer.read(d->socket);
+    int result = d->buffer.read(d->socket, false);
     while (GtRecvBuffer::ReadMessage == result) {
         this->message(d->buffer.buffer(), d->buffer.size());
         d->buffer.clear();
-        result = d->buffer.read(d->socket);
+        result = d->buffer.read(d->socket, false);
     }
 
     switch (result) {

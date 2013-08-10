@@ -14,6 +14,7 @@ message GtUserLoginRequest {
 
 message GtUserLoginResponse {
     optional int32 error = 1;
+    optional string session_id = 2;
 }
 
 message GtUserLogoutRequest {

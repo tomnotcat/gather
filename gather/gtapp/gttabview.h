@@ -12,7 +12,7 @@ GT_BEGIN_NAMESPACE
 class GtMainWindow;
 class GtMainSettings;
 
-class GtTabView : public QWidget, public GtObject
+class GT_APP_EXPORT GtTabView : public QWidget, public GtObject
 {
     Q_OBJECT
 

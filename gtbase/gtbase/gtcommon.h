@@ -33,6 +33,12 @@
 #define GT_SVCE_EXPORT Q_DECL_IMPORT
 #endif
 
+#if defined(GT_BUILD_APP_LIB)
+#define GT_APP_EXPORT Q_DECL_EXPORT
+#else
+#define GT_APP_EXPORT Q_DECL_IMPORT
+#endif
+
 #if defined(GT_BUILD_BACKEND_LIB)
 #define GT_BACKEND_EXPORT Q_DECL_EXPORT
 #else
