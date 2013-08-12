@@ -20,6 +20,7 @@ public:
     ~GtUserClientPrivate();
 
 public:
+    void setState(GtUserClient::StateCode state);
     bool sendMessage(int type, const ::google::protobuf::Message *msg);
     int nextMessage(const char **data, int *size, bool wait);
     void handleMessage(int type, const char *data, int size);
@@ -29,7 +30,7 @@ protected:
     GtUserClient *q_ptr;
     QTcpSocket m_socket;
     GtRecvBuffer m_buffer;
-    QString m_sessionId;
+    QString m_session;
     int m_receiving;
     GtUserClient::ErrorCode m_error;
     GtUserClient::StateCode m_state;
@@ -37,6 +38,7 @@ protected:
 
 GtUserClientPrivate::GtUserClientPrivate(GtUserClient *q)
     : q_ptr(q)
+    , m_socket(q)
     , m_receiving(0)
     , m_error(GtUserClient::ErrorNone)
     , m_state(GtUserClient::UnconnectedState)
@@ -57,6 +59,14 @@ GtUserClientPrivate::GtUserClientPrivate(GtUserClient *q)
 GtUserClientPrivate::~GtUserClientPrivate()
 {
     disconnect();
+}
+
+void GtUserClientPrivate::setState(GtUserClient::StateCode state)
+{
+    if (m_state != state) {
+        m_state = state;
+        emit q_ptr->stateChanged(state);
+    }
 }
 
 bool GtUserClientPrivate::sendMessage(int type, const ::google::protobuf::Message *msg)
@@ -146,6 +156,7 @@ bool GtUserClient::connect(const QHostAddress &address, quint16 port)
         return false;
     }
 
+    d->setState(ConnectingState);
     d->m_socket.connectToHost(address, port);
     return d->m_socket.waitForConnected();
 }
@@ -170,8 +181,11 @@ bool GtUserClient::login(const QString &user, const QString &passwd)
     request.set_user(user.toUtf8());
     request.set_passwd(passwd.toUtf8());
 
-    if (!d->sendMessage(GT_USER_LOGIN_REQUEST, &request))
+    d->setState(LoggingInState);
+    if (!d->sendMessage(GT_USER_LOGIN_REQUEST, &request)) {
+        d->setState(ConnectedState);
         return false;
+    }
 
     const char *data;
     int size;
@@ -186,6 +200,8 @@ bool GtUserClient::login(const QString &user, const QString &passwd)
 
     GtUserLoginResponse response;
     if (!response.ParseFromArray(data, size)) {
+        d->setState(ConnectedState);
+
         qWarning() << "Invalid user login response";
         return false;
     }
@@ -197,8 +213,11 @@ bool GtUserClient::login(const QString &user, const QString &passwd)
     }
 
     if (success) {
-        d->m_sessionId = response.session_id().c_str();
-        d->m_state = LoggedInState;
+        d->m_session = response.session_id().c_str();
+        d->setState(LoggedInState);
+    }
+    else {
+        d->setState(ConnectedState);
     }
 
     return success;
@@ -214,14 +233,14 @@ void GtUserClient::logout()
     GtUserLogoutRequest msg;
     d->sendMessage(GT_USER_LOGOUT_REQUEST, &msg);
 
-    d->m_state = ConnectedState;
-    d->m_sessionId.clear();
+    d->m_session.clear();
+    d->setState(ConnectedState);
 }
 
-QString GtUserClient::sessionId() const
+QString GtUserClient::session() const
 {
     Q_D(const GtUserClient);
-    return d->m_sessionId;
+    return d->m_session;
 }
 
 GtUserClient::ErrorCode GtUserClient::error() const
@@ -260,14 +279,15 @@ void GtUserClient::handleRead()
 void GtUserClient::handleConnected()
 {
     Q_D(GtUserClient);
-    d->m_state = ConnectedState;
+    d->setState(ConnectedState);
 }
 
 void GtUserClient::handleDisconnected()
 {
     Q_D(GtUserClient);
-    d->m_state = UnconnectedState;
-    d->m_sessionId.clear();
+
+    d->m_session.clear();
+    d->setState(UnconnectedState);
 }
 
 void GtUserClient::handleError(QAbstractSocket::SocketError error)
@@ -275,6 +295,10 @@ void GtUserClient::handleError(QAbstractSocket::SocketError error)
     Q_D(GtUserClient);
 
     switch (error) {
+    case QAbstractSocket::HostNotFoundError:
+        d->m_error = ErrorHostNotFound;
+        break;
+
     case QAbstractSocket::RemoteHostClosedError:
         break;
 

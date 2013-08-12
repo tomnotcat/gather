@@ -19,6 +19,7 @@ class GT_SVCE_EXPORT GtUserClient : public QObject, public GtObject
 public:
     enum ErrorCode {
         ErrorNone,
+        ErrorHostNotFound,
         ErrorDisconnected,
         ErrorSendFail,
         ErrorReceiveFail,
@@ -30,7 +31,9 @@ public:
 
     enum StateCode {
         UnconnectedState,
+        ConnectingState,
         ConnectedState,
+        LoggingInState,
         LoggedInState
     };
 
@@ -45,12 +48,15 @@ public:
     bool login(const QString &user, const QString &passwd);
     void logout();
 
-    QString sessionId() const;
+    QString session() const;
 
     ErrorCode error() const;
     StateCode state() const;
 
     void clearError();
+
+Q_SIGNALS:
+    void stateChanged(int state);
 
 private Q_SLOTS:
     void handleRead();

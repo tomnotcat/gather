@@ -31,6 +31,9 @@ public:
     QAbstractSocket* socket() const;
     void close();
 
+    QHostAddress peerAddress() const;
+    quint16 peerPort() const;
+
 private Q_SLOTS:
     void handleRead();
     void handleError(QAbstractSocket::SocketError error);

@@ -39,7 +39,7 @@ public:
     Q_DECLARE_FLAGS(SyncFlags, SyncFlag)
 
 public:
-    explicit GtDocView(QWidget *parent = 0);
+    explicit GtDocView(QThread *thread = 0, QWidget *parent = 0);
     ~GtDocView();
 
 public:
@@ -52,7 +52,6 @@ public:
     QUndoStack* undoStack() const;
     void setUndoStack(QUndoStack *undoStack);
 
-    void setRenderThread(QThread *thread);
     void setRenderCacheSize(int size);
 
     void lockPageUpdate();

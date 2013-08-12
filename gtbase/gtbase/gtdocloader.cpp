@@ -25,14 +25,11 @@ public:
     };
 
 public:
-    GtDocLoaderPrivate();
+    GtDocLoaderPrivate(GtDocLoader *q, QThread *t);
     ~GtDocLoaderPrivate();
 
 public:
-    GtDocLoaderProxy* proxy(QThread *thread);
-    GtDocument* loadDocument(LoaderInfo &info,
-                             const QString &fileName,
-                             QThread *thread);
+    GtDocument* loadDocument(LoaderInfo &info, const QString &fileName);
 
     static inline void loadDocument(GtDocument *document)
     {
@@ -42,7 +39,8 @@ public:
 public:
     GtDocLoader *q_ptr;
     QList<LoaderInfo> m_infoList;
-    QHash<QThread*, GtDocLoaderProxy*> m_proxys;
+    QThread *m_thread;
+    GtDocLoaderProxy *m_proxy;
 };
 
 GtDocLoaderProxy::GtDocLoaderProxy()
@@ -94,36 +92,24 @@ void GtDocLoaderProxy::documentDestroyed(QObject *)
     Q_ASSERT(0);
 }
 
-GtDocLoaderPrivate::GtDocLoaderPrivate()
+GtDocLoaderPrivate::GtDocLoaderPrivate(GtDocLoader *q, QThread *t)
+    : q_ptr(q)
+    , m_thread(t)
+    , m_proxy(0)
 {
+    if (t) {
+        m_proxy = new GtDocLoaderProxy();
+        m_proxy->moveToThread(t);
+    }
 }
 
 GtDocLoaderPrivate::~GtDocLoaderPrivate()
 {
-    qDeleteAll(m_proxys);
-}
-
-GtDocLoaderProxy* GtDocLoaderPrivate::proxy(QThread *thread)
-{
-    QHash<QThread*, GtDocLoaderProxy*>::iterator it;
-
-    it = m_proxys.find(thread);
-    if (it != m_proxys.end())
-        return it.value();
-
-    GtDocLoaderProxy *loader = new GtDocLoaderProxy();
-    loader->moveToThread(thread);
-    m_proxys.insert(thread, loader);
-
-    // since we didn't destroy DocLoaderProxy,
-    // we use a guard to limit max objects.
-    Q_ASSERT(m_proxys.size() < 10);
-    return loader;
+    delete m_proxy;
 }
 
 GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
-                                             const QString &fileName,
-                                             QThread *thread)
+                                             const QString &fileName)
 {
     GtDocument *document = NULL;
 
@@ -153,8 +139,8 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
             file->setParent(document);
             document->d_ptr->setDevice(info.fileName(), file.take());
 
-            if (thread)
-                proxy(thread)->load(document);
+            if (m_thread)
+                m_proxy->load(document);
             else
                 document->loadDocument();
         }
@@ -166,11 +152,10 @@ GtDocument* GtDocLoaderPrivate::loadDocument(LoaderInfo &info,
     return document;
 }
 
-GtDocLoader::GtDocLoader(QObject *parent)
+GtDocLoader::GtDocLoader(QThread *thread, QObject *parent)
     : QObject(parent)
-    , d_ptr(new GtDocLoaderPrivate())
+    , d_ptr(new GtDocLoaderPrivate(this, thread))
 {
-    d_ptr->q_ptr = this;
 }
 
 GtDocLoader::~GtDocLoader()
@@ -270,8 +255,7 @@ QList<const GtDocLoader::LoaderInfo *> GtDocLoader::loaderInfos()
     return constInfoList;
 }
 
-GtDocument* GtDocLoader::loadDocument(const QString &fileName,
-                                      QThread *thread)
+GtDocument* GtDocLoader::loadDocument(const QString &fileName)
 {
     Q_D(GtDocLoader);
 
@@ -284,7 +268,7 @@ GtDocument* GtDocLoader::loadDocument(const QString &fileName,
     // By extension
     for (int i = 0, count = infoList.count(); i != count; ++i) {
         if (infoList[i].info.extension == ext) {
-            document = d->loadDocument(infoList[i], fileName, thread);
+            document = d->loadDocument(infoList[i], fileName);
             if (document)
                 return document;
         }

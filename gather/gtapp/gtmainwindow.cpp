@@ -8,6 +8,8 @@
 #include "gthometabview.h"
 #include "gtlogindialog.h"
 #include "gtmainsettings.h"
+#include "gtuserclient.h"
+#include "gtusermanager.h"
 #include <QtCore/QtDebug>
 #include <QtGui/QCloseEvent>
 #include <QtWidgets/QFileDialog>
@@ -82,6 +84,14 @@ GtMainWindow::GtMainWindow()
     setCurrentFile("");
 
     (void)newTab();
+
+    // watch network state
+    GtUserManager *userManager = application->userManager();
+
+    connect(userManager, SIGNAL(stateChanged(int, int)),
+            this, SLOT(userStateChanged(int, int)));
+
+    userStateChanged(userManager->state(), 0);
 }
 
 GtMainWindow::~GtMainWindow()
@@ -370,6 +380,19 @@ void GtMainWindow::editMenuAboutToShow()
 void GtMainWindow::editMenuAboutToHide()
 {
     qDebug() << "hide edit menu";
+}
+
+void GtMainWindow::userStateChanged(int state, int error)
+{
+    Q_UNUSED(error);
+
+    bool loggedIn = (GtUserClient::LoggedInState == state);
+
+    m_ui.actionLogin->setVisible(!loggedIn);
+    m_ui.actionLogin->setEnabled(GtUserClient::ConnectedState == state);
+
+    m_ui.actionAccount->setVisible(loggedIn);
+    m_ui.actionLogout->setVisible(loggedIn);
 }
 
 void GtMainWindow::changeEvent(QEvent *event)

@@ -7,8 +7,6 @@
 #include "gtobject.h"
 #include <QtCore/QObject>
 
-class QHostAddress;
-
 GT_BEGIN_NAMESPACE
 
 class GtUserManagerPrivate;
@@ -22,12 +20,19 @@ public:
     ~GtUserManager();
 
 public:
-    void connect(const QHostAddress &address, quint16 port);
+    void connect(const QString &host, quint16 port);
     void disconnect();
 
+    void login(const QString &user, const QString &passwd);
+    void logout();
+
+    QString session() const;
+    int state() const;
+
 Q_SIGNALS:
-    void connected();
-    void disconnected();
+    void connectError(int error);
+    void loginError(int error);
+    void stateChanged(int state, int error);
 
 private:
     QScopedPointer<GtUserManagerPrivate> d_ptr;

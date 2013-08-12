@@ -49,8 +49,11 @@ void GtServerPrivate::addSession(GtSession *session, qintptr socketDescriptor)
     QMutexLocker locker(&mutex);
     GtServerThread *thread = fetchThread();
     QTcpSocket *socket = new QTcpSocket(session);
+
     socket->setSocketDescriptor(socketDescriptor);
     session->d_ptr->init(socket, q, thread);
+
+    qDebug() << "Add session:" << session->peerAddress().toString();
 
     thread->sessions.push_back(session);
     session->moveToThread(thread);
@@ -62,15 +65,19 @@ void GtServerPrivate::removeSession(GtSession *session)
 {
     Q_Q(GtServer);
 
-    GtServerThread *thread = session->d_ptr->thread;
+    GtServerThread *thread = session->d_ptr->m_thread;
 
     Q_ASSERT(session->thread() == thread);
 
     QMutexLocker locker(&mutex);
     thread->sessions.removeOne(session);
 
-    if (!closing)
+    if (!closing) {
+        QHostAddress address(session->peerAddress());
+
         q->removeSession(session);
+        qDebug() << "Remove session:" << address.toString();
+    }
 }
 
 void GtServerPrivate::close()

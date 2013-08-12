@@ -54,7 +54,6 @@ public:
 protected:
     GtDocManager *q_ptr;
     GtDocLoader *m_docLoader;
-    QThread *m_docThread;
 
     QHash<QString, QString> m_path2id;
     QHash<QString, GtDocModel*> m_docModels;
@@ -78,11 +77,10 @@ protected:
 
 GtDocManagerPrivate::GtDocManagerPrivate(GtDocManager *q, QThread *t)
     : q_ptr(q)
-    , m_docThread(t)
     , m_changedCount(0)
     , m_hasDatabase(false)
 {
-    m_docLoader = new GtDocLoader(q);
+    m_docLoader = new GtDocLoader(t, q);
 }
 
 GtDocManagerPrivate::~GtDocManagerPrivate()
@@ -577,14 +575,12 @@ GtDocModel *GtDocManager::loadLocalDocument(const QString &fileName)
 
     d->cleanDocuments();
 
-    GtDocument *document;
-    document = d->m_docLoader->loadDocument(fileName, d->m_docThread);
+    GtDocument *document = d->m_docLoader->loadDocument(fileName);
     if (!document) {
         return 0;
     }
 
     GtDocModel *model = new GtDocModel();
-
     document->setParent(model);
     model->setDocument(document);
     model->setMinScale(0.1);

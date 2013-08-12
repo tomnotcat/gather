@@ -244,8 +244,6 @@ GtUserManager *GtApplication::userManager()
     if (!d->m_userManager) {
         QThread *thread = networkThread();
         d->m_userManager = new GtUserManager(thread, this);
-
-        //d->m_userManager->connect();
     }
 
     return d->m_userManager;
@@ -315,7 +313,7 @@ void GtApplication::postLaunch()
 
     // connect to server
     GtUserManager *user = userManager();
-    QHostAddress host(QHostAddress::LocalHost);
+    QString host("127.0.0.1");
     quint16 port = 8701;
 
     user->connect(host, port);

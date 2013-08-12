@@ -30,7 +30,7 @@ private:
 
 void test_document::initTestCase()
 {
-    m_docLoader = new GtDocLoader(this);
+    m_docLoader = new GtDocLoader(0, this);
 
     QDir dir(QCoreApplication::applicationDirPath());
     QVERIFY(dir.cd("loader"));
@@ -155,7 +155,7 @@ void test_document::testSerialize()
 
 void test_document::testDocument()
 {
-    GtDocument *doc = m_docLoader->loadDocument(TEST_PDF_FILE, 0);
+    GtDocument *doc = m_docLoader->loadDocument(TEST_PDF_FILE);
 
     QVERIFY(doc && doc->isLoaded());
     QVERIFY(doc->parent() == 0);

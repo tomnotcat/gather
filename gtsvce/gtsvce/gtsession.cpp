@@ -10,24 +10,27 @@ GT_BEGIN_NAMESPACE
 
 GtSessionPrivate::GtSessionPrivate(GtSession *q)
     : q_ptr(q)
-    , socket(0)
-    , server(0)
-    , thread(0)
+    , m_socket(0)
+    , m_server(0)
+    , m_thread(0)
+    , m_peerPort(0)
 {
 }
 
 GtSessionPrivate::~GtSessionPrivate()
 {
-    delete socket;
+    delete m_socket;
 }
 
 void GtSessionPrivate::init(QAbstractSocket *s, GtServer *m, GtServerThread *t)
 {
     Q_Q(GtSession);
 
-    socket = s;
-    server = m;
-    thread = t;
+    m_socket = s;
+    m_server = m;
+    m_thread = t;
+    m_peerAddress = s->peerAddress();
+    m_peerPort = s->peerPort();
 
     s->connect(s, SIGNAL(readyRead()), q, SLOT(handleRead()));
     s->connect(s, SIGNAL(error(QAbstractSocket::SocketError)),
@@ -53,33 +56,45 @@ void GtSession::message(const char *data, int size)
 GtServer* GtSession::server() const
 {
     Q_D(const GtSession);
-    return d->server;
+    return d->m_server;
 }
 
 QAbstractSocket* GtSession::socket() const
 {
     Q_D(const GtSession);
-    return d->socket;
+    return d->m_socket;
 }
 
 void GtSession::close()
 {
     Q_D(GtSession);
 
-    d->socket->close();
-    d->server->d_ptr->removeSession(this);
+    d->m_socket->close();
+    d->m_server->d_ptr->removeSession(this);
     deleteLater();
+}
+
+QHostAddress GtSession::peerAddress() const
+{
+    Q_D(const GtSession);
+    return d->m_peerAddress;
+}
+
+quint16 GtSession::peerPort() const
+{
+    Q_D(const GtSession);
+    return d->m_peerPort;
 }
 
 void GtSession::handleRead()
 {
     Q_D(GtSession);
 
-    int result = d->buffer.read(d->socket, false);
+    int result = d->m_buffer.read(d->m_socket, false);
     while (GtRecvBuffer::ReadMessage == result) {
-        this->message(d->buffer.buffer(), d->buffer.size());
-        d->buffer.clear();
-        result = d->buffer.read(d->socket, false);
+        message(d->m_buffer.buffer(), d->m_buffer.size());
+        d->m_buffer.clear();
+        result = d->m_buffer.read(d->m_socket, false);
     }
 
     switch (result) {
@@ -103,11 +118,11 @@ void GtSession::handleError(QAbstractSocket::SocketError error)
 
     default:
         qWarning() << "GtSession socket error:"
-                   << error << d->socket->errorString();
+                   << error << d->m_socket->errorString();
         break;
     }
 
-    this->close();
+    close();
 }
 
 GT_END_NAMESPACE

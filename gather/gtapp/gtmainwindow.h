@@ -40,6 +40,7 @@ private Q_SLOTS:
     void currentTabChanged(int index);
     void editMenuAboutToShow();
     void editMenuAboutToHide();
+    void userStateChanged(int state, int error);
 
 private:
     void openTab(GtTabView *tab);

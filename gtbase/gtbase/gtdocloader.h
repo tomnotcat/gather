@@ -27,14 +27,13 @@ public:
     };
 
 public:
-    explicit GtDocLoader(QObject *parent = 0);
+    explicit GtDocLoader(QThread *thread = 0, QObject *parent = 0);
     ~GtDocLoader();
 
 public:
     int registerLoaders(const QString &loaderDir);
     QList<const LoaderInfo *> loaderInfos();
-    GtDocument* loadDocument(const QString &fileName,
-                             QThread *thread = 0);
+    GtDocument* loadDocument(const QString &fileName);
 
 private:
     QScopedPointer<GtDocLoaderPrivate> d_ptr;

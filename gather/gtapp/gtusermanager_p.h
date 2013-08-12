@@ -13,8 +13,21 @@ class GtUserManagerProxy : public QObject, public GtObject
     Q_OBJECT
 
 public:
-    GtUserManagerProxy();
+    GtUserManagerProxy(GtUserManagerPrivate *p);
     ~GtUserManagerProxy();
+
+public:
+    Q_INVOKABLE void connect(const QString &host, quint16 port);
+    Q_INVOKABLE void disconnect();
+
+    Q_INVOKABLE void login(const QString &user, const QString &passwd);
+    Q_INVOKABLE void logout();
+
+private Q_SLOTS:
+    void stateChanged(int state);
+
+private:
+    GtUserManagerPrivate *m_priv;
 };
 
 GT_END_NAMESPACE

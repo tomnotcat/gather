@@ -53,7 +53,7 @@ public:
     };
 
 public:
-    explicit GtDocViewPrivate(GtDocView *q);
+    explicit GtDocViewPrivate(GtDocView *q, QThread *t);
     ~GtDocViewPrivate();
 
 public:
@@ -153,7 +153,7 @@ private:
     GtDocModel::MouseMode m_mouseMode;
     HeightCache m_heightCache;
 
-    QSharedPointer<GtDocRenderCache> m_renderCache;
+    GtDocRenderCache *m_renderCache;
     QBasicTimer m_cursorBlinkTimer;
 
     // selection
@@ -320,7 +320,7 @@ void GtDocViewPrivate::HeightCache::rebuild()
     }
 }
 
-GtDocViewPrivate::GtDocViewPrivate(GtDocView *q)
+GtDocViewPrivate::GtDocViewPrivate(GtDocView *q, QThread *t)
     : q_ptr(q)
     , m_model(0)
     , m_undoStack(0)
@@ -339,7 +339,6 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *q)
     , m_layoutMode(GtDocModel::SinglePage)
     , m_sizingMode(GtDocModel::FitWidth)
     , m_mouseMode(GtDocModel::BrowseMode)
-    , m_renderCache(new GtDocRenderCache(q), &QObject::deleteLater)
     , m_paperColor(255, 255, 255)
     , m_highlightColor(255, 255, 0)
     , m_underlineColor(255, 64, 64)
@@ -354,8 +353,11 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *q)
 {
     m_backColor = q->viewport()->palette().color(QPalette::Dark);
 
-    q->connect(m_renderCache.data(), SIGNAL(finished(int)),
+    m_renderCache = new GtDocRenderCache(q);
+    q->connect(m_renderCache, SIGNAL(finished(int)),
                q, SLOT(renderFinished(int)));
+    if (t)
+        m_renderCache->moveToThread(t);
 
     q->setFrameStyle(QFrame::NoFrame);
     q->setAttribute(Qt::WA_StaticContents);
@@ -387,6 +389,7 @@ GtDocViewPrivate::GtDocViewPrivate(GtDocView *q)
 
 GtDocViewPrivate::~GtDocViewPrivate()
 {
+    m_renderCache->deleteLater();
 }
 
 void GtDocViewPrivate::connectSyncSignals()
@@ -1281,9 +1284,9 @@ void GtDocViewPrivate::repaintOldAndNewSelection(const GtDocRange &oldRange)
     repaintDocRange(updateRange);
 }
 
-GtDocView::GtDocView(QWidget *parent)
+GtDocView::GtDocView(QThread *thread, QWidget *parent)
     : QAbstractScrollArea(parent)
-    , d_ptr(new GtDocViewPrivate(this))
+    , d_ptr(new GtDocViewPrivate(this, thread))
 {
 }
 
@@ -1408,12 +1411,6 @@ void GtDocView::setUndoStack(QUndoStack *undoStack)
                 this,
                 SLOT(undoStackDestroyed(QObject*)));
     }
-}
-
-void GtDocView::setRenderThread(QThread *thread)
-{
-    Q_D(GtDocView);
-    d->m_renderCache->moveToThread(thread);
 }
 
 void GtDocView::setRenderCacheSize(int size)

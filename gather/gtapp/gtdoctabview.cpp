@@ -32,6 +32,8 @@ GtDocTabView::GtDocTabView(QWidget *parent)
     , m_undoAction(0)
     , m_redoAction(0)
 {
+    GtApplication *application = GtApplication::instance();
+
     // view
     m_verticalLayout = new QVBoxLayout(this);
     m_verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
@@ -54,10 +56,9 @@ GtDocTabView::GtDocTabView(QWidget *parent)
             this, SLOT(tocViewContextMenu(const QPoint&)));
 
     // document view
-    m_docView = new GtDocView(m_splitter);
+    m_docView = new GtDocView(application->docThread(), m_splitter);
     m_docView->setMinimumWidth(120);
     m_docView->setObjectName(QStringLiteral("docView"));
-    m_docView->setRenderThread(GtApplication::instance()->docThread());
     m_docView->setRenderCacheSize(1024 * 1024 * 20);
     m_docView->setContextMenuPolicy(Qt::CustomContextMenu);
     m_splitter->addWidget(m_docView);
@@ -73,7 +74,6 @@ GtDocTabView::GtDocTabView(QWidget *parent)
     connect(shortcut, SIGNAL(activated()), this, SLOT(onDelete()));
 
     // settings
-    GtApplication *application = GtApplication::instance();
     GtMainSettings *settings = application->settings();
     m_splitter->restoreState(settings->docSplitter());
 }

@@ -10,9 +10,6 @@ GtLoginDialog::GtLoginDialog(QWidget *parent)
     : QDialog(parent)
 {
     ui.setupUi(this);
-    ui.accountEdit->lineEdit()->setPlaceholderText(tr("please enter account"));
-
-    connect(ui.cancelButton, SIGNAL(clicked()), this, SLOT(close()));
 }
 
 GtLoginDialog::~GtLoginDialog()

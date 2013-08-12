@@ -6,6 +6,7 @@
 
 #include "gtsession.h"
 #include "gtrecvbuffer.h"
+#include <QtNetwork/QHostAddress>
 
 GT_BEGIN_NAMESPACE
 
@@ -28,10 +29,12 @@ protected:
 
 protected:
     GtSession *q_ptr;
-    QAbstractSocket *socket;
-    GtServer *server;
-    GtServerThread *thread;
-    GtRecvBuffer buffer;
+    QAbstractSocket *m_socket;
+    GtServer *m_server;
+    GtServerThread *m_thread;
+    GtRecvBuffer m_buffer;
+    QHostAddress m_peerAddress;
+    quint16 m_peerPort;
 };
 
 GT_END_NAMESPACE

@@ -145,6 +145,8 @@
      <string>&amp;User</string>
     </property>
     <addaction name="actionLogin"/>
+    <addaction name="actionAccount"/>
+    <addaction name="actionLogout"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -362,6 +364,22 @@
   <action name="actionLogin">
    <property name="text">
     <string>&amp;Login</string>
+   </property>
+  </action>
+  <action name="actionAccount">
+   <property name="text">
+    <string>&amp;Account</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionLogout">
+   <property name="text">
+    <string>Logout</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
    </property>
   </action>
  </widget>
