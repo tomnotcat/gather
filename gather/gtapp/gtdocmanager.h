@@ -25,7 +25,7 @@ class GT_APP_EXPORT GtDocManager : public QObject, public GtObject
     Q_OBJECT;
 
 public:
-    explicit GtDocManager(const QString &dbpath = QString(),
+    explicit GtDocManager(const QString &docdb = QString(),
                           QThread *thread = 0,
                           QObject *parent = 0);
     ~GtDocManager();

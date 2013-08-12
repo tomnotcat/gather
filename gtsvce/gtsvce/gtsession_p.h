@@ -33,6 +33,7 @@ protected:
     GtServer *m_server;
     GtServerThread *m_thread;
     GtRecvBuffer m_buffer;
+    QString m_peerName;
     QHostAddress m_peerAddress;
     quint16 m_peerPort;
 };

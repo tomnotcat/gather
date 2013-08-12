@@ -33,6 +33,7 @@ public:
 
     QHostAddress peerAddress() const;
     quint16 peerPort() const;
+    QString peerName() const;
 
 private Q_SLOTS:
     void handleRead();

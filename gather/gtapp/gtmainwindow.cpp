@@ -39,6 +39,16 @@ GtMainWindow::GtMainWindow()
     connect(m_ui.tabWidget, SIGNAL(currentChanged(int)),
             this, SLOT(currentTabChanged(int)));
 
+    // status bar
+    QStatusBar *bar = statusBar();
+
+    m_accountIcon = new QLabel();
+    m_accountIcon->setPixmap(QPixmap(":/images/account.png"));
+    m_accountIcon->setMaximumSize(16, 16);
+    m_accountIcon->setScaledContents(true);
+    m_accountIcon->setContentsMargins(0, 0, 0, 0);
+    bar->insertPermanentWidget(0, m_accountIcon);
+
     // recent files
     m_recentFileActions[0] = m_ui.actionRecentFile0;
     m_recentFileActions[1] = m_ui.actionRecentFile1;

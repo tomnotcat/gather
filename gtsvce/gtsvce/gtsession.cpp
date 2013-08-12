@@ -31,6 +31,7 @@ void GtSessionPrivate::init(QAbstractSocket *s, GtServer *m, GtServerThread *t)
     m_thread = t;
     m_peerAddress = s->peerAddress();
     m_peerPort = s->peerPort();
+    m_peerName = m_peerAddress.toString() + ":" + QString::number(m_peerPort);
 
     s->connect(s, SIGNAL(readyRead()), q, SLOT(handleRead()));
     s->connect(s, SIGNAL(error(QAbstractSocket::SocketError)),
@@ -84,6 +85,12 @@ quint16 GtSession::peerPort() const
 {
     Q_D(const GtSession);
     return d->m_peerPort;
+}
+
+QString GtSession::peerName() const
+{
+    Q_D(const GtSession);
+    return d->m_peerName;
 }
 
 void GtSession::handleRead()

@@ -26,6 +26,8 @@ public:
 
 protected:
     GtUserSession *q_ptr;
+    QString m_username;
+    QString m_password;
     QString m_sessionId;
     bool m_loggedIn;
 };
@@ -48,7 +50,10 @@ void GtUserSessionPrivate::handleLogin(GtUserLoginRequest &msg)
     QString passwd = QString::fromUtf8(msg.passwd().c_str());
     GtUserClient::ErrorCode error = GtUserClient::ErrorNone;
 
-    if (user.isEmpty()) {
+    if (m_loggedIn) {
+        error = GtUserClient::ErrorInvalidState;
+    }
+    else if (user.isEmpty()) {
         error = GtUserClient::ErrorInvalidUser;
     }
     else if (passwd.isEmpty()) {
@@ -60,8 +65,15 @@ void GtUserSessionPrivate::handleLogin(GtUserLoginRequest &msg)
 
     m_loggedIn = (GtUserClient::ErrorNone == error);
     if (m_loggedIn) {
+        m_username = user;
+        m_password = passwd;
         m_sessionId = QUuid::createUuid().toString();
         response.set_session_id(m_sessionId.toUtf8());
+
+        qDebug() << "Login success:" << q->peerName() << user;
+    }
+    else {
+        qDebug() << "Login fail:" << q->peerName() << user << error;
     }
 
     GtSvcUtil::sendMessage(q->socket(), GT_USER_LOGIN_RESPONSE, &response);
@@ -69,9 +81,13 @@ void GtUserSessionPrivate::handleLogin(GtUserLoginRequest &msg)
 
 void GtUserSessionPrivate::handleLogout(GtUserLogoutRequest &msg)
 {
+    Q_Q(GtUserSession);
+
     Q_UNUSED(msg);
     m_loggedIn = false;
     m_sessionId.clear();
+
+    qDebug() << "Logout:" << q->peerName() << m_username;
 }
 
 GtUserSession::GtUserSession(QObject *parent)

@@ -16,23 +16,52 @@ class GT_APP_EXPORT GtUserManager : public QObject, public GtObject
     Q_OBJECT;
 
 public:
-    explicit GtUserManager(QThread *thread = 0, QObject *parent = 0);
+    class Account {
+    public:
+        explicit Account()
+            : autoLogin(false)
+        {
+        }
+
+        Account(const QString &u, const QString &p, bool r, bool a)
+            : username(u)
+            , password(p)
+            , rememberMe(r)
+            , autoLogin(a)
+        {
+        }
+
+    public:
+        QString username;
+        QString password;
+        bool rememberMe;
+        bool autoLogin;
+    };
+
+public:
+    explicit GtUserManager(const QString &regdb = QString(),
+                           QThread *thread = 0,
+                           QObject *parent = 0);
     ~GtUserManager();
 
 public:
-    void connect(const QString &host, quint16 port);
-    void disconnect();
+    QList<Account> accounts() const;
 
-    void login(const QString &user, const QString &passwd);
+    void login(const Account &account);
     void logout();
 
     QString session() const;
     int state() const;
 
 Q_SIGNALS:
-    void connectError(int error);
     void loginError(int error);
     void stateChanged(int state, int error);
+
+private Q_SLOTS:
+    void loginSuccess(const QString &username,
+                      const QString &password,
+                      bool rememberMe,
+                      bool autoLogin);
 
 private:
     QScopedPointer<GtUserManagerPrivate> d_ptr;

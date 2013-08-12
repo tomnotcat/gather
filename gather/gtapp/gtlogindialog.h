@@ -5,6 +5,7 @@
 #define __GT_LOGIN_DIALOG_H__
 
 #include "gttabview.h"
+#include "gtusermanager.h"
 #include "ui_gtlogindialog.h"
 
 GT_BEGIN_NAMESPACE
@@ -18,10 +19,20 @@ public:
     ~GtLoginDialog();
 
 private Q_SLOTS:
+    void on_rememberMe_clicked(bool checked);
+    void on_autoLogin_clicked(bool checked);
     void on_loginButton_clicked();
+    void accountIndexChanged(int index);
+    void usernameEdited(const QString &text);
+    void passwordEdited(const QString &text);
 
 private:
-    Ui_LoginDialog ui;
+    int indexFromUsername(const QString &username);
+
+private:
+    Ui_LoginDialog m_ui;
+    QList<GtUserManager::Account> m_accounts;
+    QString m_password;
 };
 
 GT_END_NAMESPACE

@@ -17,10 +17,11 @@ public:
     ~GtUserManagerProxy();
 
 public:
-    Q_INVOKABLE void connect(const QString &host, quint16 port);
-    Q_INVOKABLE void disconnect();
-
-    Q_INVOKABLE void login(const QString &user, const QString &passwd);
+    Q_INVOKABLE bool connectToHost();
+    Q_INVOKABLE void login(const QString &username,
+                           const QString &password,
+                           bool rememberMe,
+                           bool autoLogin);
     Q_INVOKABLE void logout();
 
 private Q_SLOTS:

@@ -7,6 +7,8 @@
 #include "gtobject.h"
 #include "ui_gtmainwindow.h"
 
+class QLabel;
+
 GT_BEGIN_NAMESPACE
 
 class GtTabView;
@@ -63,6 +65,9 @@ private:
     QString m_curFile;
     QString m_lastOpenPath;
     GtTabView *m_oldTabView;
+
+    // status bar
+    QLabel *m_accountIcon;
 
     // recent opened files
     enum { MaxRecentFiles = 5 };

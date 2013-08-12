@@ -151,6 +151,9 @@ GtApplication::GtApplication(int &argc, char **argv)
     , d_ptr(new GtApplicationPrivate(this))
 {
     setWindowIcon(QIcon(QLatin1String(":/images/logo.bmp")));
+
+    // remove frame around status bar items
+    setStyleSheet("QStatusBar::item { border: 0px }");
 }
 
 GtApplication::~GtApplication()
@@ -211,9 +214,9 @@ GtDocManager *GtApplication::docManager()
     Q_D(GtApplication);
 
     if (!d->m_docManager) {
-        QString dbpath = dataFilePath("document.db");
+        QString docdb = dataFilePath("document.db");
         QThread *thread = docThread();
-        d->m_docManager = new GtDocManager(dbpath, thread, this);
+        d->m_docManager = new GtDocManager(docdb, thread, this);
 
         QDir dir(QCoreApplication::applicationDirPath());
         if (dir.cd("loader"))
@@ -242,8 +245,9 @@ GtUserManager *GtApplication::userManager()
     Q_D(GtApplication);
 
     if (!d->m_userManager) {
+        QString regdb = dataFilePath("registry.db");
         QThread *thread = networkThread();
-        d->m_userManager = new GtUserManager(thread, this);
+        d->m_userManager = new GtUserManager(regdb, thread, this);
     }
 
     return d->m_userManager;
@@ -308,15 +312,11 @@ void GtApplication::quitReader()
 
 void GtApplication::postLaunch()
 {
+    // connect to server
+    userManager();
+
     // new default window
     newMainWindow();
-
-    // connect to server
-    GtUserManager *user = userManager();
-    QString host("127.0.0.1");
-    quint16 port = 8701;
-
-    user->connect(host, port);
 }
 
 void GtApplication::newLocalSocketConnection()

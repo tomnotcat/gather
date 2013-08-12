@@ -53,7 +53,7 @@ void GtServerPrivate::addSession(GtSession *session, qintptr socketDescriptor)
     socket->setSocketDescriptor(socketDescriptor);
     session->d_ptr->init(socket, q, thread);
 
-    qDebug() << "Add session:" << session->peerAddress().toString();
+    qDebug() << "Add session:" << session->peerName();
 
     thread->sessions.push_back(session);
     session->moveToThread(thread);
@@ -73,10 +73,10 @@ void GtServerPrivate::removeSession(GtSession *session)
     thread->sessions.removeOne(session);
 
     if (!closing) {
-        QHostAddress address(session->peerAddress());
+        QString peerName(session->peerName());
 
         q->removeSession(session);
-        qDebug() << "Remove session:" << address.toString();
+        qDebug() << "Remove session:" << peerName;
     }
 }
 
