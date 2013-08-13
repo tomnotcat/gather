@@ -14,6 +14,7 @@
 #include <QtGui/QCloseEvent>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QToolButton>
 
 GT_BEGIN_NAMESPACE
 
@@ -40,14 +41,18 @@ GtMainWindow::GtMainWindow()
             this, SLOT(currentTabChanged(int)));
 
     // status bar
-    QStatusBar *bar = statusBar();
+    QStatusBar *status = statusBar();
 
-    m_accountIcon = new QLabel();
-    m_accountIcon->setPixmap(QPixmap(":/images/account.png"));
-    m_accountIcon->setMaximumSize(16, 16);
-    m_accountIcon->setScaledContents(true);
-    m_accountIcon->setContentsMargins(0, 0, 0, 0);
-    bar->insertPermanentWidget(0, m_accountIcon);
+    QIcon accountIcon(QPixmap(":/images/account.png"));
+    m_accountButton = new QToolButton();
+    m_accountButton->setIcon(accountIcon);
+    m_accountButton->setStyleSheet("border: 0px;");
+    status->addPermanentWidget(m_accountButton);
+
+    m_zoomButton = new QToolButton();
+    m_zoomButton->setText("100%");
+    m_zoomButton->setStyleSheet("border: 0px;");
+    status->addPermanentWidget(m_zoomButton);
 
     // recent files
     m_recentFileActions[0] = m_ui.actionRecentFile0;

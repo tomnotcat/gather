@@ -7,7 +7,7 @@
 #include "gtobject.h"
 #include "ui_gtmainwindow.h"
 
-class QLabel;
+class QToolButton;
 
 GT_BEGIN_NAMESPACE
 
@@ -67,7 +67,8 @@ private:
     GtTabView *m_oldTabView;
 
     // status bar
-    QLabel *m_accountIcon;
+    QToolButton *m_accountButton;
+    QToolButton *m_zoomButton;
 
     // recent opened files
     enum { MaxRecentFiles = 5 };
